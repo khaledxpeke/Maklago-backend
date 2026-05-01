@@ -9,7 +9,7 @@ Express + Prisma (PostgreSQL) API for the restaurant POS. OpenAPI/Swagger UI is 
 
 ## First-time setup
 
-1. **Install dependencies** (also runs Prisma Client generation via `postinstall`):
+1. **Install dependencies** (runs Prisma Client generation via `postinstall`). Clients under `src/db/tenant-client` and `src/db/registry-client` are **not** committed — everyone generates them locally from `prisma/*/schema.prisma`.
 
    ```bash
    npm install

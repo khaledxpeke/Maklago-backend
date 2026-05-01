@@ -1,8 +1,8 @@
 -- CreateEnum
-CREATE TYPE "StaffRole" AS ENUM ('OWNER', 'MANAGER', 'CASHIER');
+CREATE TYPE "StaffRole" AS ENUM ('owner', 'mana', 'cashier');
 
 -- CreateEnum
-CREATE TYPE "OrderStatus" AS ENUM ('DRAFT', 'ACTIVE', 'COMPLETED', 'CANCELED');
+CREATE TYPE "OrderStatus" AS ENUM ('draft', 'active', 'completed', 'canceled');
 
 -- CreateTable
 CREATE TABLE "staff" (
@@ -10,7 +10,7 @@ CREATE TABLE "staff" (
     "email" TEXT NOT NULL,
     "password_hash" TEXT NOT NULL,
     "full_name" TEXT NOT NULL,
-    "role" "StaffRole" NOT NULL DEFAULT 'CASHIER',
+    "role" "StaffRole" NOT NULL DEFAULT 'cashier',
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
