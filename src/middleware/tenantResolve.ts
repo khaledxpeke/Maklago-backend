@@ -60,13 +60,22 @@ export function tenantResolve(options?: { optional?: boolean }) {
       const registry = getRegistryClient();
       const row = await registry.tenant.findFirst({
         where: {
-          isActive: true,
           OR: [{ slug: key }, { id: key }],
         },
       });
 
       if (!row) {
-        sendError(res, 404, 'tenant_not_found', 'Unknown or inactive tenant');
+        sendError(res, 404, 'tenant_not_found', 'Unknown tenant', {
+          hint:
+            env.tenantSource === 'subdomain'
+              ? `Use a host like {tenant}.${env.baseDomain || 'your-base-domain'}`
+              : `Send header ${env.tenantHeader} (tenant slug or id).`,
+        });
+        return;
+      }
+
+      if (!row.isActive) {
+        sendError(res, 403, 'tenant_blocked', 'This restaurant has been disabled.');
         return;
       }
 

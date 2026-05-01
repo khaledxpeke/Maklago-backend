@@ -21,6 +21,16 @@ enum OrderStatus {
   canceled
 }
 
+enum OrderFulfillment {
+  dine_in
+  takeaway
+}
+
+enum TableStatus {
+  free
+  occupied
+}
+
 /// simple = cart line with optional JSON modifiers. composed = steps per `ProductComposition` + extras.
 enum ProductKind {
   simple
@@ -153,14 +163,19 @@ model Product {
 }
 
 model RestaurantTable {
-  id        String   @id @default(uuid())
-  name      String
-  zone      String?
-  sortOrder Int      @default(0) @map("sort_order")
-  isActive  Boolean  @default(true) @map("is_active")
-  orders    Order[]
-  createdAt DateTime @default(now()) @map("created_at")
+  id          String      @id @default(uuid())
+  /// Display / floor label (e.g. "Window booth").
+  name        String
+  /// Numeric label for quick selection (unique per tenant DB).
+  tableNumber Int         @map("table_number")
+  zone        String?
+  sortOrder   Int         @default(0) @map("sort_order")
+  status      TableStatus @default(free)
+  isActive    Boolean     @default(true) @map("is_active")
+  orders      Order[]
+  createdAt   DateTime    @default(now()) @map("created_at")
 
+  @@unique([tableNumber])
   @@map("restaurant_tables")
 }
 
@@ -179,9 +194,10 @@ model CashierSession {
 
 /// Order / command (replaces Mongo `History` conceptually — use table `orders`).
 model Order {
-  id              String        @id @default(uuid())
-  status          OrderStatus   @default(draft)
-  tableId         String?       @map("table_id")
+  id              String           @id @default(uuid())
+  status          OrderStatus      @default(draft)
+  fulfillment     OrderFulfillment @default(takeaway)
+  tableId         String?          @map("table_id")
   table           RestaurantTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
   staffId         String?       @map("staff_id")
   staff           Staff?        @relation(fields: [staffId], references: [id], onDelete: SetNull)

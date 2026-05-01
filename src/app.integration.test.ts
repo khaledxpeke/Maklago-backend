@@ -21,7 +21,7 @@ const integration =
 describe.skipIf(!integration)('integration (set INTEGRATION_TEST=1 and DB URLs)', () => {
   const tenantHeader = { 'x-tenant-id': process.env.TEST_TENANT_SLUG ?? 'demo' };
   const credentials = {
-    email: process.env.TEST_STAFF_EMAIL ?? 'cashier@demo.local',
+    email: process.env.TEST_STAFF_EMAIL ?? 'manager@demo.local',
     password: process.env.TEST_STAFF_PASSWORD ?? 'demo123456',
   };
 
@@ -71,5 +71,44 @@ describe.skipIf(!integration)('integration (set INTEGRATION_TEST=1 and DB URLs)'
     expect(order.status).toBe(201);
     expect(order.body.order).toBeDefined();
     expect(order.body.order.lines?.length).toBeGreaterThan(0);
+    expect(order.body.order.fulfillment).toBe('takeaway');
+  });
+
+  it('rejects dine_in order without tableId', async () => {
+    const login = await request(app).post('/api/v1/auth/login').set(tenantHeader).send(credentials);
+    expect(login.status).toBe(200);
+    const token = login.body.accessToken as string;
+
+    const productId = '00000000-0000-4000-8000-000000000101';
+    const res = await request(app)
+      .post('/api/v1/orders')
+      .set({ Authorization: `Bearer ${token}` })
+      .send({
+        fulfillment: 'dine_in',
+        status: 'active',
+        lines: [{ productId, quantity: 1 }],
+      });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects takeaway order with tableId', async () => {
+    const login = await request(app).post('/api/v1/auth/login').set(tenantHeader).send(credentials);
+    expect(login.status).toBe(200);
+    const token = login.body.accessToken as string;
+
+    const productId = '00000000-0000-4000-8000-000000000101';
+    const tableId = '00000000-0000-4000-8000-000000000201';
+    const res = await request(app)
+      .post('/api/v1/orders')
+      .set({ Authorization: `Bearer ${token}` })
+      .send({
+        fulfillment: 'takeaway',
+        tableId,
+        status: 'active',
+        lines: [{ productId, quantity: 1 }],
+      });
+
+    expect(res.status).toBe(400);
   });
 });

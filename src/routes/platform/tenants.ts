@@ -2,14 +2,19 @@ import { Router } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import { getRegistryClient } from '../../db/registry';
-import { StaffRole } from '../../db/tenant-client';
+import { Prisma as TenantPrismaNs, StaffRole } from '../../db/tenant-client';
 import { getTenantPrisma, removeTenantFromPool } from '../../db/tenantPool';
 import { asyncHandler } from '../../http/asyncHandler';
 import { sendError } from '../../http/errorResponse';
 import { paramId } from '../../http/paramId';
 import { platformAuth } from '../../middleware/platformAuth';
 import { env } from '../../config/env';
-import { upsertStaffLoginDirectory } from '../../services/staffLoginDirectory';
+import {
+  isStaffLoginEmailTakenElsewhere,
+  normalizeStaffLoginEmail,
+  upsertStaffLoginDirectory,
+} from '../../services/staffLoginDirectory';
+import { Prisma as RegistryPrismaNs } from '../../db/registry-client';
 
 const bodySchema = z
   .object({
@@ -36,6 +41,27 @@ const patchSchema = z.object({
   isActive: z.boolean().optional(),
   databaseUrl: z.string().min(1).optional(),
 });
+
+const bootstrapOwnerSchema = z.object({
+  ownerEmail: z.string().email(),
+  ownerPassword: z.string().min(8),
+  ownerFullName: z.string().min(1).max(200),
+});
+
+/** Placeholder id so `isStaffLoginEmailTakenElsewhere` treats any directory row as taken for create flows. */
+const NEW_STAFF_SCOPE_ID = '00000000-0000-4000-8000-000000000000';
+
+function summarizeTenantReachabilityError(e: unknown): string {
+  if (e instanceof TenantPrismaNs.PrismaClientInitializationError) {
+    const msg = e.message.replace(/\s+/g, ' ').trim();
+    return msg.length > 450 ? `${msg.slice(0, 450)}…` : msg;
+  }
+  if (e instanceof Error) {
+    const msg = e.message.replace(/\s+/g, ' ').trim();
+    return msg.length > 450 ? `${msg.slice(0, 450)}…` : msg;
+  }
+  return 'Unknown error while connecting to the tenant database.';
+}
 
 platformTenantsRouter.get(
   '/',
@@ -76,6 +102,21 @@ platformTenantsRouter.get(
       sendError(res, 404, 'not_found', 'Tenant not found');
       return;
     }
+    let activeOwnerCount: number | null = null;
+    let activeOwnerCountError: string | null = null;
+    try {
+      const prisma = getTenantPrisma(row.id, row.databaseUrl);
+      activeOwnerCount = await prisma.staff.count({
+        where: { role: StaffRole.owner, isActive: true },
+      });
+    } catch (e) {
+      activeOwnerCount = null;
+      activeOwnerCountError = summarizeTenantReachabilityError(e);
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[platform] tenant owner count failed', { tenantId: row.id, slug: row.slug, err: e });
+      }
+    }
+
     res.json({
       tenant: {
         id: row.id,
@@ -83,10 +124,94 @@ platformTenantsRouter.get(
         name: row.name,
         databaseUrl: row.databaseUrl,
         isActive: row.isActive,
+        activeOwnerCount,
+        activeOwnerCountError,
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
       },
     });
+  }),
+);
+
+platformTenantsRouter.post(
+  '/:id/bootstrap-owner',
+  platformAuth,
+  asyncHandler(async (req, res) => {
+    const parsed = bootstrapOwnerSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendError(res, 400, 'validation_error', 'Invalid body', parsed.error.flatten());
+      return;
+    }
+    const key = paramId(req);
+    if (!key) {
+      sendError(res, 400, 'validation_error', 'Missing tenant id');
+      return;
+    }
+    const registry = getRegistryClient();
+    const tenantRow = await registry.tenant.findFirst({
+      where: { OR: [{ id: key }, { slug: key }] },
+    });
+    if (!tenantRow) {
+      sendError(res, 404, 'not_found', 'Tenant not found');
+      return;
+    }
+
+    const emailTrim = parsed.data.ownerEmail.trim().toLowerCase();
+    const emailNorm = normalizeStaffLoginEmail(emailTrim);
+    if (await isStaffLoginEmailTakenElsewhere(registry, emailNorm, tenantRow.id, NEW_STAFF_SCOPE_ID)) {
+      sendError(res, 409, 'email_taken', 'This email is already registered for staff login');
+      return;
+    }
+
+    const prisma = getTenantPrisma(tenantRow.id, tenantRow.databaseUrl);
+    const activeOwners = await prisma.staff.count({
+      where: { role: StaffRole.owner, isActive: true },
+    });
+    if (activeOwners > 0) {
+      sendError(res, 409, 'tenant_already_has_owner', 'This restaurant already has an active owner');
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(parsed.data.ownerPassword, env.bcryptRounds);
+    const fullName = parsed.data.ownerFullName.trim();
+
+    try {
+      const createdStaff = await prisma.staff.create({
+        data: {
+          email: emailTrim,
+          passwordHash,
+          fullName,
+          role: StaffRole.owner,
+        },
+      });
+      await upsertStaffLoginDirectory(registry, tenantRow.id, createdStaff.id, createdStaff.email);
+      await registry.owner.create({
+        data: {
+          tenantId: tenantRow.id,
+          email: emailTrim,
+          passwordHash,
+          fullName,
+        },
+      });
+      res.status(201).json({
+        staff: {
+          id: createdStaff.id,
+          email: createdStaff.email,
+          fullName: createdStaff.fullName,
+          role: createdStaff.role,
+        },
+      });
+    } catch (e) {
+      const dupTenant =
+        e instanceof TenantPrismaNs.PrismaClientKnownRequestError && e.code === 'P2002';
+      const dupRegistry =
+        e instanceof RegistryPrismaNs.PrismaClientKnownRequestError && e.code === 'P2002';
+      if (dupTenant || dupRegistry) {
+        sendError(res, 409, 'duplicate', 'Owner email or login already exists for this restaurant');
+        return;
+      }
+      throw e;
+    }
   }),
 );
 
@@ -122,6 +247,9 @@ platformTenantsRouter.patch(
           : {}),
       },
     });
+    if ('isActive' in parsed.data && parsed.data.isActive === false) {
+      removeTenantFromPool(existing.id);
+    }
     res.json({
       tenant: {
         id: row.id,

@@ -7,7 +7,8 @@ import bcrypt from 'bcrypt';
 import { env } from '../config/env';
 import { getRegistryClient } from '../db/registry';
 import { getTenantPrisma } from '../db/tenantPool';
-import { upsertStaffLoginDirectory } from '../services/staffLoginDirectory';
+import { upsertStaffLoginDirectory, removeStaffLoginDirectory } from '../services/staffLoginDirectory';
+import { refreshTableOccupancyFromOrders } from '../services/tableOccupancy';
 
 /** Stable Unsplash URLs for demo catalog images (no local upload required). */
 const DEMO_IMAGES = {
@@ -69,7 +70,16 @@ async function main(): Promise<void> {
 
   const prisma = getTenantPrisma(tenant.id, tenant.databaseUrl);
 
-  const email = 'cashier@demo.local';
+  const legacyDemoEmail = 'cashier@demo.local';
+  const legacyStaff = await prisma.staff.findUnique({ where: { email: legacyDemoEmail } });
+  if (legacyStaff) {
+    await removeStaffLoginDirectory(registry, tenant.id, legacyStaff.id);
+    await prisma.staff.delete({ where: { id: legacyStaff.id } });
+    console.log('Removed legacy demo login:', legacyDemoEmail, '→ use manager@demo.local');
+  }
+
+  /** Demo tenant login: manager (not the restaurant owner — owner is created via platform provision / ownerEmail). */
+  const email = 'manager@demo.local';
   const password = 'demo123456';
   const hash = await bcrypt.hash(password, env.bcryptRounds);
 
@@ -78,13 +88,38 @@ async function main(): Promise<void> {
     create: {
       email,
       passwordHash: hash,
-      fullName: 'Demo Cashier',
+      fullName: 'Demo Manager',
       role: 'manager',
     },
-    update: { passwordHash: hash },
+    update: { passwordHash: hash, fullName: 'Demo Manager', role: 'manager' },
   });
   await upsertStaffLoginDirectory(registry, tenant.id, demoStaff.id, demoStaff.email);
-  console.log('Staff:', email, '/', password);
+  console.log('Staff (manager):', email, '/', password);
+
+  const ownerEmailAddr = 'owner@demo.local';
+  const ownerHash = await bcrypt.hash(password, env.bcryptRounds);
+  const demoOwner = await prisma.staff.upsert({
+    where: { email: ownerEmailAddr },
+    create: {
+      email: ownerEmailAddr,
+      passwordHash: ownerHash,
+      fullName: 'Demo Owner',
+      role: 'owner',
+    },
+    update: { passwordHash: ownerHash, fullName: 'Demo Owner', role: 'owner' },
+  });
+  await upsertStaffLoginDirectory(registry, tenant.id, demoOwner.id, demoOwner.email);
+  await registry.owner.upsert({
+    where: { tenantId_email: { tenantId: tenant.id, email: ownerEmailAddr } },
+    create: {
+      tenantId: tenant.id,
+      email: ownerEmailAddr,
+      passwordHash: ownerHash,
+      fullName: 'Demo Owner',
+    },
+    update: { passwordHash: ownerHash, fullName: 'Demo Owner' },
+  });
+  console.log('Staff (owner):', ownerEmailAddr, '/', password);
 
   const catDrinks = await prisma.category.upsert({
     where: { id: '00000000-0000-4000-8000-000000000001' },
@@ -332,10 +367,12 @@ async function main(): Promise<void> {
     create: {
       id: table1Id,
       name: 'Table 1',
+      tableNumber: 1,
       zone: 'Main',
       sortOrder: 0,
+      status: 'free',
     },
-    update: { name: 'Table 1', zone: 'Main' },
+    update: { name: 'Table 1', zone: 'Main', tableNumber: 1 },
   });
 
   const demoOrderIds = [
@@ -363,6 +400,7 @@ async function main(): Promise<void> {
     data: {
       id: demoOrderIds[0],
       status: 'active',
+      fulfillment: 'dine_in',
       tableId: table1Id,
       staffId: staffRow.id,
       subtotalCents: coffeeMilkLine,
@@ -394,6 +432,7 @@ async function main(): Promise<void> {
     data: {
       id: demoOrderIds[1],
       status: 'completed',
+      fulfillment: 'dine_in',
       tableId: table1Id,
       staffId: staffRow.id,
       subtotalCents: sub2,
@@ -429,6 +468,7 @@ async function main(): Promise<void> {
     data: {
       id: demoOrderIds[2],
       status: 'active',
+      fulfillment: 'takeaway',
       staffId: staffRow.id,
       subtotalCents: composedLineSub,
       taxCents: composedTax,
@@ -465,6 +505,8 @@ async function main(): Promise<void> {
       },
     },
   });
+
+  await refreshTableOccupancyFromOrders(prisma, table1Id);
 
   console.log('Seed complete (includes demo orders).');
 }

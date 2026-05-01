@@ -53,10 +53,14 @@ authRouter.post(
       }
       dirRow = { staffId: dir.staffId, tenantId: dir.tenantId };
       const tenantRow = await registry.tenant.findFirst({
-        where: { id: dir.tenantId, isActive: true },
+        where: { id: dir.tenantId },
       });
       if (!tenantRow) {
         sendError(res, 401, 'invalid_credentials', 'Invalid email or password');
+        return;
+      }
+      if (!tenantRow.isActive) {
+        sendError(res, 403, 'tenant_blocked', 'This restaurant has been disabled.');
         return;
       }
       prisma = getTenantPrisma(tenantRow.id, tenantRow.databaseUrl);

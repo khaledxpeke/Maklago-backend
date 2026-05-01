@@ -129,12 +129,14 @@ Use this for `/api/v1/*` (orders, catalog, sessions).
 1. **Slugless (mobile-friendly):** send only JSON `{ "email", "password" }`. The registry **`staff_login_directory`** maps the email (normalized, **unique platform-wide**) to the tenant DB where `Staff` lives; password is still verified in that tenant DB.
 2. **With tenant header:** send **`x-tenant-id`** (slug or tenant UUID) as before if you want an explicit venue without using the directory.
 
-After `npm run seed`, demo credentials:
+After `npm run seed`, demo restaurant staff (tenant slug **`demo`**, password **`demo123456`** for both):
 
-| Field | Value |
-|--------|--------|
-| Email | `cashier@demo.local` |
-| Password | `demo123456` |
+| Email | Role | Use |
+|--------|------|-----|
+| `owner@demo.local` | **owner** | Full access including editing other owners; listed under Platform → **Registry owners**. |
+| `manager@demo.local` | **manager** | Day-to-day admin demo (cannot edit owner accounts). |
+
+For **production** venues, the owner is normally created when you provision the tenant with **`ownerEmail`** / **`ownerPassword`**, or another owner promotes staff in the backoffice.
 
 Optional header for explicit tenant: `x-tenant-id: demo` (see `TENANT_HEADER` in `.env`).
 
@@ -142,13 +144,13 @@ Optional header for explicit tenant: `x-tenant-id: demo` (see `TENANT_HEADER` in
 POST /api/v1/auth/login
 Content-Type: application/json
 
-{ "email": "cashier@demo.local", "password": "demo123456" }
+{ "email": "owner@demo.local", "password": "demo123456" }
 ```
 
 ```bash
 curl -s -X POST http://localhost:3000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d "{\"email\":\"cashier@demo.local\",\"password\":\"demo123456\"}"
+  -d "{\"email\":\"owner@demo.local\",\"password\":\"demo123456\"}"
 ```
 
 Response includes **`accessToken`**, **`expiresIn`**, **`tenantId`**, **`tenantSlug`**, and **`staff`**. Flutter can cache **`tenantSlug`** for display; it does **not** need to send **`x-tenant-id`** on later calls.
@@ -239,7 +241,7 @@ Runs Vitest (health check without a database). **Integration tests** (login + cr
 npm run test:integration
 ```
 
-Optional env overrides: `TEST_TENANT_SLUG`, `TEST_STAFF_EMAIL`, `TEST_STAFF_PASSWORD` (defaults align with seed: `demo`, `cashier@demo.local`, `demo123456` when not set).
+Optional env overrides: `TEST_TENANT_SLUG`, `TEST_STAFF_EMAIL`, `TEST_STAFF_PASSWORD` (defaults align with seed: `demo`, `manager@demo.local`, `demo123456` when not set).
 
 ## Health check
 

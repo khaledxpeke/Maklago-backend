@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { Prisma } from '../../../db/tenant-client';
 import { asyncHandler } from '../../../http/asyncHandler';
 import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
@@ -14,7 +15,7 @@ tablesRouter.get(
     if (!req.tenant) return;
     const rows = await req.tenant.prisma.restaurantTable.findMany({
       where: { isActive: true },
-      orderBy: { sortOrder: 'asc' },
+      orderBy: [{ tableNumber: 'asc' }, { sortOrder: 'asc' }],
     });
     res.json({ tables: rows });
   }),
@@ -22,8 +23,13 @@ tablesRouter.get(
 
 const tableBody = z.object({
   name: z.string().min(1).max(100),
+  tableNumber: z.number().int().min(1),
   zone: z.string().max(100).nullable().optional(),
   sortOrder: z.number().int().optional(),
+});
+
+const tablePatchBody = tableBody.partial().extend({
+  status: z.enum(['free', 'occupied']).optional(),
 });
 
 tablesRouter.post(
@@ -35,21 +41,30 @@ tablesRouter.post(
       return;
     }
     if (!req.tenant) return;
-    const t = await req.tenant.prisma.restaurantTable.create({
-      data: {
-        name: parsed.data.name,
-        zone: parsed.data.zone ?? undefined,
-        sortOrder: parsed.data.sortOrder ?? 0,
-      },
-    });
-    res.status(201).json({ table: t });
+    try {
+      const t = await req.tenant.prisma.restaurantTable.create({
+        data: {
+          name: parsed.data.name,
+          tableNumber: parsed.data.tableNumber,
+          zone: parsed.data.zone ?? undefined,
+          sortOrder: parsed.data.sortOrder ?? 0,
+        },
+      });
+      res.status(201).json({ table: t });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        sendError(res, 409, 'table_number_taken', 'Another table already uses this table number');
+        return;
+      }
+      throw e;
+    }
   }),
 );
 
 tablesRouter.patch(
   '/:id',
   asyncHandler(async (req, res) => {
-    const parsed = tableBody.partial().safeParse(req.body);
+    const parsed = tablePatchBody.safeParse(req.body);
     if (!parsed.success) {
       sendError(res, 400, 'validation_error', 'Invalid body', parsed.error.flatten());
       return;
@@ -65,14 +80,24 @@ tablesRouter.patch(
         where: { id },
         data: {
           ...('name' in parsed.data && parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
+          ...('tableNumber' in parsed.data && parsed.data.tableNumber !== undefined
+            ? { tableNumber: parsed.data.tableNumber }
+            : {}),
           ...('zone' in parsed.data ? { zone: parsed.data.zone } : {}),
           ...('sortOrder' in parsed.data && parsed.data.sortOrder !== undefined
             ? { sortOrder: parsed.data.sortOrder }
             : {}),
+          ...('status' in parsed.data && parsed.data.status !== undefined
+            ? { status: parsed.data.status }
+            : {}),
         },
       });
       res.json({ table });
-    } catch {
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        sendError(res, 409, 'table_number_taken', 'Another table already uses this table number');
+        return;
+      }
       sendError(res, 404, 'not_found', 'Table not found');
     }
   }),

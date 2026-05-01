@@ -20,6 +20,7 @@ import {
 } from '../../../services/pricing';
 import { getDefaultTaxBps } from '../../../services/settings';
 import { buildCustomerReceiptJobs, buildKitchenTicketJobs } from '../../../services/printJob';
+import { refreshTableOccupancyFromOrders } from '../../../services/tableOccupancy';
 
 const lineSchema = z.object({
   productId: z.string().uuid(),
@@ -39,23 +40,42 @@ const lineSchema = z.object({
   note: z.string().max(500).optional(),
 });
 
-const createOrderSchema = z.object({
-  tableId: z.string().uuid().nullable().optional(),
-  sessionId: z.string().uuid().nullable().optional(),
-  status: z.enum(['draft', 'active']).default('active'),
-  /// Mongo History-like metadata for receipts / exports (optional).
-  customerName: z.string().max(200).optional(),
-  customerEmail: z.string().email().optional(),
-  commandNumber: z.number().int().optional(),
-  currency: z.string().max(16).optional(),
-  pack: z.unknown().optional(),
-  paymentMethod: z.unknown().optional(),
-  /** Order-level discount in main currency units or cents */
-  orderDiscountValue: z.number().nonnegative().optional(),
-  orderDiscountValueCents: z.number().int().min(0).optional(),
-  logoPath: z.string().max(2048).optional(),
-  lines: z.array(lineSchema).min(1),
-});
+const createOrderSchema = z
+  .object({
+    fulfillment: z.enum(['dine_in', 'takeaway']).default('takeaway'),
+    tableId: z.string().uuid().nullable().optional(),
+    sessionId: z.string().uuid().nullable().optional(),
+    status: z.enum(['draft', 'active']).default('active'),
+    /// Mongo History-like metadata for receipts / exports (optional).
+    customerName: z.string().max(200).optional(),
+    customerEmail: z.string().email().optional(),
+    commandNumber: z.number().int().optional(),
+    currency: z.string().max(16).optional(),
+    pack: z.unknown().optional(),
+    paymentMethod: z.unknown().optional(),
+    /** Order-level discount in main currency units or cents */
+    orderDiscountValue: z.number().nonnegative().optional(),
+    orderDiscountValueCents: z.number().int().min(0).optional(),
+    logoPath: z.string().max(2048).optional(),
+    lines: z.array(lineSchema).min(1),
+  })
+  .superRefine((data, ctx) => {
+    if (data.fulfillment === 'dine_in') {
+      if (!data.tableId) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'dine_in orders require tableId',
+          path: ['tableId'],
+        });
+      }
+    } else if (data.tableId != null) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'takeaway orders must not include tableId',
+        path: ['tableId'],
+      });
+    }
+  });
 
 export const ordersRouter = Router();
 ordersRouter.use(requireStaff);
@@ -96,7 +116,25 @@ ordersRouter.post(
       }
     }
 
-    const { tableId, sessionId, status, lines: inputLines } = parsed.data;
+    const {
+      fulfillment,
+      tableId: bodyTableId,
+      sessionId,
+      status,
+      lines: inputLines,
+    } = parsed.data;
+    const tableId = fulfillment === 'takeaway' ? undefined : bodyTableId!;
+
+    if (fulfillment === 'dine_in') {
+      const tableRow = await prisma.restaurantTable.findFirst({
+        where: { id: tableId!, isActive: true },
+      });
+      if (!tableRow) {
+        sendError(res, 400, 'table_not_found', 'Table not found or inactive', { tableId });
+        return;
+      }
+    }
+
     const defaultTax = await getDefaultTaxBps(prisma);
 
     try {
@@ -195,9 +233,10 @@ ordersRouter.post(
           orderDiscountValueCents ??
           (orderDiscountValue !== undefined ? majorToCents(orderDiscountValue) : 0);
 
-        return tx.order.create({
+        const created = await tx.order.create({
           data: {
             status: status as OrderStatus,
+            fulfillment,
             tableId: tableId ?? undefined,
             sessionId: sessionId ?? undefined,
             staffId: req.staff!.id,
@@ -228,6 +267,12 @@ ordersRouter.post(
           },
           include: { lines: { include: { product: true } } },
         });
+
+        if (fulfillment === 'dine_in' && tableId && ['draft', 'active'].includes(status)) {
+          await refreshTableOccupancyFromOrders(tx, tableId);
+        }
+
+        return created;
       });
 
       const printJobs = [
@@ -349,11 +394,15 @@ ordersRouter.patch(
         sendError(res, 400, 'validation_error', 'Missing order id');
         return;
       }
-      const order = await req.tenant.prisma.order.update({
+      const prisma = req.tenant.prisma;
+      const order = await prisma.order.update({
         where: { id: orderId },
         data: { status: parsed.data.status as OrderStatus },
         include: { lines: { include: { product: true } } },
       });
+      if (order.tableId && order.fulfillment === 'dine_in') {
+        await refreshTableOccupancyFromOrders(prisma, order.tableId);
+      }
       res.json({ order });
     } catch {
       sendError(res, 404, 'not_found', 'Order not found');

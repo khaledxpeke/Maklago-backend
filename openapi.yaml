@@ -10,6 +10,7 @@ info:
       normalized email exists in registry `staff_login_directory` (slugless directory login).
     - Authenticated routes use Bearer JWT from login (response includes `tenantId`, `tenantSlug`).
     - Composed products use **extras** (catalog `/api/v1/catalog/extras`) and composition types; order lines use `composition.steps[].extraIds`.
+    - **Mobile bootstrap:** `GET /api/v1/catalog/categories/menu` returns slim `{ catalogFingerprint, categories[] }` with Mongo-style **`_id`** on nested entities, `kind`, and `type[].extras`.
 servers:
   - url: http://localhost:3000
 paths:
@@ -39,6 +40,29 @@ paths:
                 ownerFullName: { type: string }
       responses:
         '201': { description: Created }
+  /platform/v1/tenants/{id}/bootstrap-owner:
+    post:
+      summary: Bootstrap first owner (tenant created without owner)
+      security: [{ PlatformKey: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ownerEmail, ownerPassword, ownerFullName]
+              properties:
+                ownerEmail: { type: string, format: email }
+                ownerPassword: { type: string, minLength: 8 }
+                ownerFullName: { type: string }
+      responses:
+        '201': { description: Created }
+        '409': { description: Already has owner or email conflict }
   /api/v1/auth/login:
     post:
       summary: Staff login
@@ -78,6 +102,7 @@ paths:
                       fullName: { type: string }
                       role: { type: string, enum: [owner, manager, cashier] }
         '401': { description: Invalid credentials }
+        '403': { description: Tenant disabled (tenant_blocked) }
   /api/v1/auth/me:
     get:
       summary: Current staff
@@ -103,6 +128,22 @@ paths:
           schema: { type: string, format: uuid }
       responses:
         '200': { description: Product list }
+  /api/v1/catalog/categories/menu:
+    get:
+      summary: Mobile menu (slim category → products → type → extras)
+      description: |
+        `categories[]`: `{ _id, name, image, products }`.
+        Each product: `{ _id, category, name, image, description, price, originalPrice, kind, outOfStock, isActive, type }`.
+        Nested `type[]` use `_id`; each extra uses `_id`.
+        Composed products: `type[]` has `{ _id, name, message, selection, max, min, mode, extras }`; each extra `{ _id, name, image, price, originalPrice, outOfStock }`.
+        Root also includes `catalogFingerprint` for cache invalidation.
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+      responses:
+        '200':
+          description: '{ catalogFingerprint, categories } slim mobile shape; entities use _id (Mongo-style)'
+        '401': { description: Unauthorized }
   /api/v1/catalog/extras:
     get:
       summary: List extras
@@ -216,6 +257,7 @@ paths:
             schema:
               type: object
               properties:
+                fulfillment: { type: string, enum: [dine_in, takeaway], default: takeaway }
                 status: { type: string, enum: [draft, active] }
                 tableId: { type: string, format: uuid, nullable: true }
                 sessionId: { type: string, format: uuid, nullable: true }

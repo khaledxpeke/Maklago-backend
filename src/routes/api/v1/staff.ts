@@ -158,6 +158,11 @@ staffRouter.patch(
       return;
     }
 
+    if (existing.role === 'owner' && req.staff.role !== 'owner') {
+      sendError(res, 403, 'forbidden', 'Only an owner can change owner accounts');
+      return;
+    }
+
     if (parsed.data.role !== undefined && !canSetRole(req.staff.role, parsed.data.role)) {
       sendError(res, 403, 'forbidden', 'Cannot assign this role');
       return;

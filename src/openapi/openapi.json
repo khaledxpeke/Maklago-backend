@@ -183,6 +183,12 @@
           "lines"
         ],
         "properties": {
+          "fulfillment": {
+            "type": "string",
+            "enum": ["dine_in", "takeaway"],
+            "default": "takeaway",
+            "description": "dine_in requires tableId; takeaway must omit tableId."
+          },
           "tableId": {
             "type": "string",
             "format": "uuid",
@@ -284,13 +290,19 @@
       "TableBody": {
         "type": "object",
         "required": [
-          "name"
+          "name",
+          "tableNumber"
         ],
         "properties": {
           "name": {
             "type": "string",
             "minLength": 1,
             "maxLength": 100
+          },
+          "tableNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Numeric label unique per restaurant (quick picker)."
           },
           "zone": {
             "type": "string",
@@ -299,6 +311,11 @@
           },
           "sortOrder": {
             "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["free", "occupied"],
+            "description": "Patch only; normally derived from open dine-in orders."
           }
         }
       },
@@ -389,6 +406,26 @@
             "minLength": 1
           }
         }
+      },
+      "BootstrapOwnerRequest": {
+        "type": "object",
+        "required": ["ownerEmail", "ownerPassword", "ownerFullName"],
+        "properties": {
+          "ownerEmail": {
+            "type": "string",
+            "format": "email"
+          },
+          "ownerPassword": {
+            "type": "string",
+            "minLength": 8
+          },
+          "ownerFullName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "description": "Allowed only while the tenant database has no active staff with role owner."
       },
       "StaffCreateBody": {
         "type": "object",
@@ -763,6 +800,67 @@
         }
       }
     },
+    "/platform/v1/tenants/{id}/bootstrap-owner": {
+      "post": {
+        "tags": ["Platform"],
+        "summary": "Bootstrap first owner when tenant was created without one",
+        "security": [
+          {
+            "PlatformKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BootstrapOwnerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Owner staff and registry owner created"
+          },
+          "400": {
+            "description": "Validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant already has an active owner, duplicate email, or directory conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "tags": [
@@ -803,6 +901,16 @@
           },
           "401": {
             "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant exists but is disabled (`tenant_blocked`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1242,6 +1350,38 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/categories/menu": {
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "Mobile menu bootstrap",
+        "description": "Active categories with nested active products (mobile-only slim JSON). Uses `_id` instead of `id` on categories, products, composition slots, and extras. Includes `kind` (`simple`|`composed`), category name string field `category`, and `type` with `extras`. Root includes `catalogFingerprint`.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized",
             "content": {
               "application/json": {
                 "schema": {

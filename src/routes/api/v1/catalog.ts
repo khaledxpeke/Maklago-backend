@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { Router, type Request } from 'express';
@@ -11,7 +11,7 @@ import { sendError } from '../../../http/errorResponse';
 import { resolveImageForClient, normalizeImageForStorage } from '../../../http/imageUrl';
 import { requireRole } from '../../../middleware/requireRole';
 import { requireStaff } from '../../../middleware/requireStaff';
-import { expandProductCompositionForClient, loadComposedProductSteps } from '../../../services/composition';
+import { expandProductCompositionForClient, extraAddonCents, loadComposedProductSteps, type LoadedExtra } from '../../../services/composition';
 import { majorToCents, resolvePriceCents } from '../../../http/money';
 import { attachCompositionCatalogRoutes } from './catalogComposition';
 
@@ -122,6 +122,121 @@ async function replaceProductCompositions(
   }
 }
 
+function fingerprintMobileCatalog(
+  rows: Array<{
+    id: string;
+    name: string;
+    sortOrder: number;
+    image: string | null;
+    isActive: boolean;
+    products: Array<{
+      id: string;
+      categoryId: string;
+      name: string;
+      sortOrder: number;
+      price: number;
+      kind: string;
+      isActive: boolean;
+      description: string | null;
+      compositions: { compositionTypeId: string }[];
+    }>;
+  }>,
+): string {
+  const chunks: string[] = [];
+  for (const c of rows) {
+    chunks.push(`c:${c.id}:${c.name}:${c.sortOrder}:${c.image ?? ''}:${c.isActive}`);
+    for (const p of c.products) {
+      const compIds = p.compositions.map((x) => x.compositionTypeId).join('|');
+      chunks.push(
+        `p:${p.id}:${p.categoryId}:${p.name}:${p.sortOrder}:${p.price}:${p.kind}:${p.isActive}:${p.description ?? ''}:${compIds}`,
+      );
+    }
+  }
+  return createHash('sha256').update(chunks.join('\n')).digest('hex').slice(0, 16);
+}
+
+function mobileMenuIngredient(
+  req: Request,
+  payment: boolean,
+  row: { position: number; extra: LoadedExtra },
+): Record<string, unknown> {
+  const e = row.extra;
+  const ec = extraAddonCents(payment, e);
+  const effectiveMajor = ec / 100;
+  const originalMajor = payment ? e.price / 100 : e.suppPrice / 100;
+  return {
+    _id: e.id,
+    name: e.name,
+    image: resolveImageForClient(req, e.image) ?? '',
+    price: effectiveMajor,
+    originalPrice: originalMajor,
+    outOfStock: e.outOfStock,
+  };
+}
+
+function mobileMenuTypes(
+  req: Request,
+  steps: Awaited<ReturnType<typeof loadComposedProductSteps>>,
+): unknown[] {
+  return steps.map((s) => {
+    const t = s.type;
+    const extras = t.rows
+      .filter((r) => r.extra.visible)
+      .sort((a, b) => a.position - b.position)
+      .map((r) => mobileMenuIngredient(req, t.payment, r));
+    return {
+      _id: t.id,
+      name: t.name,
+      message: t.message ?? '',
+      selection: t.selection,
+      max: t.max,
+      min: t.min,
+      mode: t.mode,
+      extras,
+    };
+  });
+}
+
+async function mobileMenuProduct(
+  req: Request,
+  prisma: Parameters<typeof loadComposedProductSteps>[0],
+  p: ProductListRow,
+): Promise<Record<string, unknown>> {
+  const priceMajor = p.price / 100;
+  const originalMajor = p.originalPrice != null ? p.originalPrice / 100 : priceMajor;
+  let type: unknown[] = [];
+  if (p.kind === 'composed') {
+    const steps = await loadComposedProductSteps(prisma, p.id);
+    type = mobileMenuTypes(req, steps);
+  }
+  return {
+    _id: p.id,
+    category: p.category.name,
+    name: p.name,
+    image: resolveImageForClient(req, p.image) ?? '',
+    description: p.description ?? '',
+    price: priceMajor,
+    originalPrice: originalMajor,
+    kind: p.kind,
+    outOfStock: p.outOfStock,
+    isActive: p.isActive,
+    type,
+  };
+}
+
+function mobileMenuCategory(
+  req: Request,
+  cat: Pick<Category, 'id' | 'name' | 'image'>,
+  products: Record<string, unknown>[],
+): Record<string, unknown> {
+  return {
+    _id: cat.id,
+    name: cat.name,
+    image: resolveImageForClient(req, cat.image) ?? '',
+    products,
+  };
+}
+
 catalogRouter.get(
   '/categories',
   asyncHandler(async (req, res) => {
@@ -133,6 +248,45 @@ catalogRouter.get(
     });
     res.json({
       categories: rows.map((c) => categoryToJson(req, c)),
+    });
+  }),
+);
+
+catalogRouter.get(
+  '/categories/menu',
+  asyncHandler(async (req, res) => {
+    if (!req.tenant) return;
+    const { prisma } = req.tenant;
+    const rows = await prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: 'asc' },
+      include: {
+        products: {
+          where: { isActive: true },
+          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+          include: {
+            category: { select: { id: true, name: true } },
+            compositions: { select: { compositionTypeId: true }, orderBy: { sortOrder: 'asc' } },
+          },
+        },
+      },
+    });
+
+    const catalogFingerprint = fingerprintMobileCatalog(rows);
+
+    const categories = await Promise.all(
+      rows.map(async (c) => {
+        const { products: catProducts, ...catRest } = c;
+        const productsPayload = await Promise.all(
+          catProducts.map((p) => mobileMenuProduct(req, prisma, p)),
+        );
+        return mobileMenuCategory(req, catRest, productsPayload);
+      }),
+    );
+
+    res.json({
+      catalogFingerprint,
+      categories,
     });
   }),
 );
