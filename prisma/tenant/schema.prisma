@@ -21,15 +21,15 @@ enum OrderStatus {
   CANCELED
 }
 
-/// Simple = cart line with optional JSON modifiers. Composed = steps per `ProductComposition` + ingredients.
+/// Simple = cart line with optional JSON modifiers. Composed = steps per `ProductComposition` + extras.
 enum ProductKind {
   SIMPLE
   COMPOSED
 }
 
-/// INGREDIENTS = type lists ingredients. PRODUCTS = nested products (future).
+/// EXTRAS = type lists selectable extras. PRODUCTS = nested products (future).
 enum CompositionSlotMode {
-  INGREDIENTS
+  EXTRAS
   PRODUCTS
 }
 
@@ -59,54 +59,54 @@ model Category {
   @@map("categories")
 }
 
-/// Ingredient add-on (Mongo `Ingrediant`). Linked to composition types via join table.
-model Ingredient {
-  id             String                   @id @default(uuid())
-  name           String
-  image          String?
+/// Extra add-on (legacy Mongo name `Ingrediant`). Linked to composition types via join table.
+model Extra {
+  id         String                  @id @default(uuid())
+  name       String
+  image      String?
   /// Paid add-on cents when parent type has `payment: true` (Mongo `price`).
-  price          Int                      @default(0) @map("price_cents")
+  price      Int                     @default(0) @map("price_cents")
   /// Supplement cents when `payment: false` (Mongo `suppPrice`).
-  suppPrice      Int                      @default(0) @map("supp_price_cents")
-  outOfStock     Boolean                  @default(false) @map("out_of_stock")
-  visible        Boolean                  @default(true)
-  sortOrder      Int                      @default(0) @map("sort_order")
-  typeLinks      CompositionTypeIngredient[]
-  createdAt      DateTime                 @default(now()) @map("created_at")
+  suppPrice  Int                     @default(0) @map("supp_price_cents")
+  outOfStock Boolean                 @default(false) @map("out_of_stock")
+  visible    Boolean                 @default(true)
+  sortOrder  Int                     @default(0) @map("sort_order")
+  typeLinks  CompositionTypeExtra[]
+  createdAt  DateTime                @default(now()) @map("created_at")
 
-  @@map("ingredients")
+  @@map("extras")
 }
 
 /// Composition step (Mongo `Type`): e.g. "Sauce", min/max, payment vs supp price behavior.
 model CompositionType {
-  id          String                      @id @default(uuid())
-  name        String
-  label       String
-  message     String?
-  min         Int                         @default(0)
-  max         Int                         @default(1)
-  /// When true, ingredient `price` applies; when false, `suppPrice` applies.
-  payment     Boolean                     @default(false)
-  selection   Boolean                     @default(false)
-  mode        CompositionSlotMode         @default(INGREDIENTS)
-  isActive    Boolean                     @default(true) @map("is_active")
-  sortOrder   Int                         @default(0) @map("sort_order")
-  ingredients CompositionTypeIngredient[]
+  id           String                 @id @default(uuid())
+  name         String
+  label        String
+  message      String?
+  min          Int                    @default(0)
+  max          Int                    @default(1)
+  /// When true, extra `price` applies; when false, `suppPrice` applies.
+  payment      Boolean                @default(false)
+  selection    Boolean                @default(false)
+  mode         CompositionSlotMode    @default(EXTRAS)
+  isActive     Boolean                @default(true) @map("is_active")
+  sortOrder    Int                    @default(0) @map("sort_order")
+  extras       CompositionTypeExtra[]
   productSteps ProductComposition[]
-  createdAt   DateTime                    @default(now()) @map("created_at")
+  createdAt    DateTime               @default(now()) @map("created_at")
 
   @@map("composition_types")
 }
 
-model CompositionTypeIngredient {
+model CompositionTypeExtra {
   compositionTypeId String          @map("composition_type_id")
-  ingredientId      String          @map("ingredient_id")
+  extraId           String          @map("extra_id")
   position          Int             @default(0)
   compositionType   CompositionType @relation(fields: [compositionTypeId], references: [id], onDelete: Cascade)
-  ingredient        Ingredient      @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  extra             Extra           @relation(fields: [extraId], references: [id], onDelete: Cascade)
 
-  @@id([compositionTypeId, ingredientId])
-  @@map("composition_type_ingredients")
+  @@id([compositionTypeId, extraId])
+  @@map("composition_type_extras")
 }
 
 model ProductComposition {
@@ -129,7 +129,7 @@ model Product {
   name         String
   description  String?
   image        String?
-  /// SIMPLE = sold as one item with optional `modifiers` JSON. COMPOSED = built from composition steps (`ProductComposition` → ingredient picks per step).
+  /// SIMPLE = sold as one item with optional `modifiers` JSON. COMPOSED = built from composition steps (`ProductComposition` → extra picks per step).
   kind         ProductKind @default(SIMPLE)
   /// Base unit price in cents (Mongo field name `price`; DB column `price_cents`).
   price        Int          @map("price_cents")

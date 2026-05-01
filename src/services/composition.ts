@@ -4,7 +4,7 @@ import type { Request } from 'express';
 
 export type CompositionStepInput = {
   compositionTypeId: string;
-  ingredientIds: string[];
+  extraIds: string[];
 };
 
 export class CompositionValidationError extends Error {
@@ -17,11 +17,11 @@ export class CompositionValidationError extends Error {
   }
 }
 
-export type LoadedIngredient = {
+export type LoadedExtra = {
   id: string;
   name: string;
   image: string | null;
-  /** Ingredient paid price (cents), maps Mongo `price`. */
+  /** Paid price (cents), maps Mongo `price`. */
   price: number;
   /** Supplement price (cents), maps Mongo `suppPrice`. */
   suppPrice: number;
@@ -41,12 +41,12 @@ export type LoadedCompositionStep = {
     payment: boolean;
     selection: boolean;
     mode: CompositionSlotMode;
-    rows: { position: number; ingredient: LoadedIngredient }[];
+    rows: { position: number; extra: LoadedExtra }[];
   };
 };
 
-export function ingredientLineExtraCents(payment: boolean, ing: LoadedIngredient): number {
-  return payment ? Math.max(0, ing.price) : Math.max(0, ing.suppPrice);
+export function extraAddonCents(payment: boolean, row: LoadedExtra): number {
+  return payment ? Math.max(0, row.price) : Math.max(0, row.suppPrice);
 }
 
 /** Ordered composition slots for a product (for validation / pricing). */
@@ -60,9 +60,9 @@ export async function loadComposedProductSteps(
     include: {
       compositionType: {
         include: {
-          ingredients: {
+          extras: {
             orderBy: { position: 'asc' },
-            include: { ingredient: true },
+            include: { extra: true },
           },
         },
       },
@@ -80,16 +80,16 @@ export async function loadComposedProductSteps(
       payment: r.compositionType.payment,
       selection: r.compositionType.selection,
       mode: r.compositionType.mode,
-      rows: r.compositionType.ingredients.map((j) => ({
+      rows: r.compositionType.extras.map((j) => ({
         position: j.position,
-        ingredient: {
-          id: j.ingredient.id,
-          name: j.ingredient.name,
-          image: j.ingredient.image,
-          price: j.ingredient.price,
-          suppPrice: j.ingredient.suppPrice,
-          outOfStock: j.ingredient.outOfStock,
-          visible: j.ingredient.visible,
+        extra: {
+          id: j.extra.id,
+          name: j.extra.name,
+          image: j.extra.image,
+          price: j.extra.price,
+          suppPrice: j.extra.suppPrice,
+          outOfStock: j.extra.outOfStock,
+          visible: j.extra.visible,
         },
       })),
     },
@@ -123,67 +123,67 @@ export function resolveCompositionSelection(
       throw new CompositionValidationError('composition_mode', 'PRODUCTS composition slots are not supported yet.');
     }
 
-    const selected = stepIn.ingredientIds;
+    const selected = stepIn.extraIds;
     if (selected.length < slot.min || selected.length > slot.max) {
       throw new CompositionValidationError(
         'composition_bounds',
-        `"${slot.label || slot.name}": pick between ${slot.min} and ${slot.max} ingredient(s).`,
+        `"${slot.label || slot.name}": pick between ${slot.min} and ${slot.max} extra(s).`,
       );
     }
 
-    const allowed = new Map(slot.rows.map((row) => [row.ingredient.id, row.ingredient]));
+    const allowed = new Map(slot.rows.map((row) => [row.extra.id, row.extra]));
     const seen = new Set<string>();
     const picked: { id: string; name: string; extraCents: number }[] = [];
 
     for (const id of selected) {
       if (seen.has(id)) {
-        throw new CompositionValidationError('duplicate_ingredient', 'Duplicate ingredient in the same step.');
+        throw new CompositionValidationError('duplicate_extra', 'Duplicate extra in the same step.');
       }
       seen.add(id);
-      const ing = allowed.get(id);
-      if (!ing) {
-        throw new CompositionValidationError('invalid_ingredient', `Ingredient is not part of "${slot.name}".`);
+      const row = allowed.get(id);
+      if (!row) {
+        throw new CompositionValidationError('invalid_extra', `Extra is not part of "${slot.name}".`);
       }
-      if (!ing.visible || ing.outOfStock) {
-        throw new CompositionValidationError('ingredient_unavailable', `"${ing.name}" is not available.`);
+      if (!row.visible || row.outOfStock) {
+        throw new CompositionValidationError('extra_unavailable', `"${row.name}" is not available.`);
       }
-      const add = ingredientLineExtraCents(slot.payment, ing);
+      const add = extraAddonCents(slot.payment, row);
       extraCents += add;
-      picked.push({ id: ing.id, name: ing.name, extraCents: add });
+      picked.push({ id: row.id, name: row.name, extraCents: add });
     }
 
     snapshotSteps.push({
       compositionTypeId: slot.id,
       compositionTypeName: slot.name,
       compositionTypeLabel: slot.label,
-      ingredientIds: selected,
-      ingredients: picked,
+      extraIds: selected,
+      extras: picked,
     });
   }
 
   return { extraCents, snapshot: { steps: snapshotSteps } };
 }
 
-/** Tacos-like `getProductData` shape for mobile: `types[].ingrediants`. */
+/** Product composition shape for clients: each step lists selectable `extras`. */
 export function expandProductCompositionForClient(req: Request, steps: LoadedCompositionStep[]): unknown[] {
   return steps.map((s) => {
     const t = s.type;
-    const ingrediants = t.rows
-      .filter((r) => r.ingredient.visible && !r.ingredient.outOfStock)
+    const extras = t.rows
+      .filter((r) => r.extra.visible && !r.extra.outOfStock)
       .map((r) => {
-        const ing = r.ingredient;
-        const extraCents = ingredientLineExtraCents(t.payment, ing);
+        const row = r.extra;
+        const ec = extraAddonCents(t.payment, row);
         return {
-          _id: ing.id,
-          id: ing.id,
-          name: ing.name,
-          image: resolveImageForClient(req, ing.image),
-          price: extraCents / 100,
-          priceCents: extraCents,
-          suppPrice: ing.suppPrice / 100,
-          suppPriceCents: ing.suppPrice,
+          _id: row.id,
+          id: row.id,
+          name: row.name,
+          image: resolveImageForClient(req, row.image),
+          price: ec / 100,
+          priceCents: ec,
+          suppPrice: row.suppPrice / 100,
+          suppPriceCents: row.suppPrice,
           position: r.position,
-          outOfStock: ing.outOfStock,
+          outOfStock: row.outOfStock,
         };
       })
       .sort((a, b) => a.position - b.position);
@@ -199,8 +199,7 @@ export function expandProductCompositionForClient(req: Request, steps: LoadedCom
       max: t.max,
       min: t.min,
       mode: t.mode,
-      ingrediants,
-      ingredients: ingrediants,
+      extras,
     };
   });
 }

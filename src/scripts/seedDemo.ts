@@ -187,7 +187,7 @@ async function main(): Promise<void> {
     },
   });
 
-  const ingHarissa = await prisma.ingredient.upsert({
+  const exHarissa = await prisma.extra.upsert({
     where: { id: '00000000-0000-4000-8000-000000000301' },
     create: {
       id: '00000000-0000-4000-8000-000000000301',
@@ -198,7 +198,7 @@ async function main(): Promise<void> {
     },
     update: { name: 'Harissa', suppPrice: 0 },
   });
-  const ingMayo = await prisma.ingredient.upsert({
+  const exMayo = await prisma.extra.upsert({
     where: { id: '00000000-0000-4000-8000-000000000302' },
     create: {
       id: '00000000-0000-4000-8000-000000000302',
@@ -209,7 +209,7 @@ async function main(): Promise<void> {
     },
     update: { name: 'Mayonnaise', suppPrice: 50 },
   });
-  const ingSalad = await prisma.ingredient.upsert({
+  const exSalad = await prisma.extra.upsert({
     where: { id: '00000000-0000-4000-8000-000000000303' },
     create: {
       id: '00000000-0000-4000-8000-000000000303',
@@ -220,7 +220,7 @@ async function main(): Promise<void> {
     },
     update: { name: 'Salade' },
   });
-  const ingOnion = await prisma.ingredient.upsert({
+  const exOnion = await prisma.extra.upsert({
     where: { id: '00000000-0000-4000-8000-000000000304' },
     create: {
       id: '00000000-0000-4000-8000-000000000304',
@@ -275,15 +275,15 @@ async function main(): Promise<void> {
     },
   });
 
-  await prisma.compositionTypeIngredient.deleteMany({
+  await prisma.compositionTypeExtra.deleteMany({
     where: { compositionTypeId: { in: [typeSauce.id, typeGarnish.id] } },
   });
-  await prisma.compositionTypeIngredient.createMany({
+  await prisma.compositionTypeExtra.createMany({
     data: [
-      { compositionTypeId: typeSauce.id, ingredientId: ingHarissa.id, position: 0 },
-      { compositionTypeId: typeSauce.id, ingredientId: ingMayo.id, position: 1 },
-      { compositionTypeId: typeGarnish.id, ingredientId: ingSalad.id, position: 0 },
-      { compositionTypeId: typeGarnish.id, ingredientId: ingOnion.id, position: 1 },
+      { compositionTypeId: typeSauce.id, extraId: exHarissa.id, position: 0 },
+      { compositionTypeId: typeSauce.id, extraId: exMayo.id, position: 1 },
+      { compositionTypeId: typeGarnish.id, extraId: exSalad.id, position: 0 },
+      { compositionTypeId: typeGarnish.id, extraId: exOnion.id, position: 1 },
     ],
   });
 
@@ -448,15 +448,15 @@ async function main(): Promise<void> {
                   compositionTypeId: typeSauce.id,
                   compositionTypeName: typeSauce.name,
                   compositionTypeLabel: typeSauce.label,
-                  ingredientIds: [ingHarissa.id],
-                  ingredients: [{ id: ingHarissa.id, name: ingHarissa.name, extraCents: 0 }],
+                  extraIds: [exHarissa.id],
+                  extras: [{ id: exHarissa.id, name: exHarissa.name, extraCents: 0 }],
                 },
                 {
                   compositionTypeId: typeGarnish.id,
                   compositionTypeName: typeGarnish.name,
                   compositionTypeLabel: typeGarnish.label,
-                  ingredientIds: [ingOnion.id],
-                  ingredients: [{ id: ingOnion.id, name: ingOnion.name, extraCents: 25 }],
+                  extraIds: [exOnion.id],
+                  extras: [{ id: exOnion.id, name: exOnion.name, extraCents: 25 }],
                 },
               ],
             },

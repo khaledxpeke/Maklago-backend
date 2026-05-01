@@ -3,7 +3,7 @@
   "info": {
     "title": "maklaGo API",
     "version": "1.0.0",
-    "description": "Restaurant POS backend. **Tenant**: optional header `x-tenant-id` (slug or registry UUID). With `Authorization: Bearer` staff JWT, the tenant is resolved from the token when the header is omitted. **`POST /api/v1/auth/login`** accepts optional `x-tenant-id` for tenant-scoped login; without it, the normalized email must exist in registry **`staff_login_directory`** (slugless directory login). **Platform** routes use `x-platform-key`. Errors: `{ \"error\": { \"code\", \"message\", \"details?\" } }`."
+    "description": "Restaurant POS backend. **Tenant**: optional header `x-tenant-id` (slug or registry UUID). With `Authorization: Bearer` staff JWT, the tenant is resolved from the token when the header is omitted. **`POST /api/v1/auth/login`** accepts optional `x-tenant-id` for tenant-scoped login; without it, the normalized email must exist in registry **`staff_login_directory`** (slugless directory login). **Composed products** use catalog **extras** (`/api/v1/catalog/extras`) and **composition types**; order lines include **`composition.steps[].extraIds`**. **Platform** routes use `x-platform-key`. Errors: `{ \"error\": { \"code\", \"message\", \"details?\" } }`."
   },
   "servers": [
     {
@@ -224,6 +224,32 @@
                   "type": "array",
                   "items": {
                     "type": "string"
+                  }
+                },
+                "composition": {
+                  "type": "object",
+                  "description": "Required when product kind is COMPOSED: one step per product composition slot, same order as GET /catalog/products/:id.",
+                  "properties": {
+                    "steps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["compositionTypeId", "extraIds"],
+                        "properties": {
+                          "compositionTypeId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "extraIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "format": "uuid"
+                            }
+                          }
+                        }
+                      }
+                    }
                   }
                 },
                 "note": {
@@ -1504,13 +1530,267 @@
         }
       }
     },
+    "/api/v1/catalog/extras": {
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "List extras",
+        "description": "Selectable add-ons for composed-product composition steps.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/TenantHeaderOptional" }],
+        "responses": {
+          "200": {
+            "description": "OK — body includes `extras` array (Mongo-shaped fields: price, suppPrice, etc.)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Catalog"],
+        "summary": "Create extra",
+        "description": "OWNER or MANAGER only.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/TenantHeaderOptional" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "image": { "type": "string", "nullable": true },
+                  "price": { "type": "number" },
+                  "priceCents": { "type": "integer" },
+                  "suppPrice": { "type": "number" },
+                  "suppPriceCents": { "type": "integer" },
+                  "visible": { "type": "boolean" },
+                  "outOfStock": { "type": "boolean" },
+                  "sortOrder": { "type": "integer" },
+                  "position": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Created — body includes `extra`" },
+          "400": {
+            "description": "Validation",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/extras/{id}": {
+      "patch": {
+        "tags": ["Catalog"],
+        "summary": "Update extra",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/ProductId" }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK" },
+          "404": {
+            "description": "Not found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Catalog"],
+        "summary": "Delete extra",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/ProductId" }
+        ],
+        "responses": {
+          "204": { "description": "No content" },
+          "404": {
+            "description": "Not found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/composition-types": {
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "List composition types",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["true", "false", "1", "0"] },
+            "description": "Pass `true` or `1` to include inactive types"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — `compositionTypes` / `types`; each row has `extraIds`, `extras`, `mode` (EXTRAS | PRODUCTS)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Catalog"],
+        "summary": "Create composition type",
+        "description": "OWNER or MANAGER only.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/TenantHeaderOptional" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "label"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "label": { "type": "string" },
+                  "message": { "type": "string", "nullable": true },
+                  "min": { "type": "integer" },
+                  "max": { "type": "integer" },
+                  "payment": { "type": "boolean" },
+                  "selection": { "type": "boolean" },
+                  "sortOrder": { "type": "integer" },
+                  "position": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Created" },
+          "400": {
+            "description": "Validation",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/composition-types/{id}": {
+      "patch": {
+        "tags": ["Catalog"],
+        "summary": "Update composition type",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/ProductId" }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK" },
+          "404": {
+            "description": "Not found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Catalog"],
+        "summary": "Delete composition type",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/ProductId" }
+        ],
+        "responses": {
+          "204": { "description": "No content" },
+          "409": {
+            "description": "Type still linked to products",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "404": {
+            "description": "Not found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/composition-types/{id}/extras": {
+      "put": {
+        "tags": ["Catalog"],
+        "summary": "Replace extras on composition type",
+        "description": "OWNER or MANAGER only. Sets ordered junction rows for which extras belong to this step.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/ProductId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["extraIds"],
+                "properties": {
+                  "extraIds": {
+                    "type": "array",
+                    "items": { "type": "string", "format": "uuid" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK — returns updated composition type + extras" },
+          "400": {
+            "description": "Invalid extra ids",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "404": {
+            "description": "Not found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          }
+        }
+      }
+    },
     "/api/v1/orders": {
       "post": {
         "tags": [
           "Orders"
         ],
         "summary": "Create order",
-        "description": "Optional header `Idempotency-Key`: replays same body and returns existing order with `idempotentReplay: true`.",
+        "description": "Optional header `Idempotency-Key`: replays same body and returns existing order with `idempotentReplay: true`. For **COMPOSED** products, each line must include `composition.steps` with `compositionTypeId` and `extraIds` per step (see schema).",
         "security": [
           {
             "BearerAuth": []

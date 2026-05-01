@@ -141,7 +141,7 @@ exports.Prisma.CategoryScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
-exports.Prisma.IngredientScalarFieldEnum = {
+exports.Prisma.ExtraScalarFieldEnum = {
   id: 'id',
   name: 'name',
   image: 'image',
@@ -168,9 +168,9 @@ exports.Prisma.CompositionTypeScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
-exports.Prisma.CompositionTypeIngredientScalarFieldEnum = {
+exports.Prisma.CompositionTypeExtraScalarFieldEnum = {
   compositionTypeId: 'compositionTypeId',
-  ingredientId: 'ingredientId',
+  extraId: 'extraId',
   position: 'position'
 };
 
@@ -296,7 +296,7 @@ exports.StaffRole = exports.$Enums.StaffRole = {
 };
 
 exports.CompositionSlotMode = exports.$Enums.CompositionSlotMode = {
-  INGREDIENTS: 'INGREDIENTS',
+  EXTRAS: 'EXTRAS',
   PRODUCTS: 'PRODUCTS'
 };
 
@@ -315,9 +315,9 @@ exports.OrderStatus = exports.$Enums.OrderStatus = {
 exports.Prisma.ModelName = {
   Staff: 'Staff',
   Category: 'Category',
-  Ingredient: 'Ingredient',
+  Extra: 'Extra',
   CompositionType: 'CompositionType',
-  CompositionTypeIngredient: 'CompositionTypeIngredient',
+  CompositionTypeExtra: 'CompositionTypeExtra',
   ProductComposition: 'ProductComposition',
   Product: 'Product',
   RestaurantTable: 'RestaurantTable',

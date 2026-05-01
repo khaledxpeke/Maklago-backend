@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import type { Ingredient } from '../../../db/tenant-client';
+import type { Extra } from '../../../db/tenant-client';
 import { asyncHandler } from '../../../http/asyncHandler';
 import { majorToCents } from '../../../http/money';
 import { paramId } from '../../../http/paramId';
@@ -9,8 +9,8 @@ import { requireRole } from '../../../middleware/requireRole';
 
 const admin = requireRole('OWNER', 'MANAGER');
 
-/** Mongo-like ingredient JSON: `price` / `suppPrice` in main currency units; `_id` alias. */
-export function ingredientToMongoShape(i: Ingredient): Record<string, unknown> {
+/** Mongo-like extra JSON: `price` / `suppPrice` in main currency units; `_id` alias. */
+export function extraToMongoShape(i: Extra): Record<string, unknown> {
   return {
     _id: i.id,
     id: i.id,
@@ -28,7 +28,7 @@ export function ingredientToMongoShape(i: Ingredient): Record<string, unknown> {
   };
 }
 
-function ingredientPricesFromBody(body: {
+function extraPricesFromBody(body: {
   price?: number;
   priceCents?: number;
   suppPrice?: number;
@@ -49,7 +49,7 @@ function ingredientPricesFromBody(body: {
   return { price, suppPrice };
 }
 
-const ingredientCreate = z.object({
+const extraCreate = z.object({
   name: z.string().min(1).max(200),
   image: z.union([z.string().max(2048), z.null()]).optional(),
   /** Main currency units (Mongo-style). */
@@ -63,7 +63,7 @@ const ingredientCreate = z.object({
   position: z.number().int().optional(),
 });
 
-const ingredientPatch = ingredientCreate.partial();
+const extraPatch = extraCreate.partial();
 
 const compositionTypeCreate = z.object({
   name: z.string().min(1).max(200),
@@ -81,8 +81,8 @@ const compositionTypePatch = compositionTypeCreate.partial().extend({
   isActive: z.boolean().optional(),
 });
 
-const replaceTypeIngredients = z.object({
-  ingredientIds: z.array(z.string().uuid()),
+const replaceTypeExtras = z.object({
+  extraIds: z.array(z.string().uuid()),
 });
 
 function sortFromBody(b: { sortOrder?: number; position?: number }): number {
@@ -92,33 +92,33 @@ function sortFromBody(b: { sortOrder?: number; position?: number }): number {
 }
 
 /**
- * Composition + ingredient admin/list routes (Tacos-style types & ingredients).
+ * Composition + extra admin/list routes (Tacos-style types & extras).
  * Attach to the same `/catalog` router after `requireStaff` is applied.
  */
 export function attachCompositionCatalogRoutes(router: Router): void {
   router.get(
-    '/ingredients',
+    '/extras',
     asyncHandler(async (req, res) => {
       if (!req.tenant) return;
-      const rows = await req.tenant.prisma.ingredient.findMany({
+      const rows = await req.tenant.prisma.extra.findMany({
         orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       });
-      res.json({ ingredients: rows.map((r) => ingredientToMongoShape(r)) });
+      res.json({ extras: rows.map((r) => extraToMongoShape(r)) });
     }),
   );
 
   router.post(
-    '/ingredients',
+    '/extras',
     admin,
     asyncHandler(async (req, res) => {
-      const parsed = ingredientCreate.safeParse(req.body);
+      const parsed = extraCreate.safeParse(req.body);
       if (!parsed.success) {
         sendError(res, 400, 'validation_error', 'Invalid body', parsed.error.flatten());
         return;
       }
       if (!req.tenant) return;
-      const cents = ingredientPricesFromBody(parsed.data);
-      const row = await req.tenant.prisma.ingredient.create({
+      const cents = extraPricesFromBody(parsed.data);
+      const row = await req.tenant.prisma.extra.create({
         data: {
           name: parsed.data.name,
           image: parsed.data.image ?? null,
@@ -129,15 +129,15 @@ export function attachCompositionCatalogRoutes(router: Router): void {
           ...(parsed.data.visible !== undefined ? { visible: parsed.data.visible } : {}),
         },
       });
-      res.status(201).json({ ingredient: ingredientToMongoShape(row) });
+      res.status(201).json({ extra: extraToMongoShape(row) });
     }),
   );
 
   router.patch(
-    '/ingredients/:id',
+    '/extras/:id',
     admin,
     asyncHandler(async (req, res) => {
-      const parsed = ingredientPatch.safeParse(req.body);
+      const parsed = extraPatch.safeParse(req.body);
       if (!parsed.success) {
         sendError(res, 400, 'validation_error', 'Invalid body', parsed.error.flatten());
         return;
@@ -145,12 +145,12 @@ export function attachCompositionCatalogRoutes(router: Router): void {
       if (!req.tenant) return;
       const id = paramId(req);
       if (!id) {
-        sendError(res, 400, 'validation_error', 'Missing ingredient id');
+        sendError(res, 400, 'validation_error', 'Missing extra id');
         return;
       }
-      const existingIng = await req.tenant.prisma.ingredient.findUnique({ where: { id } });
-      if (!existingIng) {
-        sendError(res, 404, 'not_found', 'Ingredient not found');
+      const existing = await req.tenant.prisma.extra.findUnique({ where: { id } });
+      if (!existing) {
+        sendError(res, 404, 'not_found', 'Extra not found');
         return;
       }
       const sort =
@@ -160,8 +160,8 @@ export function attachCompositionCatalogRoutes(router: Router): void {
             ? parsed.data.position
             : undefined;
       try {
-        let price = existingIng.price;
-        let suppPrice = existingIng.suppPrice;
+        let price = existing.price;
+        let suppPrice = existing.suppPrice;
         if ('priceCents' in parsed.data && parsed.data.priceCents !== undefined) {
           price = Math.round(parsed.data.priceCents);
         } else if ('price' in parsed.data && parsed.data.price !== undefined) {
@@ -173,7 +173,7 @@ export function attachCompositionCatalogRoutes(router: Router): void {
           suppPrice = majorToCents(parsed.data.suppPrice);
         }
 
-        const row = await req.tenant.prisma.ingredient.update({
+        const row = await req.tenant.prisma.extra.update({
           where: { id },
           data: {
             ...('name' in parsed.data && parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
@@ -185,9 +185,9 @@ export function attachCompositionCatalogRoutes(router: Router): void {
             ...(sort !== undefined ? { sortOrder: sort } : {}),
           },
         });
-        res.json({ ingredient: ingredientToMongoShape(row) });
+        res.json({ extra: extraToMongoShape(row) });
       } catch {
-        sendError(res, 404, 'not_found', 'Ingredient not found');
+        sendError(res, 404, 'not_found', 'Extra not found');
       }
     }),
   );
@@ -202,9 +202,9 @@ export function attachCompositionCatalogRoutes(router: Router): void {
         where: includeInactive ? {} : { isActive: true },
         orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
         include: {
-          ingredients: {
+          extras: {
             orderBy: { position: 'asc' },
-            include: { ingredient: true },
+            include: { extra: true },
           },
         },
       });
@@ -222,9 +222,9 @@ export function attachCompositionCatalogRoutes(router: Router): void {
         sortOrder: t.sortOrder,
         position: t.sortOrder,
         isActive: t.isActive,
-        ingredientIds: t.ingredients.map((x) => x.ingredientId),
-        ingredients: t.ingredients.map((x) => ({
-          ...ingredientToMongoShape(x.ingredient),
+        extraIds: t.extras.map((x) => x.extraId),
+        extras: t.extras.map((x) => ({
+          ...extraToMongoShape(x.extra),
           position: x.position,
         })),
       });
@@ -306,20 +306,20 @@ export function attachCompositionCatalogRoutes(router: Router): void {
   );
 
   router.delete(
-    '/ingredients/:id',
+    '/extras/:id',
     admin,
     asyncHandler(async (req, res) => {
       if (!req.tenant) return;
       const id = paramId(req);
       if (!id) {
-        sendError(res, 400, 'validation_error', 'Missing ingredient id');
+        sendError(res, 400, 'validation_error', 'Missing extra id');
         return;
       }
       try {
-        await req.tenant.prisma.ingredient.delete({ where: { id } });
+        await req.tenant.prisma.extra.delete({ where: { id } });
         res.status(204).send();
       } catch {
-        sendError(res, 404, 'not_found', 'Ingredient not found');
+        sendError(res, 404, 'not_found', 'Extra not found');
       }
     }),
   );
@@ -351,10 +351,10 @@ export function attachCompositionCatalogRoutes(router: Router): void {
   );
 
   router.put(
-    '/composition-types/:id/ingredients',
+    '/composition-types/:id/extras',
     admin,
     asyncHandler(async (req, res) => {
-      const parsed = replaceTypeIngredients.safeParse(req.body);
+      const parsed = replaceTypeExtras.safeParse(req.body);
       if (!parsed.success) {
         sendError(res, 400, 'validation_error', 'Invalid body', parsed.error.flatten());
         return;
@@ -370,18 +370,18 @@ export function attachCompositionCatalogRoutes(router: Router): void {
         sendError(res, 404, 'not_found', 'Composition type not found');
         return;
       }
-      const ids = parsed.data.ingredientIds;
-      const found = await req.tenant.prisma.ingredient.findMany({ where: { id: { in: ids } } });
+      const ids = parsed.data.extraIds;
+      const found = await req.tenant.prisma.extra.findMany({ where: { id: { in: ids } } });
       if (found.length !== ids.length) {
-        sendError(res, 400, 'validation_error', 'One or more ingredient ids are invalid');
+        sendError(res, 400, 'validation_error', 'One or more extra ids are invalid');
         return;
       }
       await req.tenant.prisma.$transaction(async (tx) => {
-        await tx.compositionTypeIngredient.deleteMany({ where: { compositionTypeId: id } });
+        await tx.compositionTypeExtra.deleteMany({ where: { compositionTypeId: id } });
         let pos = 0;
-        for (const ingId of ids) {
-          await tx.compositionTypeIngredient.create({
-            data: { compositionTypeId: id, ingredientId: ingId, position: pos },
+        for (const extraId of ids) {
+          await tx.compositionTypeExtra.create({
+            data: { compositionTypeId: id, extraId, position: pos },
           });
           pos += 1;
         }
@@ -389,7 +389,7 @@ export function attachCompositionCatalogRoutes(router: Router): void {
       const updated = await req.tenant.prisma.compositionType.findFirst({
         where: { id },
         include: {
-          ingredients: { orderBy: { position: 'asc' }, include: { ingredient: true } },
+          extras: { orderBy: { position: 'asc' }, include: { extra: true } },
         },
       });
       if (!updated) {
@@ -399,8 +399,8 @@ export function attachCompositionCatalogRoutes(router: Router): void {
       res.json({
         compositionType: {
           ...updated,
-          ingredients: updated.ingredients.map((x) => ({
-            ...ingredientToMongoShape(x.ingredient),
+          extras: updated.extras.map((x) => ({
+            ...extraToMongoShape(x.extra),
             position: x.position,
           })),
         },

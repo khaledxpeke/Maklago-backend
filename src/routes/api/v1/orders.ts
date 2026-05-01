@@ -31,7 +31,7 @@ const lineSchema = z.object({
       steps: z.array(
         z.object({
           compositionTypeId: z.string().uuid(),
-          ingredientIds: z.array(z.string().uuid()),
+          extraIds: z.array(z.string().uuid()),
         }),
       ),
     })

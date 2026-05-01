@@ -185,9 +185,11 @@ The spec file in the repo is `src/openapi/openapi.json`. Update it when you chan
 
 **Platform (super admin):** `POST /platform/v1/auth/login` with JSON `email` / `password` → `Authorization: Bearer <token>` on `/platform/*`. Defaults after seed: see `.env.example` (`PLATFORM_ADMIN_*`). Optional `x-platform-key` when `PLATFORM_API_KEY` is set. Routes include `GET/POST /platform/v1/tenants`, `GET/PATCH /platform/v1/tenants/{id}`, `GET /platform/v1/auth/me`.
 
-**Tenant admin (OWNER/MANAGER):** Products expose **`price`** (main units in JSON; cents in DB), **`modifiers`**, and **`kind`** (`SIMPLE` vs `COMPOSED`). Omit **`kind`** on create only when inferring composed products from non-empty **`compositionTypeIds`**. Ingredients use **`price`** / **`suppPrice`**. Orders support optional metadata fields (see OpenAPI).
+**Tenant admin (OWNER/MANAGER):** Products expose **`price`** (main units in JSON; cents in DB), **`modifiers`**, and **`kind`** (`SIMPLE` vs `COMPOSED`). Omit **`kind`** on create only when inferring composed products from non-empty **`compositionTypeIds`**. **Extras** (add-ons for composed-product steps) use **`price`** / **`suppPrice`** in catalog JSON (same semantics as the former “ingredients” model). **`CompositionSlotMode`** in the DB is **`EXTRAS`** or **`PRODUCTS`** (only **`EXTRAS`** is used today).
 
-**Tenant admin routes:** `POST/PATCH/DELETE /api/v1/catalog/categories`, `POST/PATCH/DELETE /api/v1/catalog/products`, composition routes under `/api/v1/catalog/...`, and `GET/POST/PATCH /api/v1/staff` for menu and staff management.
+**Composed orders:** each line for a **`COMPOSED`** product may include **`composition.steps`**: an array parallel to the product’s composition steps, each with **`compositionTypeId`** and **`extraIds`** (UUIDs of chosen extras). See **`CreateOrderRequest`** in OpenAPI.
+
+**Tenant admin routes:** `POST/PATCH/DELETE /api/v1/catalog/categories`, `POST/PATCH/DELETE /api/v1/catalog/products`, **`GET/POST /api/v1/catalog/extras`**, **`PATCH/DELETE /api/v1/catalog/extras/{id}`**, **`GET/POST /api/v1/catalog/composition-types`**, **`PATCH/DELETE /api/v1/catalog/composition-types/{id}`**, **`PUT /api/v1/catalog/composition-types/{id}/extras`** (body **`{ "extraIds": ["uuid", ...] }`**), and `GET/POST/PATCH /api/v1/staff` for menu and staff management.
 
 ## CORS
 
@@ -244,5 +246,3 @@ Optional env overrides: `TEST_TENANT_SLUG`, `TEST_STAFF_EMAIL`, `TEST_STAFF_PASS
 ```bash
 curl http://localhost:3000/health
 ```
-#   M a k l a g o - b a c k e n d  
- 

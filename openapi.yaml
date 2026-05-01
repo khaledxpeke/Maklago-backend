@@ -9,6 +9,7 @@ info:
     - `POST /api/v1/auth/login`: optional `x-tenant-id` for tenant-scoped login; omit it only when the
       normalized email exists in registry `staff_login_directory` (slugless directory login).
     - Authenticated routes use Bearer JWT from login (response includes `tenantId`, `tenantSlug`).
+    - Composed products use **extras** (catalog `/api/v1/catalog/extras`) and composition types; order lines use `composition.steps[].extraIds`.
 servers:
   - url: http://localhost:3000
 paths:
@@ -102,6 +103,104 @@ paths:
           schema: { type: string, format: uuid }
       responses:
         '200': { description: Product list }
+  /api/v1/catalog/extras:
+    get:
+      summary: List extras
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+      responses:
+        '200': { description: extras array }
+    post:
+      summary: Create extra (OWNER/MANAGER)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+      responses:
+        '201': { description: Created }
+  /api/v1/catalog/extras/{id}:
+    patch:
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Updated }
+    delete:
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Deleted }
+  /api/v1/catalog/composition-types:
+    get:
+      summary: List composition types
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+        - name: includeInactive
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { description: compositionTypes — extraIds, extras, mode EXTRAS or PRODUCTS }
+    post:
+      summary: Create composition type (OWNER/MANAGER)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+      responses:
+        '201': { description: Created }
+  /api/v1/catalog/composition-types/{id}:
+    patch:
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Updated }
+    delete:
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Deleted }
+  /api/v1/catalog/composition-types/{id}/extras:
+    put:
+      summary: Replace linked extras (ordered)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [extraIds]
+              properties:
+                extraIds:
+                  type: array
+                  items: { type: string, format: uuid }
+      responses:
+        '200': { description: OK }
   /api/v1/orders:
     post:
       summary: Create order (optional Idempotency-Key)
@@ -129,6 +228,20 @@ paths:
                       productId: { type: string, format: uuid }
                       quantity: { type: integer }
                       modifierIds: { type: array, items: { type: string } }
+                      composition:
+                        type: object
+                        description: Required for COMPOSED products — steps parallel to product composition
+                        properties:
+                          steps:
+                            type: array
+                            items:
+                              type: object
+                              required: [compositionTypeId, extraIds]
+                              properties:
+                                compositionTypeId: { type: string, format: uuid }
+                                extraIds:
+                                  type: array
+                                  items: { type: string, format: uuid }
                       note: { type: string }
       responses:
         '201':

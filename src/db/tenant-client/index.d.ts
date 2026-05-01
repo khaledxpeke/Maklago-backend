@@ -24,20 +24,20 @@ export type Staff = $Result.DefaultSelection<Prisma.$StaffPayload>
  */
 export type Category = $Result.DefaultSelection<Prisma.$CategoryPayload>
 /**
- * Model Ingredient
- * Ingredient add-on (Mongo `Ingrediant`). Linked to composition types via join table.
+ * Model Extra
+ * Extra add-on (legacy Mongo name `Ingrediant`). Linked to composition types via join table.
  */
-export type Ingredient = $Result.DefaultSelection<Prisma.$IngredientPayload>
+export type Extra = $Result.DefaultSelection<Prisma.$ExtraPayload>
 /**
  * Model CompositionType
  * Composition step (Mongo `Type`): e.g. "Sauce", min/max, payment vs supp price behavior.
  */
 export type CompositionType = $Result.DefaultSelection<Prisma.$CompositionTypePayload>
 /**
- * Model CompositionTypeIngredient
+ * Model CompositionTypeExtra
  * 
  */
-export type CompositionTypeIngredient = $Result.DefaultSelection<Prisma.$CompositionTypeIngredientPayload>
+export type CompositionTypeExtra = $Result.DefaultSelection<Prisma.$CompositionTypeExtraPayload>
 /**
  * Model ProductComposition
  * 
@@ -88,7 +88,7 @@ export type StaffRole = (typeof StaffRole)[keyof typeof StaffRole]
 
 
 export const CompositionSlotMode: {
-  INGREDIENTS: 'INGREDIENTS',
+  EXTRAS: 'EXTRAS',
   PRODUCTS: 'PRODUCTS'
 };
 
@@ -274,14 +274,14 @@ export class PrismaClient<
   get category(): Prisma.CategoryDelegate<ExtArgs>;
 
   /**
-   * `prisma.ingredient`: Exposes CRUD operations for the **Ingredient** model.
+   * `prisma.extra`: Exposes CRUD operations for the **Extra** model.
     * Example usage:
     * ```ts
-    * // Fetch zero or more Ingredients
-    * const ingredients = await prisma.ingredient.findMany()
+    * // Fetch zero or more Extras
+    * const extras = await prisma.extra.findMany()
     * ```
     */
-  get ingredient(): Prisma.IngredientDelegate<ExtArgs>;
+  get extra(): Prisma.ExtraDelegate<ExtArgs>;
 
   /**
    * `prisma.compositionType`: Exposes CRUD operations for the **CompositionType** model.
@@ -294,14 +294,14 @@ export class PrismaClient<
   get compositionType(): Prisma.CompositionTypeDelegate<ExtArgs>;
 
   /**
-   * `prisma.compositionTypeIngredient`: Exposes CRUD operations for the **CompositionTypeIngredient** model.
+   * `prisma.compositionTypeExtra`: Exposes CRUD operations for the **CompositionTypeExtra** model.
     * Example usage:
     * ```ts
-    * // Fetch zero or more CompositionTypeIngredients
-    * const compositionTypeIngredients = await prisma.compositionTypeIngredient.findMany()
+    * // Fetch zero or more CompositionTypeExtras
+    * const compositionTypeExtras = await prisma.compositionTypeExtra.findMany()
     * ```
     */
-  get compositionTypeIngredient(): Prisma.CompositionTypeIngredientDelegate<ExtArgs>;
+  get compositionTypeExtra(): Prisma.CompositionTypeExtraDelegate<ExtArgs>;
 
   /**
    * `prisma.productComposition`: Exposes CRUD operations for the **ProductComposition** model.
@@ -815,9 +815,9 @@ export namespace Prisma {
   export const ModelName: {
     Staff: 'Staff',
     Category: 'Category',
-    Ingredient: 'Ingredient',
+    Extra: 'Extra',
     CompositionType: 'CompositionType',
-    CompositionTypeIngredient: 'CompositionTypeIngredient',
+    CompositionTypeExtra: 'CompositionTypeExtra',
     ProductComposition: 'ProductComposition',
     Product: 'Product',
     RestaurantTable: 'RestaurantTable',
@@ -840,7 +840,7 @@ export namespace Prisma {
 
   export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
-      modelProps: "staff" | "category" | "ingredient" | "compositionType" | "compositionTypeIngredient" | "productComposition" | "product" | "restaurantTable" | "cashierSession" | "order" | "orderLine" | "setting"
+      modelProps: "staff" | "category" | "extra" | "compositionType" | "compositionTypeExtra" | "productComposition" | "product" | "restaurantTable" | "cashierSession" | "order" | "orderLine" | "setting"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -984,73 +984,73 @@ export namespace Prisma {
           }
         }
       }
-      Ingredient: {
-        payload: Prisma.$IngredientPayload<ExtArgs>
-        fields: Prisma.IngredientFieldRefs
+      Extra: {
+        payload: Prisma.$ExtraPayload<ExtArgs>
+        fields: Prisma.ExtraFieldRefs
         operations: {
           findUnique: {
-            args: Prisma.IngredientFindUniqueArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$IngredientPayload> | null
+            args: Prisma.ExtraFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtraPayload> | null
           }
           findUniqueOrThrow: {
-            args: Prisma.IngredientFindUniqueOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$IngredientPayload>
+            args: Prisma.ExtraFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtraPayload>
           }
           findFirst: {
-            args: Prisma.IngredientFindFirstArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$IngredientPayload> | null
+            args: Prisma.ExtraFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtraPayload> | null
           }
           findFirstOrThrow: {
-            args: Prisma.IngredientFindFirstOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$IngredientPayload>
+            args: Prisma.ExtraFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtraPayload>
           }
           findMany: {
-            args: Prisma.IngredientFindManyArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$IngredientPayload>[]
+            args: Prisma.ExtraFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtraPayload>[]
           }
           create: {
-            args: Prisma.IngredientCreateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$IngredientPayload>
+            args: Prisma.ExtraCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtraPayload>
           }
           createMany: {
-            args: Prisma.IngredientCreateManyArgs<ExtArgs>
+            args: Prisma.ExtraCreateManyArgs<ExtArgs>
             result: BatchPayload
           }
           createManyAndReturn: {
-            args: Prisma.IngredientCreateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$IngredientPayload>[]
+            args: Prisma.ExtraCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtraPayload>[]
           }
           delete: {
-            args: Prisma.IngredientDeleteArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$IngredientPayload>
+            args: Prisma.ExtraDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtraPayload>
           }
           update: {
-            args: Prisma.IngredientUpdateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$IngredientPayload>
+            args: Prisma.ExtraUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtraPayload>
           }
           deleteMany: {
-            args: Prisma.IngredientDeleteManyArgs<ExtArgs>
+            args: Prisma.ExtraDeleteManyArgs<ExtArgs>
             result: BatchPayload
           }
           updateMany: {
-            args: Prisma.IngredientUpdateManyArgs<ExtArgs>
+            args: Prisma.ExtraUpdateManyArgs<ExtArgs>
             result: BatchPayload
           }
           upsert: {
-            args: Prisma.IngredientUpsertArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$IngredientPayload>
+            args: Prisma.ExtraUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtraPayload>
           }
           aggregate: {
-            args: Prisma.IngredientAggregateArgs<ExtArgs>
-            result: $Utils.Optional<AggregateIngredient>
+            args: Prisma.ExtraAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateExtra>
           }
           groupBy: {
-            args: Prisma.IngredientGroupByArgs<ExtArgs>
-            result: $Utils.Optional<IngredientGroupByOutputType>[]
+            args: Prisma.ExtraGroupByArgs<ExtArgs>
+            result: $Utils.Optional<ExtraGroupByOutputType>[]
           }
           count: {
-            args: Prisma.IngredientCountArgs<ExtArgs>
-            result: $Utils.Optional<IngredientCountAggregateOutputType> | number
+            args: Prisma.ExtraCountArgs<ExtArgs>
+            result: $Utils.Optional<ExtraCountAggregateOutputType> | number
           }
         }
       }
@@ -1124,73 +1124,73 @@ export namespace Prisma {
           }
         }
       }
-      CompositionTypeIngredient: {
-        payload: Prisma.$CompositionTypeIngredientPayload<ExtArgs>
-        fields: Prisma.CompositionTypeIngredientFieldRefs
+      CompositionTypeExtra: {
+        payload: Prisma.$CompositionTypeExtraPayload<ExtArgs>
+        fields: Prisma.CompositionTypeExtraFieldRefs
         operations: {
           findUnique: {
-            args: Prisma.CompositionTypeIngredientFindUniqueArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$CompositionTypeIngredientPayload> | null
+            args: Prisma.CompositionTypeExtraFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CompositionTypeExtraPayload> | null
           }
           findUniqueOrThrow: {
-            args: Prisma.CompositionTypeIngredientFindUniqueOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$CompositionTypeIngredientPayload>
+            args: Prisma.CompositionTypeExtraFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CompositionTypeExtraPayload>
           }
           findFirst: {
-            args: Prisma.CompositionTypeIngredientFindFirstArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$CompositionTypeIngredientPayload> | null
+            args: Prisma.CompositionTypeExtraFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CompositionTypeExtraPayload> | null
           }
           findFirstOrThrow: {
-            args: Prisma.CompositionTypeIngredientFindFirstOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$CompositionTypeIngredientPayload>
+            args: Prisma.CompositionTypeExtraFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CompositionTypeExtraPayload>
           }
           findMany: {
-            args: Prisma.CompositionTypeIngredientFindManyArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$CompositionTypeIngredientPayload>[]
+            args: Prisma.CompositionTypeExtraFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CompositionTypeExtraPayload>[]
           }
           create: {
-            args: Prisma.CompositionTypeIngredientCreateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$CompositionTypeIngredientPayload>
+            args: Prisma.CompositionTypeExtraCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CompositionTypeExtraPayload>
           }
           createMany: {
-            args: Prisma.CompositionTypeIngredientCreateManyArgs<ExtArgs>
+            args: Prisma.CompositionTypeExtraCreateManyArgs<ExtArgs>
             result: BatchPayload
           }
           createManyAndReturn: {
-            args: Prisma.CompositionTypeIngredientCreateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$CompositionTypeIngredientPayload>[]
+            args: Prisma.CompositionTypeExtraCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CompositionTypeExtraPayload>[]
           }
           delete: {
-            args: Prisma.CompositionTypeIngredientDeleteArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$CompositionTypeIngredientPayload>
+            args: Prisma.CompositionTypeExtraDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CompositionTypeExtraPayload>
           }
           update: {
-            args: Prisma.CompositionTypeIngredientUpdateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$CompositionTypeIngredientPayload>
+            args: Prisma.CompositionTypeExtraUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CompositionTypeExtraPayload>
           }
           deleteMany: {
-            args: Prisma.CompositionTypeIngredientDeleteManyArgs<ExtArgs>
+            args: Prisma.CompositionTypeExtraDeleteManyArgs<ExtArgs>
             result: BatchPayload
           }
           updateMany: {
-            args: Prisma.CompositionTypeIngredientUpdateManyArgs<ExtArgs>
+            args: Prisma.CompositionTypeExtraUpdateManyArgs<ExtArgs>
             result: BatchPayload
           }
           upsert: {
-            args: Prisma.CompositionTypeIngredientUpsertArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$CompositionTypeIngredientPayload>
+            args: Prisma.CompositionTypeExtraUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CompositionTypeExtraPayload>
           }
           aggregate: {
-            args: Prisma.CompositionTypeIngredientAggregateArgs<ExtArgs>
-            result: $Utils.Optional<AggregateCompositionTypeIngredient>
+            args: Prisma.CompositionTypeExtraAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateCompositionTypeExtra>
           }
           groupBy: {
-            args: Prisma.CompositionTypeIngredientGroupByArgs<ExtArgs>
-            result: $Utils.Optional<CompositionTypeIngredientGroupByOutputType>[]
+            args: Prisma.CompositionTypeExtraGroupByArgs<ExtArgs>
+            result: $Utils.Optional<CompositionTypeExtraGroupByOutputType>[]
           }
           count: {
-            args: Prisma.CompositionTypeIngredientCountArgs<ExtArgs>
-            result: $Utils.Optional<CompositionTypeIngredientCountAggregateOutputType> | number
+            args: Prisma.CompositionTypeExtraCountArgs<ExtArgs>
+            result: $Utils.Optional<CompositionTypeExtraCountAggregateOutputType> | number
           }
         }
       }
@@ -1912,33 +1912,33 @@ export namespace Prisma {
 
 
   /**
-   * Count Type IngredientCountOutputType
+   * Count Type ExtraCountOutputType
    */
 
-  export type IngredientCountOutputType = {
+  export type ExtraCountOutputType = {
     typeLinks: number
   }
 
-  export type IngredientCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    typeLinks?: boolean | IngredientCountOutputTypeCountTypeLinksArgs
+  export type ExtraCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    typeLinks?: boolean | ExtraCountOutputTypeCountTypeLinksArgs
   }
 
   // Custom InputTypes
   /**
-   * IngredientCountOutputType without action
+   * ExtraCountOutputType without action
    */
-  export type IngredientCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type ExtraCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the IngredientCountOutputType
+     * Select specific fields to fetch from the ExtraCountOutputType
      */
-    select?: IngredientCountOutputTypeSelect<ExtArgs> | null
+    select?: ExtraCountOutputTypeSelect<ExtArgs> | null
   }
 
   /**
-   * IngredientCountOutputType without action
+   * ExtraCountOutputType without action
    */
-  export type IngredientCountOutputTypeCountTypeLinksArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: CompositionTypeIngredientWhereInput
+  export type ExtraCountOutputTypeCountTypeLinksArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CompositionTypeExtraWhereInput
   }
 
 
@@ -1947,12 +1947,12 @@ export namespace Prisma {
    */
 
   export type CompositionTypeCountOutputType = {
-    ingredients: number
+    extras: number
     productSteps: number
   }
 
   export type CompositionTypeCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    ingredients?: boolean | CompositionTypeCountOutputTypeCountIngredientsArgs
+    extras?: boolean | CompositionTypeCountOutputTypeCountExtrasArgs
     productSteps?: boolean | CompositionTypeCountOutputTypeCountProductStepsArgs
   }
 
@@ -1970,8 +1970,8 @@ export namespace Prisma {
   /**
    * CompositionTypeCountOutputType without action
    */
-  export type CompositionTypeCountOutputTypeCountIngredientsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: CompositionTypeIngredientWhereInput
+  export type CompositionTypeCountOutputTypeCountExtrasArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CompositionTypeExtraWhereInput
   }
 
   /**
@@ -4110,30 +4110,30 @@ export namespace Prisma {
 
 
   /**
-   * Model Ingredient
+   * Model Extra
    */
 
-  export type AggregateIngredient = {
-    _count: IngredientCountAggregateOutputType | null
-    _avg: IngredientAvgAggregateOutputType | null
-    _sum: IngredientSumAggregateOutputType | null
-    _min: IngredientMinAggregateOutputType | null
-    _max: IngredientMaxAggregateOutputType | null
+  export type AggregateExtra = {
+    _count: ExtraCountAggregateOutputType | null
+    _avg: ExtraAvgAggregateOutputType | null
+    _sum: ExtraSumAggregateOutputType | null
+    _min: ExtraMinAggregateOutputType | null
+    _max: ExtraMaxAggregateOutputType | null
   }
 
-  export type IngredientAvgAggregateOutputType = {
+  export type ExtraAvgAggregateOutputType = {
     price: number | null
     suppPrice: number | null
     sortOrder: number | null
   }
 
-  export type IngredientSumAggregateOutputType = {
+  export type ExtraSumAggregateOutputType = {
     price: number | null
     suppPrice: number | null
     sortOrder: number | null
   }
 
-  export type IngredientMinAggregateOutputType = {
+  export type ExtraMinAggregateOutputType = {
     id: string | null
     name: string | null
     image: string | null
@@ -4145,7 +4145,7 @@ export namespace Prisma {
     createdAt: Date | null
   }
 
-  export type IngredientMaxAggregateOutputType = {
+  export type ExtraMaxAggregateOutputType = {
     id: string | null
     name: string | null
     image: string | null
@@ -4157,7 +4157,7 @@ export namespace Prisma {
     createdAt: Date | null
   }
 
-  export type IngredientCountAggregateOutputType = {
+  export type ExtraCountAggregateOutputType = {
     id: number
     name: number
     image: number
@@ -4171,19 +4171,19 @@ export namespace Prisma {
   }
 
 
-  export type IngredientAvgAggregateInputType = {
+  export type ExtraAvgAggregateInputType = {
     price?: true
     suppPrice?: true
     sortOrder?: true
   }
 
-  export type IngredientSumAggregateInputType = {
+  export type ExtraSumAggregateInputType = {
     price?: true
     suppPrice?: true
     sortOrder?: true
   }
 
-  export type IngredientMinAggregateInputType = {
+  export type ExtraMinAggregateInputType = {
     id?: true
     name?: true
     image?: true
@@ -4195,7 +4195,7 @@ export namespace Prisma {
     createdAt?: true
   }
 
-  export type IngredientMaxAggregateInputType = {
+  export type ExtraMaxAggregateInputType = {
     id?: true
     name?: true
     image?: true
@@ -4207,7 +4207,7 @@ export namespace Prisma {
     createdAt?: true
   }
 
-  export type IngredientCountAggregateInputType = {
+  export type ExtraCountAggregateInputType = {
     id?: true
     name?: true
     image?: true
@@ -4220,93 +4220,93 @@ export namespace Prisma {
     _all?: true
   }
 
-  export type IngredientAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type ExtraAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Filter which Ingredient to aggregate.
+     * Filter which Extra to aggregate.
      */
-    where?: IngredientWhereInput
+    where?: ExtraWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
      * 
-     * Determine the order of Ingredients to fetch.
+     * Determine the order of Extras to fetch.
      */
-    orderBy?: IngredientOrderByWithRelationInput | IngredientOrderByWithRelationInput[]
+    orderBy?: ExtraOrderByWithRelationInput | ExtraOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
      * 
      * Sets the start position
      */
-    cursor?: IngredientWhereUniqueInput
+    cursor?: ExtraWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Take `±n` Ingredients from the position of the cursor.
+     * Take `±n` Extras from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Skip the first `n` Ingredients.
+     * Skip the first `n` Extras.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
-     * Count returned Ingredients
+     * Count returned Extras
     **/
-    _count?: true | IngredientCountAggregateInputType
+    _count?: true | ExtraCountAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
      * Select which fields to average
     **/
-    _avg?: IngredientAvgAggregateInputType
+    _avg?: ExtraAvgAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
      * Select which fields to sum
     **/
-    _sum?: IngredientSumAggregateInputType
+    _sum?: ExtraSumAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
      * Select which fields to find the minimum value
     **/
-    _min?: IngredientMinAggregateInputType
+    _min?: ExtraMinAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
      * Select which fields to find the maximum value
     **/
-    _max?: IngredientMaxAggregateInputType
+    _max?: ExtraMaxAggregateInputType
   }
 
-  export type GetIngredientAggregateType<T extends IngredientAggregateArgs> = {
-        [P in keyof T & keyof AggregateIngredient]: P extends '_count' | 'count'
+  export type GetExtraAggregateType<T extends ExtraAggregateArgs> = {
+        [P in keyof T & keyof AggregateExtra]: P extends '_count' | 'count'
       ? T[P] extends true
         ? number
-        : GetScalarType<T[P], AggregateIngredient[P]>
-      : GetScalarType<T[P], AggregateIngredient[P]>
+        : GetScalarType<T[P], AggregateExtra[P]>
+      : GetScalarType<T[P], AggregateExtra[P]>
   }
 
 
 
 
-  export type IngredientGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: IngredientWhereInput
-    orderBy?: IngredientOrderByWithAggregationInput | IngredientOrderByWithAggregationInput[]
-    by: IngredientScalarFieldEnum[] | IngredientScalarFieldEnum
-    having?: IngredientScalarWhereWithAggregatesInput
+  export type ExtraGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ExtraWhereInput
+    orderBy?: ExtraOrderByWithAggregationInput | ExtraOrderByWithAggregationInput[]
+    by: ExtraScalarFieldEnum[] | ExtraScalarFieldEnum
+    having?: ExtraScalarWhereWithAggregatesInput
     take?: number
     skip?: number
-    _count?: IngredientCountAggregateInputType | true
-    _avg?: IngredientAvgAggregateInputType
-    _sum?: IngredientSumAggregateInputType
-    _min?: IngredientMinAggregateInputType
-    _max?: IngredientMaxAggregateInputType
+    _count?: ExtraCountAggregateInputType | true
+    _avg?: ExtraAvgAggregateInputType
+    _sum?: ExtraSumAggregateInputType
+    _min?: ExtraMinAggregateInputType
+    _max?: ExtraMaxAggregateInputType
   }
 
-  export type IngredientGroupByOutputType = {
+  export type ExtraGroupByOutputType = {
     id: string
     name: string
     image: string | null
@@ -4316,28 +4316,28 @@ export namespace Prisma {
     visible: boolean
     sortOrder: number
     createdAt: Date
-    _count: IngredientCountAggregateOutputType | null
-    _avg: IngredientAvgAggregateOutputType | null
-    _sum: IngredientSumAggregateOutputType | null
-    _min: IngredientMinAggregateOutputType | null
-    _max: IngredientMaxAggregateOutputType | null
+    _count: ExtraCountAggregateOutputType | null
+    _avg: ExtraAvgAggregateOutputType | null
+    _sum: ExtraSumAggregateOutputType | null
+    _min: ExtraMinAggregateOutputType | null
+    _max: ExtraMaxAggregateOutputType | null
   }
 
-  type GetIngredientGroupByPayload<T extends IngredientGroupByArgs> = Prisma.PrismaPromise<
+  type GetExtraGroupByPayload<T extends ExtraGroupByArgs> = Prisma.PrismaPromise<
     Array<
-      PickEnumerable<IngredientGroupByOutputType, T['by']> &
+      PickEnumerable<ExtraGroupByOutputType, T['by']> &
         {
-          [P in ((keyof T) & (keyof IngredientGroupByOutputType))]: P extends '_count'
+          [P in ((keyof T) & (keyof ExtraGroupByOutputType))]: P extends '_count'
             ? T[P] extends boolean
               ? number
-              : GetScalarType<T[P], IngredientGroupByOutputType[P]>
-            : GetScalarType<T[P], IngredientGroupByOutputType[P]>
+              : GetScalarType<T[P], ExtraGroupByOutputType[P]>
+            : GetScalarType<T[P], ExtraGroupByOutputType[P]>
         }
       >
     >
 
 
-  export type IngredientSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+  export type ExtraSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     name?: boolean
     image?: boolean
@@ -4347,11 +4347,11 @@ export namespace Prisma {
     visible?: boolean
     sortOrder?: boolean
     createdAt?: boolean
-    typeLinks?: boolean | Ingredient$typeLinksArgs<ExtArgs>
-    _count?: boolean | IngredientCountOutputTypeDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["ingredient"]>
+    typeLinks?: boolean | Extra$typeLinksArgs<ExtArgs>
+    _count?: boolean | ExtraCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["extra"]>
 
-  export type IngredientSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+  export type ExtraSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     name?: boolean
     image?: boolean
@@ -4361,9 +4361,9 @@ export namespace Prisma {
     visible?: boolean
     sortOrder?: boolean
     createdAt?: boolean
-  }, ExtArgs["result"]["ingredient"]>
+  }, ExtArgs["result"]["extra"]>
 
-  export type IngredientSelectScalar = {
+  export type ExtraSelectScalar = {
     id?: boolean
     name?: boolean
     image?: boolean
@@ -4375,16 +4375,16 @@ export namespace Prisma {
     createdAt?: boolean
   }
 
-  export type IngredientInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    typeLinks?: boolean | Ingredient$typeLinksArgs<ExtArgs>
-    _count?: boolean | IngredientCountOutputTypeDefaultArgs<ExtArgs>
+  export type ExtraInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    typeLinks?: boolean | Extra$typeLinksArgs<ExtArgs>
+    _count?: boolean | ExtraCountOutputTypeDefaultArgs<ExtArgs>
   }
-  export type IngredientIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+  export type ExtraIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
 
-  export type $IngredientPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    name: "Ingredient"
+  export type $ExtraPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "Extra"
     objects: {
-      typeLinks: Prisma.$CompositionTypeIngredientPayload<ExtArgs>[]
+      typeLinks: Prisma.$CompositionTypeExtraPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -4402,136 +4402,136 @@ export namespace Prisma {
       visible: boolean
       sortOrder: number
       createdAt: Date
-    }, ExtArgs["result"]["ingredient"]>
+    }, ExtArgs["result"]["extra"]>
     composites: {}
   }
 
-  type IngredientGetPayload<S extends boolean | null | undefined | IngredientDefaultArgs> = $Result.GetResult<Prisma.$IngredientPayload, S>
+  type ExtraGetPayload<S extends boolean | null | undefined | ExtraDefaultArgs> = $Result.GetResult<Prisma.$ExtraPayload, S>
 
-  type IngredientCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
-    Omit<IngredientFindManyArgs, 'select' | 'include' | 'distinct'> & {
-      select?: IngredientCountAggregateInputType | true
+  type ExtraCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<ExtraFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: ExtraCountAggregateInputType | true
     }
 
-  export interface IngredientDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
-    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Ingredient'], meta: { name: 'Ingredient' } }
+  export interface ExtraDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Extra'], meta: { name: 'Extra' } }
     /**
-     * Find zero or one Ingredient that matches the filter.
-     * @param {IngredientFindUniqueArgs} args - Arguments to find a Ingredient
+     * Find zero or one Extra that matches the filter.
+     * @param {ExtraFindUniqueArgs} args - Arguments to find a Extra
      * @example
-     * // Get one Ingredient
-     * const ingredient = await prisma.ingredient.findUnique({
+     * // Get one Extra
+     * const extra = await prisma.extra.findUnique({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      */
-    findUnique<T extends IngredientFindUniqueArgs>(args: SelectSubset<T, IngredientFindUniqueArgs<ExtArgs>>): Prisma__IngredientClient<$Result.GetResult<Prisma.$IngredientPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+    findUnique<T extends ExtraFindUniqueArgs>(args: SelectSubset<T, ExtraFindUniqueArgs<ExtArgs>>): Prisma__ExtraClient<$Result.GetResult<Prisma.$ExtraPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
 
     /**
-     * Find one Ingredient that matches the filter or throw an error with `error.code='P2025'` 
+     * Find one Extra that matches the filter or throw an error with `error.code='P2025'` 
      * if no matches were found.
-     * @param {IngredientFindUniqueOrThrowArgs} args - Arguments to find a Ingredient
+     * @param {ExtraFindUniqueOrThrowArgs} args - Arguments to find a Extra
      * @example
-     * // Get one Ingredient
-     * const ingredient = await prisma.ingredient.findUniqueOrThrow({
+     * // Get one Extra
+     * const extra = await prisma.extra.findUniqueOrThrow({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      */
-    findUniqueOrThrow<T extends IngredientFindUniqueOrThrowArgs>(args: SelectSubset<T, IngredientFindUniqueOrThrowArgs<ExtArgs>>): Prisma__IngredientClient<$Result.GetResult<Prisma.$IngredientPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+    findUniqueOrThrow<T extends ExtraFindUniqueOrThrowArgs>(args: SelectSubset<T, ExtraFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ExtraClient<$Result.GetResult<Prisma.$ExtraPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
 
     /**
-     * Find the first Ingredient that matches the filter.
+     * Find the first Extra that matches the filter.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {IngredientFindFirstArgs} args - Arguments to find a Ingredient
+     * @param {ExtraFindFirstArgs} args - Arguments to find a Extra
      * @example
-     * // Get one Ingredient
-     * const ingredient = await prisma.ingredient.findFirst({
+     * // Get one Extra
+     * const extra = await prisma.extra.findFirst({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      */
-    findFirst<T extends IngredientFindFirstArgs>(args?: SelectSubset<T, IngredientFindFirstArgs<ExtArgs>>): Prisma__IngredientClient<$Result.GetResult<Prisma.$IngredientPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+    findFirst<T extends ExtraFindFirstArgs>(args?: SelectSubset<T, ExtraFindFirstArgs<ExtArgs>>): Prisma__ExtraClient<$Result.GetResult<Prisma.$ExtraPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
 
     /**
-     * Find the first Ingredient that matches the filter or
+     * Find the first Extra that matches the filter or
      * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {IngredientFindFirstOrThrowArgs} args - Arguments to find a Ingredient
+     * @param {ExtraFindFirstOrThrowArgs} args - Arguments to find a Extra
      * @example
-     * // Get one Ingredient
-     * const ingredient = await prisma.ingredient.findFirstOrThrow({
+     * // Get one Extra
+     * const extra = await prisma.extra.findFirstOrThrow({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      */
-    findFirstOrThrow<T extends IngredientFindFirstOrThrowArgs>(args?: SelectSubset<T, IngredientFindFirstOrThrowArgs<ExtArgs>>): Prisma__IngredientClient<$Result.GetResult<Prisma.$IngredientPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+    findFirstOrThrow<T extends ExtraFindFirstOrThrowArgs>(args?: SelectSubset<T, ExtraFindFirstOrThrowArgs<ExtArgs>>): Prisma__ExtraClient<$Result.GetResult<Prisma.$ExtraPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
 
     /**
-     * Find zero or more Ingredients that matches the filter.
+     * Find zero or more Extras that matches the filter.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {IngredientFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @param {ExtraFindManyArgs} args - Arguments to filter and select certain fields only.
      * @example
-     * // Get all Ingredients
-     * const ingredients = await prisma.ingredient.findMany()
+     * // Get all Extras
+     * const extras = await prisma.extra.findMany()
      * 
-     * // Get first 10 Ingredients
-     * const ingredients = await prisma.ingredient.findMany({ take: 10 })
+     * // Get first 10 Extras
+     * const extras = await prisma.extra.findMany({ take: 10 })
      * 
      * // Only select the `id`
-     * const ingredientWithIdOnly = await prisma.ingredient.findMany({ select: { id: true } })
+     * const extraWithIdOnly = await prisma.extra.findMany({ select: { id: true } })
      * 
      */
-    findMany<T extends IngredientFindManyArgs>(args?: SelectSubset<T, IngredientFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$IngredientPayload<ExtArgs>, T, "findMany">>
+    findMany<T extends ExtraFindManyArgs>(args?: SelectSubset<T, ExtraFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ExtraPayload<ExtArgs>, T, "findMany">>
 
     /**
-     * Create a Ingredient.
-     * @param {IngredientCreateArgs} args - Arguments to create a Ingredient.
+     * Create a Extra.
+     * @param {ExtraCreateArgs} args - Arguments to create a Extra.
      * @example
-     * // Create one Ingredient
-     * const Ingredient = await prisma.ingredient.create({
+     * // Create one Extra
+     * const Extra = await prisma.extra.create({
      *   data: {
-     *     // ... data to create a Ingredient
+     *     // ... data to create a Extra
      *   }
      * })
      * 
      */
-    create<T extends IngredientCreateArgs>(args: SelectSubset<T, IngredientCreateArgs<ExtArgs>>): Prisma__IngredientClient<$Result.GetResult<Prisma.$IngredientPayload<ExtArgs>, T, "create">, never, ExtArgs>
+    create<T extends ExtraCreateArgs>(args: SelectSubset<T, ExtraCreateArgs<ExtArgs>>): Prisma__ExtraClient<$Result.GetResult<Prisma.$ExtraPayload<ExtArgs>, T, "create">, never, ExtArgs>
 
     /**
-     * Create many Ingredients.
-     * @param {IngredientCreateManyArgs} args - Arguments to create many Ingredients.
+     * Create many Extras.
+     * @param {ExtraCreateManyArgs} args - Arguments to create many Extras.
      * @example
-     * // Create many Ingredients
-     * const ingredient = await prisma.ingredient.createMany({
+     * // Create many Extras
+     * const extra = await prisma.extra.createMany({
      *   data: [
      *     // ... provide data here
      *   ]
      * })
      *     
      */
-    createMany<T extends IngredientCreateManyArgs>(args?: SelectSubset<T, IngredientCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+    createMany<T extends ExtraCreateManyArgs>(args?: SelectSubset<T, ExtraCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Create many Ingredients and returns the data saved in the database.
-     * @param {IngredientCreateManyAndReturnArgs} args - Arguments to create many Ingredients.
+     * Create many Extras and returns the data saved in the database.
+     * @param {ExtraCreateManyAndReturnArgs} args - Arguments to create many Extras.
      * @example
-     * // Create many Ingredients
-     * const ingredient = await prisma.ingredient.createManyAndReturn({
+     * // Create many Extras
+     * const extra = await prisma.extra.createManyAndReturn({
      *   data: [
      *     // ... provide data here
      *   ]
      * })
      * 
-     * // Create many Ingredients and only return the `id`
-     * const ingredientWithIdOnly = await prisma.ingredient.createManyAndReturn({ 
+     * // Create many Extras and only return the `id`
+     * const extraWithIdOnly = await prisma.extra.createManyAndReturn({ 
      *   select: { id: true },
      *   data: [
      *     // ... provide data here
@@ -4541,28 +4541,28 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    createManyAndReturn<T extends IngredientCreateManyAndReturnArgs>(args?: SelectSubset<T, IngredientCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$IngredientPayload<ExtArgs>, T, "createManyAndReturn">>
+    createManyAndReturn<T extends ExtraCreateManyAndReturnArgs>(args?: SelectSubset<T, ExtraCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ExtraPayload<ExtArgs>, T, "createManyAndReturn">>
 
     /**
-     * Delete a Ingredient.
-     * @param {IngredientDeleteArgs} args - Arguments to delete one Ingredient.
+     * Delete a Extra.
+     * @param {ExtraDeleteArgs} args - Arguments to delete one Extra.
      * @example
-     * // Delete one Ingredient
-     * const Ingredient = await prisma.ingredient.delete({
+     * // Delete one Extra
+     * const Extra = await prisma.extra.delete({
      *   where: {
-     *     // ... filter to delete one Ingredient
+     *     // ... filter to delete one Extra
      *   }
      * })
      * 
      */
-    delete<T extends IngredientDeleteArgs>(args: SelectSubset<T, IngredientDeleteArgs<ExtArgs>>): Prisma__IngredientClient<$Result.GetResult<Prisma.$IngredientPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+    delete<T extends ExtraDeleteArgs>(args: SelectSubset<T, ExtraDeleteArgs<ExtArgs>>): Prisma__ExtraClient<$Result.GetResult<Prisma.$ExtraPayload<ExtArgs>, T, "delete">, never, ExtArgs>
 
     /**
-     * Update one Ingredient.
-     * @param {IngredientUpdateArgs} args - Arguments to update one Ingredient.
+     * Update one Extra.
+     * @param {ExtraUpdateArgs} args - Arguments to update one Extra.
      * @example
-     * // Update one Ingredient
-     * const ingredient = await prisma.ingredient.update({
+     * // Update one Extra
+     * const extra = await prisma.extra.update({
      *   where: {
      *     // ... provide filter here
      *   },
@@ -4572,30 +4572,30 @@ export namespace Prisma {
      * })
      * 
      */
-    update<T extends IngredientUpdateArgs>(args: SelectSubset<T, IngredientUpdateArgs<ExtArgs>>): Prisma__IngredientClient<$Result.GetResult<Prisma.$IngredientPayload<ExtArgs>, T, "update">, never, ExtArgs>
+    update<T extends ExtraUpdateArgs>(args: SelectSubset<T, ExtraUpdateArgs<ExtArgs>>): Prisma__ExtraClient<$Result.GetResult<Prisma.$ExtraPayload<ExtArgs>, T, "update">, never, ExtArgs>
 
     /**
-     * Delete zero or more Ingredients.
-     * @param {IngredientDeleteManyArgs} args - Arguments to filter Ingredients to delete.
+     * Delete zero or more Extras.
+     * @param {ExtraDeleteManyArgs} args - Arguments to filter Extras to delete.
      * @example
-     * // Delete a few Ingredients
-     * const { count } = await prisma.ingredient.deleteMany({
+     * // Delete a few Extras
+     * const { count } = await prisma.extra.deleteMany({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      * 
      */
-    deleteMany<T extends IngredientDeleteManyArgs>(args?: SelectSubset<T, IngredientDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+    deleteMany<T extends ExtraDeleteManyArgs>(args?: SelectSubset<T, ExtraDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Update zero or more Ingredients.
+     * Update zero or more Extras.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {IngredientUpdateManyArgs} args - Arguments to update one or more rows.
+     * @param {ExtraUpdateManyArgs} args - Arguments to update one or more rows.
      * @example
-     * // Update many Ingredients
-     * const ingredient = await prisma.ingredient.updateMany({
+     * // Update many Extras
+     * const extra = await prisma.extra.updateMany({
      *   where: {
      *     // ... provide filter here
      *   },
@@ -4605,56 +4605,56 @@ export namespace Prisma {
      * })
      * 
      */
-    updateMany<T extends IngredientUpdateManyArgs>(args: SelectSubset<T, IngredientUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+    updateMany<T extends ExtraUpdateManyArgs>(args: SelectSubset<T, ExtraUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Create or update one Ingredient.
-     * @param {IngredientUpsertArgs} args - Arguments to update or create a Ingredient.
+     * Create or update one Extra.
+     * @param {ExtraUpsertArgs} args - Arguments to update or create a Extra.
      * @example
-     * // Update or create a Ingredient
-     * const ingredient = await prisma.ingredient.upsert({
+     * // Update or create a Extra
+     * const extra = await prisma.extra.upsert({
      *   create: {
-     *     // ... data to create a Ingredient
+     *     // ... data to create a Extra
      *   },
      *   update: {
      *     // ... in case it already exists, update
      *   },
      *   where: {
-     *     // ... the filter for the Ingredient we want to update
+     *     // ... the filter for the Extra we want to update
      *   }
      * })
      */
-    upsert<T extends IngredientUpsertArgs>(args: SelectSubset<T, IngredientUpsertArgs<ExtArgs>>): Prisma__IngredientClient<$Result.GetResult<Prisma.$IngredientPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+    upsert<T extends ExtraUpsertArgs>(args: SelectSubset<T, ExtraUpsertArgs<ExtArgs>>): Prisma__ExtraClient<$Result.GetResult<Prisma.$ExtraPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
 
 
     /**
-     * Count the number of Ingredients.
+     * Count the number of Extras.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {IngredientCountArgs} args - Arguments to filter Ingredients to count.
+     * @param {ExtraCountArgs} args - Arguments to filter Extras to count.
      * @example
-     * // Count the number of Ingredients
-     * const count = await prisma.ingredient.count({
+     * // Count the number of Extras
+     * const count = await prisma.extra.count({
      *   where: {
-     *     // ... the filter for the Ingredients we want to count
+     *     // ... the filter for the Extras we want to count
      *   }
      * })
     **/
-    count<T extends IngredientCountArgs>(
-      args?: Subset<T, IngredientCountArgs>,
+    count<T extends ExtraCountArgs>(
+      args?: Subset<T, ExtraCountArgs>,
     ): Prisma.PrismaPromise<
       T extends $Utils.Record<'select', any>
         ? T['select'] extends true
           ? number
-          : GetScalarType<T['select'], IngredientCountAggregateOutputType>
+          : GetScalarType<T['select'], ExtraCountAggregateOutputType>
         : number
     >
 
     /**
-     * Allows you to perform aggregations operations on a Ingredient.
+     * Allows you to perform aggregations operations on a Extra.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {IngredientAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @param {ExtraAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
      * @example
      * // Ordered by age ascending
      * // Where email contains prisma.io
@@ -4674,13 +4674,13 @@ export namespace Prisma {
      *   take: 10,
      * })
     **/
-    aggregate<T extends IngredientAggregateArgs>(args: Subset<T, IngredientAggregateArgs>): Prisma.PrismaPromise<GetIngredientAggregateType<T>>
+    aggregate<T extends ExtraAggregateArgs>(args: Subset<T, ExtraAggregateArgs>): Prisma.PrismaPromise<GetExtraAggregateType<T>>
 
     /**
-     * Group by Ingredient.
+     * Group by Extra.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {IngredientGroupByArgs} args - Group by arguments.
+     * @param {ExtraGroupByArgs} args - Group by arguments.
      * @example
      * // Group by city, order by createdAt, get count
      * const result = await prisma.user.groupBy({
@@ -4695,14 +4695,14 @@ export namespace Prisma {
      * 
     **/
     groupBy<
-      T extends IngredientGroupByArgs,
+      T extends ExtraGroupByArgs,
       HasSelectOrTake extends Or<
         Extends<'skip', Keys<T>>,
         Extends<'take', Keys<T>>
       >,
       OrderByArg extends True extends HasSelectOrTake
-        ? { orderBy: IngredientGroupByArgs['orderBy'] }
-        : { orderBy?: IngredientGroupByArgs['orderBy'] },
+        ? { orderBy: ExtraGroupByArgs['orderBy'] }
+        : { orderBy?: ExtraGroupByArgs['orderBy'] },
       OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
       ByFields extends MaybeTupleToUnion<T['by']>,
       ByValid extends Has<ByFields, OrderFields>,
@@ -4751,22 +4751,22 @@ export namespace Prisma {
             ? never
             : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
         }[OrderFields]
-    >(args: SubsetIntersection<T, IngredientGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetIngredientGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+    >(args: SubsetIntersection<T, ExtraGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetExtraGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
   /**
-   * Fields of the Ingredient model
+   * Fields of the Extra model
    */
-  readonly fields: IngredientFieldRefs;
+  readonly fields: ExtraFieldRefs;
   }
 
   /**
-   * The delegate class that acts as a "Promise-like" for Ingredient.
+   * The delegate class that acts as a "Promise-like" for Extra.
    * Why is this prefixed with `Prisma__`?
    * Because we want to prevent naming conflicts as mentioned in
    * https://github.com/prisma/prisma-client-js/issues/707
    */
-  export interface Prisma__IngredientClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+  export interface Prisma__ExtraClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    typeLinks<T extends Ingredient$typeLinksArgs<ExtArgs> = {}>(args?: Subset<T, Ingredient$typeLinksArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CompositionTypeIngredientPayload<ExtArgs>, T, "findMany"> | Null>
+    typeLinks<T extends Extra$typeLinksArgs<ExtArgs> = {}>(args?: Subset<T, Extra$typeLinksArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CompositionTypeExtraPayload<ExtArgs>, T, "findMany"> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -4793,363 +4793,363 @@ export namespace Prisma {
 
 
   /**
-   * Fields of the Ingredient model
+   * Fields of the Extra model
    */ 
-  interface IngredientFieldRefs {
-    readonly id: FieldRef<"Ingredient", 'String'>
-    readonly name: FieldRef<"Ingredient", 'String'>
-    readonly image: FieldRef<"Ingredient", 'String'>
-    readonly price: FieldRef<"Ingredient", 'Int'>
-    readonly suppPrice: FieldRef<"Ingredient", 'Int'>
-    readonly outOfStock: FieldRef<"Ingredient", 'Boolean'>
-    readonly visible: FieldRef<"Ingredient", 'Boolean'>
-    readonly sortOrder: FieldRef<"Ingredient", 'Int'>
-    readonly createdAt: FieldRef<"Ingredient", 'DateTime'>
+  interface ExtraFieldRefs {
+    readonly id: FieldRef<"Extra", 'String'>
+    readonly name: FieldRef<"Extra", 'String'>
+    readonly image: FieldRef<"Extra", 'String'>
+    readonly price: FieldRef<"Extra", 'Int'>
+    readonly suppPrice: FieldRef<"Extra", 'Int'>
+    readonly outOfStock: FieldRef<"Extra", 'Boolean'>
+    readonly visible: FieldRef<"Extra", 'Boolean'>
+    readonly sortOrder: FieldRef<"Extra", 'Int'>
+    readonly createdAt: FieldRef<"Extra", 'DateTime'>
   }
     
 
   // Custom InputTypes
   /**
-   * Ingredient findUnique
+   * Extra findUnique
    */
-  export type IngredientFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type ExtraFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the Ingredient
+     * Select specific fields to fetch from the Extra
      */
-    select?: IngredientSelect<ExtArgs> | null
+    select?: ExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: IngredientInclude<ExtArgs> | null
+    include?: ExtraInclude<ExtArgs> | null
     /**
-     * Filter, which Ingredient to fetch.
+     * Filter, which Extra to fetch.
      */
-    where: IngredientWhereUniqueInput
+    where: ExtraWhereUniqueInput
   }
 
   /**
-   * Ingredient findUniqueOrThrow
+   * Extra findUniqueOrThrow
    */
-  export type IngredientFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type ExtraFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the Ingredient
+     * Select specific fields to fetch from the Extra
      */
-    select?: IngredientSelect<ExtArgs> | null
+    select?: ExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: IngredientInclude<ExtArgs> | null
+    include?: ExtraInclude<ExtArgs> | null
     /**
-     * Filter, which Ingredient to fetch.
+     * Filter, which Extra to fetch.
      */
-    where: IngredientWhereUniqueInput
+    where: ExtraWhereUniqueInput
   }
 
   /**
-   * Ingredient findFirst
+   * Extra findFirst
    */
-  export type IngredientFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type ExtraFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the Ingredient
+     * Select specific fields to fetch from the Extra
      */
-    select?: IngredientSelect<ExtArgs> | null
+    select?: ExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: IngredientInclude<ExtArgs> | null
+    include?: ExtraInclude<ExtArgs> | null
     /**
-     * Filter, which Ingredient to fetch.
+     * Filter, which Extra to fetch.
      */
-    where?: IngredientWhereInput
+    where?: ExtraWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
      * 
-     * Determine the order of Ingredients to fetch.
+     * Determine the order of Extras to fetch.
      */
-    orderBy?: IngredientOrderByWithRelationInput | IngredientOrderByWithRelationInput[]
+    orderBy?: ExtraOrderByWithRelationInput | ExtraOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
      * 
-     * Sets the position for searching for Ingredients.
+     * Sets the position for searching for Extras.
      */
-    cursor?: IngredientWhereUniqueInput
+    cursor?: ExtraWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Take `±n` Ingredients from the position of the cursor.
+     * Take `±n` Extras from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Skip the first `n` Ingredients.
+     * Skip the first `n` Extras.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
      * 
-     * Filter by unique combinations of Ingredients.
+     * Filter by unique combinations of Extras.
      */
-    distinct?: IngredientScalarFieldEnum | IngredientScalarFieldEnum[]
+    distinct?: ExtraScalarFieldEnum | ExtraScalarFieldEnum[]
   }
 
   /**
-   * Ingredient findFirstOrThrow
+   * Extra findFirstOrThrow
    */
-  export type IngredientFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type ExtraFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the Ingredient
+     * Select specific fields to fetch from the Extra
      */
-    select?: IngredientSelect<ExtArgs> | null
+    select?: ExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: IngredientInclude<ExtArgs> | null
+    include?: ExtraInclude<ExtArgs> | null
     /**
-     * Filter, which Ingredient to fetch.
+     * Filter, which Extra to fetch.
      */
-    where?: IngredientWhereInput
+    where?: ExtraWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
      * 
-     * Determine the order of Ingredients to fetch.
+     * Determine the order of Extras to fetch.
      */
-    orderBy?: IngredientOrderByWithRelationInput | IngredientOrderByWithRelationInput[]
+    orderBy?: ExtraOrderByWithRelationInput | ExtraOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
      * 
-     * Sets the position for searching for Ingredients.
+     * Sets the position for searching for Extras.
      */
-    cursor?: IngredientWhereUniqueInput
+    cursor?: ExtraWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Take `±n` Ingredients from the position of the cursor.
+     * Take `±n` Extras from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Skip the first `n` Ingredients.
+     * Skip the first `n` Extras.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
      * 
-     * Filter by unique combinations of Ingredients.
+     * Filter by unique combinations of Extras.
      */
-    distinct?: IngredientScalarFieldEnum | IngredientScalarFieldEnum[]
+    distinct?: ExtraScalarFieldEnum | ExtraScalarFieldEnum[]
   }
 
   /**
-   * Ingredient findMany
+   * Extra findMany
    */
-  export type IngredientFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type ExtraFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the Ingredient
+     * Select specific fields to fetch from the Extra
      */
-    select?: IngredientSelect<ExtArgs> | null
+    select?: ExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: IngredientInclude<ExtArgs> | null
+    include?: ExtraInclude<ExtArgs> | null
     /**
-     * Filter, which Ingredients to fetch.
+     * Filter, which Extras to fetch.
      */
-    where?: IngredientWhereInput
+    where?: ExtraWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
      * 
-     * Determine the order of Ingredients to fetch.
+     * Determine the order of Extras to fetch.
      */
-    orderBy?: IngredientOrderByWithRelationInput | IngredientOrderByWithRelationInput[]
+    orderBy?: ExtraOrderByWithRelationInput | ExtraOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
      * 
-     * Sets the position for listing Ingredients.
+     * Sets the position for listing Extras.
      */
-    cursor?: IngredientWhereUniqueInput
+    cursor?: ExtraWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Take `±n` Ingredients from the position of the cursor.
+     * Take `±n` Extras from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Skip the first `n` Ingredients.
+     * Skip the first `n` Extras.
      */
     skip?: number
-    distinct?: IngredientScalarFieldEnum | IngredientScalarFieldEnum[]
+    distinct?: ExtraScalarFieldEnum | ExtraScalarFieldEnum[]
   }
 
   /**
-   * Ingredient create
+   * Extra create
    */
-  export type IngredientCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type ExtraCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the Ingredient
+     * Select specific fields to fetch from the Extra
      */
-    select?: IngredientSelect<ExtArgs> | null
+    select?: ExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: IngredientInclude<ExtArgs> | null
+    include?: ExtraInclude<ExtArgs> | null
     /**
-     * The data needed to create a Ingredient.
+     * The data needed to create a Extra.
      */
-    data: XOR<IngredientCreateInput, IngredientUncheckedCreateInput>
+    data: XOR<ExtraCreateInput, ExtraUncheckedCreateInput>
   }
 
   /**
-   * Ingredient createMany
+   * Extra createMany
    */
-  export type IngredientCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type ExtraCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * The data used to create many Ingredients.
+     * The data used to create many Extras.
      */
-    data: IngredientCreateManyInput | IngredientCreateManyInput[]
+    data: ExtraCreateManyInput | ExtraCreateManyInput[]
     skipDuplicates?: boolean
   }
 
   /**
-   * Ingredient createManyAndReturn
+   * Extra createManyAndReturn
    */
-  export type IngredientCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type ExtraCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the Ingredient
+     * Select specific fields to fetch from the Extra
      */
-    select?: IngredientSelectCreateManyAndReturn<ExtArgs> | null
+    select?: ExtraSelectCreateManyAndReturn<ExtArgs> | null
     /**
-     * The data used to create many Ingredients.
+     * The data used to create many Extras.
      */
-    data: IngredientCreateManyInput | IngredientCreateManyInput[]
+    data: ExtraCreateManyInput | ExtraCreateManyInput[]
     skipDuplicates?: boolean
   }
 
   /**
-   * Ingredient update
+   * Extra update
    */
-  export type IngredientUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type ExtraUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the Ingredient
+     * Select specific fields to fetch from the Extra
      */
-    select?: IngredientSelect<ExtArgs> | null
+    select?: ExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: IngredientInclude<ExtArgs> | null
+    include?: ExtraInclude<ExtArgs> | null
     /**
-     * The data needed to update a Ingredient.
+     * The data needed to update a Extra.
      */
-    data: XOR<IngredientUpdateInput, IngredientUncheckedUpdateInput>
+    data: XOR<ExtraUpdateInput, ExtraUncheckedUpdateInput>
     /**
-     * Choose, which Ingredient to update.
+     * Choose, which Extra to update.
      */
-    where: IngredientWhereUniqueInput
+    where: ExtraWhereUniqueInput
   }
 
   /**
-   * Ingredient updateMany
+   * Extra updateMany
    */
-  export type IngredientUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type ExtraUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * The data used to update Ingredients.
+     * The data used to update Extras.
      */
-    data: XOR<IngredientUpdateManyMutationInput, IngredientUncheckedUpdateManyInput>
+    data: XOR<ExtraUpdateManyMutationInput, ExtraUncheckedUpdateManyInput>
     /**
-     * Filter which Ingredients to update
+     * Filter which Extras to update
      */
-    where?: IngredientWhereInput
+    where?: ExtraWhereInput
   }
 
   /**
-   * Ingredient upsert
+   * Extra upsert
    */
-  export type IngredientUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type ExtraUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the Ingredient
+     * Select specific fields to fetch from the Extra
      */
-    select?: IngredientSelect<ExtArgs> | null
+    select?: ExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: IngredientInclude<ExtArgs> | null
+    include?: ExtraInclude<ExtArgs> | null
     /**
-     * The filter to search for the Ingredient to update in case it exists.
+     * The filter to search for the Extra to update in case it exists.
      */
-    where: IngredientWhereUniqueInput
+    where: ExtraWhereUniqueInput
     /**
-     * In case the Ingredient found by the `where` argument doesn't exist, create a new Ingredient with this data.
+     * In case the Extra found by the `where` argument doesn't exist, create a new Extra with this data.
      */
-    create: XOR<IngredientCreateInput, IngredientUncheckedCreateInput>
+    create: XOR<ExtraCreateInput, ExtraUncheckedCreateInput>
     /**
-     * In case the Ingredient was found with the provided `where` argument, update it with this data.
+     * In case the Extra was found with the provided `where` argument, update it with this data.
      */
-    update: XOR<IngredientUpdateInput, IngredientUncheckedUpdateInput>
+    update: XOR<ExtraUpdateInput, ExtraUncheckedUpdateInput>
   }
 
   /**
-   * Ingredient delete
+   * Extra delete
    */
-  export type IngredientDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type ExtraDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the Ingredient
+     * Select specific fields to fetch from the Extra
      */
-    select?: IngredientSelect<ExtArgs> | null
+    select?: ExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: IngredientInclude<ExtArgs> | null
+    include?: ExtraInclude<ExtArgs> | null
     /**
-     * Filter which Ingredient to delete.
+     * Filter which Extra to delete.
      */
-    where: IngredientWhereUniqueInput
+    where: ExtraWhereUniqueInput
   }
 
   /**
-   * Ingredient deleteMany
+   * Extra deleteMany
    */
-  export type IngredientDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type ExtraDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Filter which Ingredients to delete
+     * Filter which Extras to delete
      */
-    where?: IngredientWhereInput
+    where?: ExtraWhereInput
   }
 
   /**
-   * Ingredient.typeLinks
+   * Extra.typeLinks
    */
-  export type Ingredient$typeLinksArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type Extra$typeLinksArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the CompositionTypeIngredient
+     * Select specific fields to fetch from the CompositionTypeExtra
      */
-    select?: CompositionTypeIngredientSelect<ExtArgs> | null
+    select?: CompositionTypeExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: CompositionTypeIngredientInclude<ExtArgs> | null
-    where?: CompositionTypeIngredientWhereInput
-    orderBy?: CompositionTypeIngredientOrderByWithRelationInput | CompositionTypeIngredientOrderByWithRelationInput[]
-    cursor?: CompositionTypeIngredientWhereUniqueInput
+    include?: CompositionTypeExtraInclude<ExtArgs> | null
+    where?: CompositionTypeExtraWhereInput
+    orderBy?: CompositionTypeExtraOrderByWithRelationInput | CompositionTypeExtraOrderByWithRelationInput[]
+    cursor?: CompositionTypeExtraWhereUniqueInput
     take?: number
     skip?: number
-    distinct?: CompositionTypeIngredientScalarFieldEnum | CompositionTypeIngredientScalarFieldEnum[]
+    distinct?: CompositionTypeExtraScalarFieldEnum | CompositionTypeExtraScalarFieldEnum[]
   }
 
   /**
-   * Ingredient without action
+   * Extra without action
    */
-  export type IngredientDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type ExtraDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the Ingredient
+     * Select specific fields to fetch from the Extra
      */
-    select?: IngredientSelect<ExtArgs> | null
+    select?: ExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: IngredientInclude<ExtArgs> | null
+    include?: ExtraInclude<ExtArgs> | null
   }
 
 
@@ -5415,7 +5415,7 @@ export namespace Prisma {
     isActive?: boolean
     sortOrder?: boolean
     createdAt?: boolean
-    ingredients?: boolean | CompositionType$ingredientsArgs<ExtArgs>
+    extras?: boolean | CompositionType$extrasArgs<ExtArgs>
     productSteps?: boolean | CompositionType$productStepsArgs<ExtArgs>
     _count?: boolean | CompositionTypeCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["compositionType"]>
@@ -5451,7 +5451,7 @@ export namespace Prisma {
   }
 
   export type CompositionTypeInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    ingredients?: boolean | CompositionType$ingredientsArgs<ExtArgs>
+    extras?: boolean | CompositionType$extrasArgs<ExtArgs>
     productSteps?: boolean | CompositionType$productStepsArgs<ExtArgs>
     _count?: boolean | CompositionTypeCountOutputTypeDefaultArgs<ExtArgs>
   }
@@ -5460,7 +5460,7 @@ export namespace Prisma {
   export type $CompositionTypePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "CompositionType"
     objects: {
-      ingredients: Prisma.$CompositionTypeIngredientPayload<ExtArgs>[]
+      extras: Prisma.$CompositionTypeExtraPayload<ExtArgs>[]
       productSteps: Prisma.$ProductCompositionPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
@@ -5471,7 +5471,7 @@ export namespace Prisma {
       min: number
       max: number
       /**
-       * When true, ingredient `price` applies; when false, `suppPrice` applies.
+       * When true, extra `price` applies; when false, `suppPrice` applies.
        */
       payment: boolean
       selection: boolean
@@ -5843,7 +5843,7 @@ export namespace Prisma {
    */
   export interface Prisma__CompositionTypeClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    ingredients<T extends CompositionType$ingredientsArgs<ExtArgs> = {}>(args?: Subset<T, CompositionType$ingredientsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CompositionTypeIngredientPayload<ExtArgs>, T, "findMany"> | Null>
+    extras<T extends CompositionType$extrasArgs<ExtArgs> = {}>(args?: Subset<T, CompositionType$extrasArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CompositionTypeExtraPayload<ExtArgs>, T, "findMany"> | Null>
     productSteps<T extends CompositionType$productStepsArgs<ExtArgs> = {}>(args?: Subset<T, CompositionType$productStepsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ProductCompositionPayload<ExtArgs>, T, "findMany"> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -6200,23 +6200,23 @@ export namespace Prisma {
   }
 
   /**
-   * CompositionType.ingredients
+   * CompositionType.extras
    */
-  export type CompositionType$ingredientsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionType$extrasArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the CompositionTypeIngredient
+     * Select specific fields to fetch from the CompositionTypeExtra
      */
-    select?: CompositionTypeIngredientSelect<ExtArgs> | null
+    select?: CompositionTypeExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: CompositionTypeIngredientInclude<ExtArgs> | null
-    where?: CompositionTypeIngredientWhereInput
-    orderBy?: CompositionTypeIngredientOrderByWithRelationInput | CompositionTypeIngredientOrderByWithRelationInput[]
-    cursor?: CompositionTypeIngredientWhereUniqueInput
+    include?: CompositionTypeExtraInclude<ExtArgs> | null
+    where?: CompositionTypeExtraWhereInput
+    orderBy?: CompositionTypeExtraOrderByWithRelationInput | CompositionTypeExtraOrderByWithRelationInput[]
+    cursor?: CompositionTypeExtraWhereUniqueInput
     take?: number
     skip?: number
-    distinct?: CompositionTypeIngredientScalarFieldEnum | CompositionTypeIngredientScalarFieldEnum[]
+    distinct?: CompositionTypeExtraScalarFieldEnum | CompositionTypeExtraScalarFieldEnum[]
   }
 
   /**
@@ -6255,354 +6255,354 @@ export namespace Prisma {
 
 
   /**
-   * Model CompositionTypeIngredient
+   * Model CompositionTypeExtra
    */
 
-  export type AggregateCompositionTypeIngredient = {
-    _count: CompositionTypeIngredientCountAggregateOutputType | null
-    _avg: CompositionTypeIngredientAvgAggregateOutputType | null
-    _sum: CompositionTypeIngredientSumAggregateOutputType | null
-    _min: CompositionTypeIngredientMinAggregateOutputType | null
-    _max: CompositionTypeIngredientMaxAggregateOutputType | null
+  export type AggregateCompositionTypeExtra = {
+    _count: CompositionTypeExtraCountAggregateOutputType | null
+    _avg: CompositionTypeExtraAvgAggregateOutputType | null
+    _sum: CompositionTypeExtraSumAggregateOutputType | null
+    _min: CompositionTypeExtraMinAggregateOutputType | null
+    _max: CompositionTypeExtraMaxAggregateOutputType | null
   }
 
-  export type CompositionTypeIngredientAvgAggregateOutputType = {
+  export type CompositionTypeExtraAvgAggregateOutputType = {
     position: number | null
   }
 
-  export type CompositionTypeIngredientSumAggregateOutputType = {
+  export type CompositionTypeExtraSumAggregateOutputType = {
     position: number | null
   }
 
-  export type CompositionTypeIngredientMinAggregateOutputType = {
+  export type CompositionTypeExtraMinAggregateOutputType = {
     compositionTypeId: string | null
-    ingredientId: string | null
+    extraId: string | null
     position: number | null
   }
 
-  export type CompositionTypeIngredientMaxAggregateOutputType = {
+  export type CompositionTypeExtraMaxAggregateOutputType = {
     compositionTypeId: string | null
-    ingredientId: string | null
+    extraId: string | null
     position: number | null
   }
 
-  export type CompositionTypeIngredientCountAggregateOutputType = {
+  export type CompositionTypeExtraCountAggregateOutputType = {
     compositionTypeId: number
-    ingredientId: number
+    extraId: number
     position: number
     _all: number
   }
 
 
-  export type CompositionTypeIngredientAvgAggregateInputType = {
+  export type CompositionTypeExtraAvgAggregateInputType = {
     position?: true
   }
 
-  export type CompositionTypeIngredientSumAggregateInputType = {
+  export type CompositionTypeExtraSumAggregateInputType = {
     position?: true
   }
 
-  export type CompositionTypeIngredientMinAggregateInputType = {
+  export type CompositionTypeExtraMinAggregateInputType = {
     compositionTypeId?: true
-    ingredientId?: true
+    extraId?: true
     position?: true
   }
 
-  export type CompositionTypeIngredientMaxAggregateInputType = {
+  export type CompositionTypeExtraMaxAggregateInputType = {
     compositionTypeId?: true
-    ingredientId?: true
+    extraId?: true
     position?: true
   }
 
-  export type CompositionTypeIngredientCountAggregateInputType = {
+  export type CompositionTypeExtraCountAggregateInputType = {
     compositionTypeId?: true
-    ingredientId?: true
+    extraId?: true
     position?: true
     _all?: true
   }
 
-  export type CompositionTypeIngredientAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionTypeExtraAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Filter which CompositionTypeIngredient to aggregate.
+     * Filter which CompositionTypeExtra to aggregate.
      */
-    where?: CompositionTypeIngredientWhereInput
+    where?: CompositionTypeExtraWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
      * 
-     * Determine the order of CompositionTypeIngredients to fetch.
+     * Determine the order of CompositionTypeExtras to fetch.
      */
-    orderBy?: CompositionTypeIngredientOrderByWithRelationInput | CompositionTypeIngredientOrderByWithRelationInput[]
+    orderBy?: CompositionTypeExtraOrderByWithRelationInput | CompositionTypeExtraOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
      * 
      * Sets the start position
      */
-    cursor?: CompositionTypeIngredientWhereUniqueInput
+    cursor?: CompositionTypeExtraWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Take `±n` CompositionTypeIngredients from the position of the cursor.
+     * Take `±n` CompositionTypeExtras from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Skip the first `n` CompositionTypeIngredients.
+     * Skip the first `n` CompositionTypeExtras.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
-     * Count returned CompositionTypeIngredients
+     * Count returned CompositionTypeExtras
     **/
-    _count?: true | CompositionTypeIngredientCountAggregateInputType
+    _count?: true | CompositionTypeExtraCountAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
      * Select which fields to average
     **/
-    _avg?: CompositionTypeIngredientAvgAggregateInputType
+    _avg?: CompositionTypeExtraAvgAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
      * Select which fields to sum
     **/
-    _sum?: CompositionTypeIngredientSumAggregateInputType
+    _sum?: CompositionTypeExtraSumAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
      * Select which fields to find the minimum value
     **/
-    _min?: CompositionTypeIngredientMinAggregateInputType
+    _min?: CompositionTypeExtraMinAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
      * Select which fields to find the maximum value
     **/
-    _max?: CompositionTypeIngredientMaxAggregateInputType
+    _max?: CompositionTypeExtraMaxAggregateInputType
   }
 
-  export type GetCompositionTypeIngredientAggregateType<T extends CompositionTypeIngredientAggregateArgs> = {
-        [P in keyof T & keyof AggregateCompositionTypeIngredient]: P extends '_count' | 'count'
+  export type GetCompositionTypeExtraAggregateType<T extends CompositionTypeExtraAggregateArgs> = {
+        [P in keyof T & keyof AggregateCompositionTypeExtra]: P extends '_count' | 'count'
       ? T[P] extends true
         ? number
-        : GetScalarType<T[P], AggregateCompositionTypeIngredient[P]>
-      : GetScalarType<T[P], AggregateCompositionTypeIngredient[P]>
+        : GetScalarType<T[P], AggregateCompositionTypeExtra[P]>
+      : GetScalarType<T[P], AggregateCompositionTypeExtra[P]>
   }
 
 
 
 
-  export type CompositionTypeIngredientGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: CompositionTypeIngredientWhereInput
-    orderBy?: CompositionTypeIngredientOrderByWithAggregationInput | CompositionTypeIngredientOrderByWithAggregationInput[]
-    by: CompositionTypeIngredientScalarFieldEnum[] | CompositionTypeIngredientScalarFieldEnum
-    having?: CompositionTypeIngredientScalarWhereWithAggregatesInput
+  export type CompositionTypeExtraGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CompositionTypeExtraWhereInput
+    orderBy?: CompositionTypeExtraOrderByWithAggregationInput | CompositionTypeExtraOrderByWithAggregationInput[]
+    by: CompositionTypeExtraScalarFieldEnum[] | CompositionTypeExtraScalarFieldEnum
+    having?: CompositionTypeExtraScalarWhereWithAggregatesInput
     take?: number
     skip?: number
-    _count?: CompositionTypeIngredientCountAggregateInputType | true
-    _avg?: CompositionTypeIngredientAvgAggregateInputType
-    _sum?: CompositionTypeIngredientSumAggregateInputType
-    _min?: CompositionTypeIngredientMinAggregateInputType
-    _max?: CompositionTypeIngredientMaxAggregateInputType
+    _count?: CompositionTypeExtraCountAggregateInputType | true
+    _avg?: CompositionTypeExtraAvgAggregateInputType
+    _sum?: CompositionTypeExtraSumAggregateInputType
+    _min?: CompositionTypeExtraMinAggregateInputType
+    _max?: CompositionTypeExtraMaxAggregateInputType
   }
 
-  export type CompositionTypeIngredientGroupByOutputType = {
+  export type CompositionTypeExtraGroupByOutputType = {
     compositionTypeId: string
-    ingredientId: string
+    extraId: string
     position: number
-    _count: CompositionTypeIngredientCountAggregateOutputType | null
-    _avg: CompositionTypeIngredientAvgAggregateOutputType | null
-    _sum: CompositionTypeIngredientSumAggregateOutputType | null
-    _min: CompositionTypeIngredientMinAggregateOutputType | null
-    _max: CompositionTypeIngredientMaxAggregateOutputType | null
+    _count: CompositionTypeExtraCountAggregateOutputType | null
+    _avg: CompositionTypeExtraAvgAggregateOutputType | null
+    _sum: CompositionTypeExtraSumAggregateOutputType | null
+    _min: CompositionTypeExtraMinAggregateOutputType | null
+    _max: CompositionTypeExtraMaxAggregateOutputType | null
   }
 
-  type GetCompositionTypeIngredientGroupByPayload<T extends CompositionTypeIngredientGroupByArgs> = Prisma.PrismaPromise<
+  type GetCompositionTypeExtraGroupByPayload<T extends CompositionTypeExtraGroupByArgs> = Prisma.PrismaPromise<
     Array<
-      PickEnumerable<CompositionTypeIngredientGroupByOutputType, T['by']> &
+      PickEnumerable<CompositionTypeExtraGroupByOutputType, T['by']> &
         {
-          [P in ((keyof T) & (keyof CompositionTypeIngredientGroupByOutputType))]: P extends '_count'
+          [P in ((keyof T) & (keyof CompositionTypeExtraGroupByOutputType))]: P extends '_count'
             ? T[P] extends boolean
               ? number
-              : GetScalarType<T[P], CompositionTypeIngredientGroupByOutputType[P]>
-            : GetScalarType<T[P], CompositionTypeIngredientGroupByOutputType[P]>
+              : GetScalarType<T[P], CompositionTypeExtraGroupByOutputType[P]>
+            : GetScalarType<T[P], CompositionTypeExtraGroupByOutputType[P]>
         }
       >
     >
 
 
-  export type CompositionTypeIngredientSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+  export type CompositionTypeExtraSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     compositionTypeId?: boolean
-    ingredientId?: boolean
+    extraId?: boolean
     position?: boolean
     compositionType?: boolean | CompositionTypeDefaultArgs<ExtArgs>
-    ingredient?: boolean | IngredientDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["compositionTypeIngredient"]>
+    extra?: boolean | ExtraDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["compositionTypeExtra"]>
 
-  export type CompositionTypeIngredientSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+  export type CompositionTypeExtraSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     compositionTypeId?: boolean
-    ingredientId?: boolean
+    extraId?: boolean
     position?: boolean
     compositionType?: boolean | CompositionTypeDefaultArgs<ExtArgs>
-    ingredient?: boolean | IngredientDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["compositionTypeIngredient"]>
+    extra?: boolean | ExtraDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["compositionTypeExtra"]>
 
-  export type CompositionTypeIngredientSelectScalar = {
+  export type CompositionTypeExtraSelectScalar = {
     compositionTypeId?: boolean
-    ingredientId?: boolean
+    extraId?: boolean
     position?: boolean
   }
 
-  export type CompositionTypeIngredientInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionTypeExtraInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     compositionType?: boolean | CompositionTypeDefaultArgs<ExtArgs>
-    ingredient?: boolean | IngredientDefaultArgs<ExtArgs>
+    extra?: boolean | ExtraDefaultArgs<ExtArgs>
   }
-  export type CompositionTypeIngredientIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionTypeExtraIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     compositionType?: boolean | CompositionTypeDefaultArgs<ExtArgs>
-    ingredient?: boolean | IngredientDefaultArgs<ExtArgs>
+    extra?: boolean | ExtraDefaultArgs<ExtArgs>
   }
 
-  export type $CompositionTypeIngredientPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    name: "CompositionTypeIngredient"
+  export type $CompositionTypeExtraPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "CompositionTypeExtra"
     objects: {
       compositionType: Prisma.$CompositionTypePayload<ExtArgs>
-      ingredient: Prisma.$IngredientPayload<ExtArgs>
+      extra: Prisma.$ExtraPayload<ExtArgs>
     }
     scalars: $Extensions.GetPayloadResult<{
       compositionTypeId: string
-      ingredientId: string
+      extraId: string
       position: number
-    }, ExtArgs["result"]["compositionTypeIngredient"]>
+    }, ExtArgs["result"]["compositionTypeExtra"]>
     composites: {}
   }
 
-  type CompositionTypeIngredientGetPayload<S extends boolean | null | undefined | CompositionTypeIngredientDefaultArgs> = $Result.GetResult<Prisma.$CompositionTypeIngredientPayload, S>
+  type CompositionTypeExtraGetPayload<S extends boolean | null | undefined | CompositionTypeExtraDefaultArgs> = $Result.GetResult<Prisma.$CompositionTypeExtraPayload, S>
 
-  type CompositionTypeIngredientCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
-    Omit<CompositionTypeIngredientFindManyArgs, 'select' | 'include' | 'distinct'> & {
-      select?: CompositionTypeIngredientCountAggregateInputType | true
+  type CompositionTypeExtraCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<CompositionTypeExtraFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: CompositionTypeExtraCountAggregateInputType | true
     }
 
-  export interface CompositionTypeIngredientDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
-    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CompositionTypeIngredient'], meta: { name: 'CompositionTypeIngredient' } }
+  export interface CompositionTypeExtraDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CompositionTypeExtra'], meta: { name: 'CompositionTypeExtra' } }
     /**
-     * Find zero or one CompositionTypeIngredient that matches the filter.
-     * @param {CompositionTypeIngredientFindUniqueArgs} args - Arguments to find a CompositionTypeIngredient
+     * Find zero or one CompositionTypeExtra that matches the filter.
+     * @param {CompositionTypeExtraFindUniqueArgs} args - Arguments to find a CompositionTypeExtra
      * @example
-     * // Get one CompositionTypeIngredient
-     * const compositionTypeIngredient = await prisma.compositionTypeIngredient.findUnique({
+     * // Get one CompositionTypeExtra
+     * const compositionTypeExtra = await prisma.compositionTypeExtra.findUnique({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      */
-    findUnique<T extends CompositionTypeIngredientFindUniqueArgs>(args: SelectSubset<T, CompositionTypeIngredientFindUniqueArgs<ExtArgs>>): Prisma__CompositionTypeIngredientClient<$Result.GetResult<Prisma.$CompositionTypeIngredientPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+    findUnique<T extends CompositionTypeExtraFindUniqueArgs>(args: SelectSubset<T, CompositionTypeExtraFindUniqueArgs<ExtArgs>>): Prisma__CompositionTypeExtraClient<$Result.GetResult<Prisma.$CompositionTypeExtraPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
 
     /**
-     * Find one CompositionTypeIngredient that matches the filter or throw an error with `error.code='P2025'` 
+     * Find one CompositionTypeExtra that matches the filter or throw an error with `error.code='P2025'` 
      * if no matches were found.
-     * @param {CompositionTypeIngredientFindUniqueOrThrowArgs} args - Arguments to find a CompositionTypeIngredient
+     * @param {CompositionTypeExtraFindUniqueOrThrowArgs} args - Arguments to find a CompositionTypeExtra
      * @example
-     * // Get one CompositionTypeIngredient
-     * const compositionTypeIngredient = await prisma.compositionTypeIngredient.findUniqueOrThrow({
+     * // Get one CompositionTypeExtra
+     * const compositionTypeExtra = await prisma.compositionTypeExtra.findUniqueOrThrow({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      */
-    findUniqueOrThrow<T extends CompositionTypeIngredientFindUniqueOrThrowArgs>(args: SelectSubset<T, CompositionTypeIngredientFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CompositionTypeIngredientClient<$Result.GetResult<Prisma.$CompositionTypeIngredientPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+    findUniqueOrThrow<T extends CompositionTypeExtraFindUniqueOrThrowArgs>(args: SelectSubset<T, CompositionTypeExtraFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CompositionTypeExtraClient<$Result.GetResult<Prisma.$CompositionTypeExtraPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
 
     /**
-     * Find the first CompositionTypeIngredient that matches the filter.
+     * Find the first CompositionTypeExtra that matches the filter.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {CompositionTypeIngredientFindFirstArgs} args - Arguments to find a CompositionTypeIngredient
+     * @param {CompositionTypeExtraFindFirstArgs} args - Arguments to find a CompositionTypeExtra
      * @example
-     * // Get one CompositionTypeIngredient
-     * const compositionTypeIngredient = await prisma.compositionTypeIngredient.findFirst({
+     * // Get one CompositionTypeExtra
+     * const compositionTypeExtra = await prisma.compositionTypeExtra.findFirst({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      */
-    findFirst<T extends CompositionTypeIngredientFindFirstArgs>(args?: SelectSubset<T, CompositionTypeIngredientFindFirstArgs<ExtArgs>>): Prisma__CompositionTypeIngredientClient<$Result.GetResult<Prisma.$CompositionTypeIngredientPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+    findFirst<T extends CompositionTypeExtraFindFirstArgs>(args?: SelectSubset<T, CompositionTypeExtraFindFirstArgs<ExtArgs>>): Prisma__CompositionTypeExtraClient<$Result.GetResult<Prisma.$CompositionTypeExtraPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
 
     /**
-     * Find the first CompositionTypeIngredient that matches the filter or
+     * Find the first CompositionTypeExtra that matches the filter or
      * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {CompositionTypeIngredientFindFirstOrThrowArgs} args - Arguments to find a CompositionTypeIngredient
+     * @param {CompositionTypeExtraFindFirstOrThrowArgs} args - Arguments to find a CompositionTypeExtra
      * @example
-     * // Get one CompositionTypeIngredient
-     * const compositionTypeIngredient = await prisma.compositionTypeIngredient.findFirstOrThrow({
+     * // Get one CompositionTypeExtra
+     * const compositionTypeExtra = await prisma.compositionTypeExtra.findFirstOrThrow({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      */
-    findFirstOrThrow<T extends CompositionTypeIngredientFindFirstOrThrowArgs>(args?: SelectSubset<T, CompositionTypeIngredientFindFirstOrThrowArgs<ExtArgs>>): Prisma__CompositionTypeIngredientClient<$Result.GetResult<Prisma.$CompositionTypeIngredientPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+    findFirstOrThrow<T extends CompositionTypeExtraFindFirstOrThrowArgs>(args?: SelectSubset<T, CompositionTypeExtraFindFirstOrThrowArgs<ExtArgs>>): Prisma__CompositionTypeExtraClient<$Result.GetResult<Prisma.$CompositionTypeExtraPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
 
     /**
-     * Find zero or more CompositionTypeIngredients that matches the filter.
+     * Find zero or more CompositionTypeExtras that matches the filter.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {CompositionTypeIngredientFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @param {CompositionTypeExtraFindManyArgs} args - Arguments to filter and select certain fields only.
      * @example
-     * // Get all CompositionTypeIngredients
-     * const compositionTypeIngredients = await prisma.compositionTypeIngredient.findMany()
+     * // Get all CompositionTypeExtras
+     * const compositionTypeExtras = await prisma.compositionTypeExtra.findMany()
      * 
-     * // Get first 10 CompositionTypeIngredients
-     * const compositionTypeIngredients = await prisma.compositionTypeIngredient.findMany({ take: 10 })
+     * // Get first 10 CompositionTypeExtras
+     * const compositionTypeExtras = await prisma.compositionTypeExtra.findMany({ take: 10 })
      * 
      * // Only select the `compositionTypeId`
-     * const compositionTypeIngredientWithCompositionTypeIdOnly = await prisma.compositionTypeIngredient.findMany({ select: { compositionTypeId: true } })
+     * const compositionTypeExtraWithCompositionTypeIdOnly = await prisma.compositionTypeExtra.findMany({ select: { compositionTypeId: true } })
      * 
      */
-    findMany<T extends CompositionTypeIngredientFindManyArgs>(args?: SelectSubset<T, CompositionTypeIngredientFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CompositionTypeIngredientPayload<ExtArgs>, T, "findMany">>
+    findMany<T extends CompositionTypeExtraFindManyArgs>(args?: SelectSubset<T, CompositionTypeExtraFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CompositionTypeExtraPayload<ExtArgs>, T, "findMany">>
 
     /**
-     * Create a CompositionTypeIngredient.
-     * @param {CompositionTypeIngredientCreateArgs} args - Arguments to create a CompositionTypeIngredient.
+     * Create a CompositionTypeExtra.
+     * @param {CompositionTypeExtraCreateArgs} args - Arguments to create a CompositionTypeExtra.
      * @example
-     * // Create one CompositionTypeIngredient
-     * const CompositionTypeIngredient = await prisma.compositionTypeIngredient.create({
+     * // Create one CompositionTypeExtra
+     * const CompositionTypeExtra = await prisma.compositionTypeExtra.create({
      *   data: {
-     *     // ... data to create a CompositionTypeIngredient
+     *     // ... data to create a CompositionTypeExtra
      *   }
      * })
      * 
      */
-    create<T extends CompositionTypeIngredientCreateArgs>(args: SelectSubset<T, CompositionTypeIngredientCreateArgs<ExtArgs>>): Prisma__CompositionTypeIngredientClient<$Result.GetResult<Prisma.$CompositionTypeIngredientPayload<ExtArgs>, T, "create">, never, ExtArgs>
+    create<T extends CompositionTypeExtraCreateArgs>(args: SelectSubset<T, CompositionTypeExtraCreateArgs<ExtArgs>>): Prisma__CompositionTypeExtraClient<$Result.GetResult<Prisma.$CompositionTypeExtraPayload<ExtArgs>, T, "create">, never, ExtArgs>
 
     /**
-     * Create many CompositionTypeIngredients.
-     * @param {CompositionTypeIngredientCreateManyArgs} args - Arguments to create many CompositionTypeIngredients.
+     * Create many CompositionTypeExtras.
+     * @param {CompositionTypeExtraCreateManyArgs} args - Arguments to create many CompositionTypeExtras.
      * @example
-     * // Create many CompositionTypeIngredients
-     * const compositionTypeIngredient = await prisma.compositionTypeIngredient.createMany({
+     * // Create many CompositionTypeExtras
+     * const compositionTypeExtra = await prisma.compositionTypeExtra.createMany({
      *   data: [
      *     // ... provide data here
      *   ]
      * })
      *     
      */
-    createMany<T extends CompositionTypeIngredientCreateManyArgs>(args?: SelectSubset<T, CompositionTypeIngredientCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+    createMany<T extends CompositionTypeExtraCreateManyArgs>(args?: SelectSubset<T, CompositionTypeExtraCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Create many CompositionTypeIngredients and returns the data saved in the database.
-     * @param {CompositionTypeIngredientCreateManyAndReturnArgs} args - Arguments to create many CompositionTypeIngredients.
+     * Create many CompositionTypeExtras and returns the data saved in the database.
+     * @param {CompositionTypeExtraCreateManyAndReturnArgs} args - Arguments to create many CompositionTypeExtras.
      * @example
-     * // Create many CompositionTypeIngredients
-     * const compositionTypeIngredient = await prisma.compositionTypeIngredient.createManyAndReturn({
+     * // Create many CompositionTypeExtras
+     * const compositionTypeExtra = await prisma.compositionTypeExtra.createManyAndReturn({
      *   data: [
      *     // ... provide data here
      *   ]
      * })
      * 
-     * // Create many CompositionTypeIngredients and only return the `compositionTypeId`
-     * const compositionTypeIngredientWithCompositionTypeIdOnly = await prisma.compositionTypeIngredient.createManyAndReturn({ 
+     * // Create many CompositionTypeExtras and only return the `compositionTypeId`
+     * const compositionTypeExtraWithCompositionTypeIdOnly = await prisma.compositionTypeExtra.createManyAndReturn({ 
      *   select: { compositionTypeId: true },
      *   data: [
      *     // ... provide data here
@@ -6612,28 +6612,28 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    createManyAndReturn<T extends CompositionTypeIngredientCreateManyAndReturnArgs>(args?: SelectSubset<T, CompositionTypeIngredientCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CompositionTypeIngredientPayload<ExtArgs>, T, "createManyAndReturn">>
+    createManyAndReturn<T extends CompositionTypeExtraCreateManyAndReturnArgs>(args?: SelectSubset<T, CompositionTypeExtraCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CompositionTypeExtraPayload<ExtArgs>, T, "createManyAndReturn">>
 
     /**
-     * Delete a CompositionTypeIngredient.
-     * @param {CompositionTypeIngredientDeleteArgs} args - Arguments to delete one CompositionTypeIngredient.
+     * Delete a CompositionTypeExtra.
+     * @param {CompositionTypeExtraDeleteArgs} args - Arguments to delete one CompositionTypeExtra.
      * @example
-     * // Delete one CompositionTypeIngredient
-     * const CompositionTypeIngredient = await prisma.compositionTypeIngredient.delete({
+     * // Delete one CompositionTypeExtra
+     * const CompositionTypeExtra = await prisma.compositionTypeExtra.delete({
      *   where: {
-     *     // ... filter to delete one CompositionTypeIngredient
+     *     // ... filter to delete one CompositionTypeExtra
      *   }
      * })
      * 
      */
-    delete<T extends CompositionTypeIngredientDeleteArgs>(args: SelectSubset<T, CompositionTypeIngredientDeleteArgs<ExtArgs>>): Prisma__CompositionTypeIngredientClient<$Result.GetResult<Prisma.$CompositionTypeIngredientPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+    delete<T extends CompositionTypeExtraDeleteArgs>(args: SelectSubset<T, CompositionTypeExtraDeleteArgs<ExtArgs>>): Prisma__CompositionTypeExtraClient<$Result.GetResult<Prisma.$CompositionTypeExtraPayload<ExtArgs>, T, "delete">, never, ExtArgs>
 
     /**
-     * Update one CompositionTypeIngredient.
-     * @param {CompositionTypeIngredientUpdateArgs} args - Arguments to update one CompositionTypeIngredient.
+     * Update one CompositionTypeExtra.
+     * @param {CompositionTypeExtraUpdateArgs} args - Arguments to update one CompositionTypeExtra.
      * @example
-     * // Update one CompositionTypeIngredient
-     * const compositionTypeIngredient = await prisma.compositionTypeIngredient.update({
+     * // Update one CompositionTypeExtra
+     * const compositionTypeExtra = await prisma.compositionTypeExtra.update({
      *   where: {
      *     // ... provide filter here
      *   },
@@ -6643,30 +6643,30 @@ export namespace Prisma {
      * })
      * 
      */
-    update<T extends CompositionTypeIngredientUpdateArgs>(args: SelectSubset<T, CompositionTypeIngredientUpdateArgs<ExtArgs>>): Prisma__CompositionTypeIngredientClient<$Result.GetResult<Prisma.$CompositionTypeIngredientPayload<ExtArgs>, T, "update">, never, ExtArgs>
+    update<T extends CompositionTypeExtraUpdateArgs>(args: SelectSubset<T, CompositionTypeExtraUpdateArgs<ExtArgs>>): Prisma__CompositionTypeExtraClient<$Result.GetResult<Prisma.$CompositionTypeExtraPayload<ExtArgs>, T, "update">, never, ExtArgs>
 
     /**
-     * Delete zero or more CompositionTypeIngredients.
-     * @param {CompositionTypeIngredientDeleteManyArgs} args - Arguments to filter CompositionTypeIngredients to delete.
+     * Delete zero or more CompositionTypeExtras.
+     * @param {CompositionTypeExtraDeleteManyArgs} args - Arguments to filter CompositionTypeExtras to delete.
      * @example
-     * // Delete a few CompositionTypeIngredients
-     * const { count } = await prisma.compositionTypeIngredient.deleteMany({
+     * // Delete a few CompositionTypeExtras
+     * const { count } = await prisma.compositionTypeExtra.deleteMany({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      * 
      */
-    deleteMany<T extends CompositionTypeIngredientDeleteManyArgs>(args?: SelectSubset<T, CompositionTypeIngredientDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+    deleteMany<T extends CompositionTypeExtraDeleteManyArgs>(args?: SelectSubset<T, CompositionTypeExtraDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Update zero or more CompositionTypeIngredients.
+     * Update zero or more CompositionTypeExtras.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {CompositionTypeIngredientUpdateManyArgs} args - Arguments to update one or more rows.
+     * @param {CompositionTypeExtraUpdateManyArgs} args - Arguments to update one or more rows.
      * @example
-     * // Update many CompositionTypeIngredients
-     * const compositionTypeIngredient = await prisma.compositionTypeIngredient.updateMany({
+     * // Update many CompositionTypeExtras
+     * const compositionTypeExtra = await prisma.compositionTypeExtra.updateMany({
      *   where: {
      *     // ... provide filter here
      *   },
@@ -6676,56 +6676,56 @@ export namespace Prisma {
      * })
      * 
      */
-    updateMany<T extends CompositionTypeIngredientUpdateManyArgs>(args: SelectSubset<T, CompositionTypeIngredientUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+    updateMany<T extends CompositionTypeExtraUpdateManyArgs>(args: SelectSubset<T, CompositionTypeExtraUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Create or update one CompositionTypeIngredient.
-     * @param {CompositionTypeIngredientUpsertArgs} args - Arguments to update or create a CompositionTypeIngredient.
+     * Create or update one CompositionTypeExtra.
+     * @param {CompositionTypeExtraUpsertArgs} args - Arguments to update or create a CompositionTypeExtra.
      * @example
-     * // Update or create a CompositionTypeIngredient
-     * const compositionTypeIngredient = await prisma.compositionTypeIngredient.upsert({
+     * // Update or create a CompositionTypeExtra
+     * const compositionTypeExtra = await prisma.compositionTypeExtra.upsert({
      *   create: {
-     *     // ... data to create a CompositionTypeIngredient
+     *     // ... data to create a CompositionTypeExtra
      *   },
      *   update: {
      *     // ... in case it already exists, update
      *   },
      *   where: {
-     *     // ... the filter for the CompositionTypeIngredient we want to update
+     *     // ... the filter for the CompositionTypeExtra we want to update
      *   }
      * })
      */
-    upsert<T extends CompositionTypeIngredientUpsertArgs>(args: SelectSubset<T, CompositionTypeIngredientUpsertArgs<ExtArgs>>): Prisma__CompositionTypeIngredientClient<$Result.GetResult<Prisma.$CompositionTypeIngredientPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+    upsert<T extends CompositionTypeExtraUpsertArgs>(args: SelectSubset<T, CompositionTypeExtraUpsertArgs<ExtArgs>>): Prisma__CompositionTypeExtraClient<$Result.GetResult<Prisma.$CompositionTypeExtraPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
 
 
     /**
-     * Count the number of CompositionTypeIngredients.
+     * Count the number of CompositionTypeExtras.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {CompositionTypeIngredientCountArgs} args - Arguments to filter CompositionTypeIngredients to count.
+     * @param {CompositionTypeExtraCountArgs} args - Arguments to filter CompositionTypeExtras to count.
      * @example
-     * // Count the number of CompositionTypeIngredients
-     * const count = await prisma.compositionTypeIngredient.count({
+     * // Count the number of CompositionTypeExtras
+     * const count = await prisma.compositionTypeExtra.count({
      *   where: {
-     *     // ... the filter for the CompositionTypeIngredients we want to count
+     *     // ... the filter for the CompositionTypeExtras we want to count
      *   }
      * })
     **/
-    count<T extends CompositionTypeIngredientCountArgs>(
-      args?: Subset<T, CompositionTypeIngredientCountArgs>,
+    count<T extends CompositionTypeExtraCountArgs>(
+      args?: Subset<T, CompositionTypeExtraCountArgs>,
     ): Prisma.PrismaPromise<
       T extends $Utils.Record<'select', any>
         ? T['select'] extends true
           ? number
-          : GetScalarType<T['select'], CompositionTypeIngredientCountAggregateOutputType>
+          : GetScalarType<T['select'], CompositionTypeExtraCountAggregateOutputType>
         : number
     >
 
     /**
-     * Allows you to perform aggregations operations on a CompositionTypeIngredient.
+     * Allows you to perform aggregations operations on a CompositionTypeExtra.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {CompositionTypeIngredientAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @param {CompositionTypeExtraAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
      * @example
      * // Ordered by age ascending
      * // Where email contains prisma.io
@@ -6745,13 +6745,13 @@ export namespace Prisma {
      *   take: 10,
      * })
     **/
-    aggregate<T extends CompositionTypeIngredientAggregateArgs>(args: Subset<T, CompositionTypeIngredientAggregateArgs>): Prisma.PrismaPromise<GetCompositionTypeIngredientAggregateType<T>>
+    aggregate<T extends CompositionTypeExtraAggregateArgs>(args: Subset<T, CompositionTypeExtraAggregateArgs>): Prisma.PrismaPromise<GetCompositionTypeExtraAggregateType<T>>
 
     /**
-     * Group by CompositionTypeIngredient.
+     * Group by CompositionTypeExtra.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {CompositionTypeIngredientGroupByArgs} args - Group by arguments.
+     * @param {CompositionTypeExtraGroupByArgs} args - Group by arguments.
      * @example
      * // Group by city, order by createdAt, get count
      * const result = await prisma.user.groupBy({
@@ -6766,14 +6766,14 @@ export namespace Prisma {
      * 
     **/
     groupBy<
-      T extends CompositionTypeIngredientGroupByArgs,
+      T extends CompositionTypeExtraGroupByArgs,
       HasSelectOrTake extends Or<
         Extends<'skip', Keys<T>>,
         Extends<'take', Keys<T>>
       >,
       OrderByArg extends True extends HasSelectOrTake
-        ? { orderBy: CompositionTypeIngredientGroupByArgs['orderBy'] }
-        : { orderBy?: CompositionTypeIngredientGroupByArgs['orderBy'] },
+        ? { orderBy: CompositionTypeExtraGroupByArgs['orderBy'] }
+        : { orderBy?: CompositionTypeExtraGroupByArgs['orderBy'] },
       OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
       ByFields extends MaybeTupleToUnion<T['by']>,
       ByValid extends Has<ByFields, OrderFields>,
@@ -6822,23 +6822,23 @@ export namespace Prisma {
             ? never
             : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
         }[OrderFields]
-    >(args: SubsetIntersection<T, CompositionTypeIngredientGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCompositionTypeIngredientGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+    >(args: SubsetIntersection<T, CompositionTypeExtraGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCompositionTypeExtraGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
   /**
-   * Fields of the CompositionTypeIngredient model
+   * Fields of the CompositionTypeExtra model
    */
-  readonly fields: CompositionTypeIngredientFieldRefs;
+  readonly fields: CompositionTypeExtraFieldRefs;
   }
 
   /**
-   * The delegate class that acts as a "Promise-like" for CompositionTypeIngredient.
+   * The delegate class that acts as a "Promise-like" for CompositionTypeExtra.
    * Why is this prefixed with `Prisma__`?
    * Because we want to prevent naming conflicts as mentioned in
    * https://github.com/prisma/prisma-client-js/issues/707
    */
-  export interface Prisma__CompositionTypeIngredientClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+  export interface Prisma__CompositionTypeExtraClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     compositionType<T extends CompositionTypeDefaultArgs<ExtArgs> = {}>(args?: Subset<T, CompositionTypeDefaultArgs<ExtArgs>>): Prisma__CompositionTypeClient<$Result.GetResult<Prisma.$CompositionTypePayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
-    ingredient<T extends IngredientDefaultArgs<ExtArgs> = {}>(args?: Subset<T, IngredientDefaultArgs<ExtArgs>>): Prisma__IngredientClient<$Result.GetResult<Prisma.$IngredientPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    extra<T extends ExtraDefaultArgs<ExtArgs> = {}>(args?: Subset<T, ExtraDefaultArgs<ExtArgs>>): Prisma__ExtraClient<$Result.GetResult<Prisma.$ExtraPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -6865,341 +6865,341 @@ export namespace Prisma {
 
 
   /**
-   * Fields of the CompositionTypeIngredient model
+   * Fields of the CompositionTypeExtra model
    */ 
-  interface CompositionTypeIngredientFieldRefs {
-    readonly compositionTypeId: FieldRef<"CompositionTypeIngredient", 'String'>
-    readonly ingredientId: FieldRef<"CompositionTypeIngredient", 'String'>
-    readonly position: FieldRef<"CompositionTypeIngredient", 'Int'>
+  interface CompositionTypeExtraFieldRefs {
+    readonly compositionTypeId: FieldRef<"CompositionTypeExtra", 'String'>
+    readonly extraId: FieldRef<"CompositionTypeExtra", 'String'>
+    readonly position: FieldRef<"CompositionTypeExtra", 'Int'>
   }
     
 
   // Custom InputTypes
   /**
-   * CompositionTypeIngredient findUnique
+   * CompositionTypeExtra findUnique
    */
-  export type CompositionTypeIngredientFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionTypeExtraFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the CompositionTypeIngredient
+     * Select specific fields to fetch from the CompositionTypeExtra
      */
-    select?: CompositionTypeIngredientSelect<ExtArgs> | null
+    select?: CompositionTypeExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: CompositionTypeIngredientInclude<ExtArgs> | null
+    include?: CompositionTypeExtraInclude<ExtArgs> | null
     /**
-     * Filter, which CompositionTypeIngredient to fetch.
+     * Filter, which CompositionTypeExtra to fetch.
      */
-    where: CompositionTypeIngredientWhereUniqueInput
+    where: CompositionTypeExtraWhereUniqueInput
   }
 
   /**
-   * CompositionTypeIngredient findUniqueOrThrow
+   * CompositionTypeExtra findUniqueOrThrow
    */
-  export type CompositionTypeIngredientFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionTypeExtraFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the CompositionTypeIngredient
+     * Select specific fields to fetch from the CompositionTypeExtra
      */
-    select?: CompositionTypeIngredientSelect<ExtArgs> | null
+    select?: CompositionTypeExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: CompositionTypeIngredientInclude<ExtArgs> | null
+    include?: CompositionTypeExtraInclude<ExtArgs> | null
     /**
-     * Filter, which CompositionTypeIngredient to fetch.
+     * Filter, which CompositionTypeExtra to fetch.
      */
-    where: CompositionTypeIngredientWhereUniqueInput
+    where: CompositionTypeExtraWhereUniqueInput
   }
 
   /**
-   * CompositionTypeIngredient findFirst
+   * CompositionTypeExtra findFirst
    */
-  export type CompositionTypeIngredientFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionTypeExtraFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the CompositionTypeIngredient
+     * Select specific fields to fetch from the CompositionTypeExtra
      */
-    select?: CompositionTypeIngredientSelect<ExtArgs> | null
+    select?: CompositionTypeExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: CompositionTypeIngredientInclude<ExtArgs> | null
+    include?: CompositionTypeExtraInclude<ExtArgs> | null
     /**
-     * Filter, which CompositionTypeIngredient to fetch.
+     * Filter, which CompositionTypeExtra to fetch.
      */
-    where?: CompositionTypeIngredientWhereInput
+    where?: CompositionTypeExtraWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
      * 
-     * Determine the order of CompositionTypeIngredients to fetch.
+     * Determine the order of CompositionTypeExtras to fetch.
      */
-    orderBy?: CompositionTypeIngredientOrderByWithRelationInput | CompositionTypeIngredientOrderByWithRelationInput[]
+    orderBy?: CompositionTypeExtraOrderByWithRelationInput | CompositionTypeExtraOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
      * 
-     * Sets the position for searching for CompositionTypeIngredients.
+     * Sets the position for searching for CompositionTypeExtras.
      */
-    cursor?: CompositionTypeIngredientWhereUniqueInput
+    cursor?: CompositionTypeExtraWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Take `±n` CompositionTypeIngredients from the position of the cursor.
+     * Take `±n` CompositionTypeExtras from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Skip the first `n` CompositionTypeIngredients.
+     * Skip the first `n` CompositionTypeExtras.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
      * 
-     * Filter by unique combinations of CompositionTypeIngredients.
+     * Filter by unique combinations of CompositionTypeExtras.
      */
-    distinct?: CompositionTypeIngredientScalarFieldEnum | CompositionTypeIngredientScalarFieldEnum[]
+    distinct?: CompositionTypeExtraScalarFieldEnum | CompositionTypeExtraScalarFieldEnum[]
   }
 
   /**
-   * CompositionTypeIngredient findFirstOrThrow
+   * CompositionTypeExtra findFirstOrThrow
    */
-  export type CompositionTypeIngredientFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionTypeExtraFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the CompositionTypeIngredient
+     * Select specific fields to fetch from the CompositionTypeExtra
      */
-    select?: CompositionTypeIngredientSelect<ExtArgs> | null
+    select?: CompositionTypeExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: CompositionTypeIngredientInclude<ExtArgs> | null
+    include?: CompositionTypeExtraInclude<ExtArgs> | null
     /**
-     * Filter, which CompositionTypeIngredient to fetch.
+     * Filter, which CompositionTypeExtra to fetch.
      */
-    where?: CompositionTypeIngredientWhereInput
+    where?: CompositionTypeExtraWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
      * 
-     * Determine the order of CompositionTypeIngredients to fetch.
+     * Determine the order of CompositionTypeExtras to fetch.
      */
-    orderBy?: CompositionTypeIngredientOrderByWithRelationInput | CompositionTypeIngredientOrderByWithRelationInput[]
+    orderBy?: CompositionTypeExtraOrderByWithRelationInput | CompositionTypeExtraOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
      * 
-     * Sets the position for searching for CompositionTypeIngredients.
+     * Sets the position for searching for CompositionTypeExtras.
      */
-    cursor?: CompositionTypeIngredientWhereUniqueInput
+    cursor?: CompositionTypeExtraWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Take `±n` CompositionTypeIngredients from the position of the cursor.
+     * Take `±n` CompositionTypeExtras from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Skip the first `n` CompositionTypeIngredients.
+     * Skip the first `n` CompositionTypeExtras.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
      * 
-     * Filter by unique combinations of CompositionTypeIngredients.
+     * Filter by unique combinations of CompositionTypeExtras.
      */
-    distinct?: CompositionTypeIngredientScalarFieldEnum | CompositionTypeIngredientScalarFieldEnum[]
+    distinct?: CompositionTypeExtraScalarFieldEnum | CompositionTypeExtraScalarFieldEnum[]
   }
 
   /**
-   * CompositionTypeIngredient findMany
+   * CompositionTypeExtra findMany
    */
-  export type CompositionTypeIngredientFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionTypeExtraFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the CompositionTypeIngredient
+     * Select specific fields to fetch from the CompositionTypeExtra
      */
-    select?: CompositionTypeIngredientSelect<ExtArgs> | null
+    select?: CompositionTypeExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: CompositionTypeIngredientInclude<ExtArgs> | null
+    include?: CompositionTypeExtraInclude<ExtArgs> | null
     /**
-     * Filter, which CompositionTypeIngredients to fetch.
+     * Filter, which CompositionTypeExtras to fetch.
      */
-    where?: CompositionTypeIngredientWhereInput
+    where?: CompositionTypeExtraWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
      * 
-     * Determine the order of CompositionTypeIngredients to fetch.
+     * Determine the order of CompositionTypeExtras to fetch.
      */
-    orderBy?: CompositionTypeIngredientOrderByWithRelationInput | CompositionTypeIngredientOrderByWithRelationInput[]
+    orderBy?: CompositionTypeExtraOrderByWithRelationInput | CompositionTypeExtraOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
      * 
-     * Sets the position for listing CompositionTypeIngredients.
+     * Sets the position for listing CompositionTypeExtras.
      */
-    cursor?: CompositionTypeIngredientWhereUniqueInput
+    cursor?: CompositionTypeExtraWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Take `±n` CompositionTypeIngredients from the position of the cursor.
+     * Take `±n` CompositionTypeExtras from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Skip the first `n` CompositionTypeIngredients.
+     * Skip the first `n` CompositionTypeExtras.
      */
     skip?: number
-    distinct?: CompositionTypeIngredientScalarFieldEnum | CompositionTypeIngredientScalarFieldEnum[]
+    distinct?: CompositionTypeExtraScalarFieldEnum | CompositionTypeExtraScalarFieldEnum[]
   }
 
   /**
-   * CompositionTypeIngredient create
+   * CompositionTypeExtra create
    */
-  export type CompositionTypeIngredientCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionTypeExtraCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the CompositionTypeIngredient
+     * Select specific fields to fetch from the CompositionTypeExtra
      */
-    select?: CompositionTypeIngredientSelect<ExtArgs> | null
+    select?: CompositionTypeExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: CompositionTypeIngredientInclude<ExtArgs> | null
+    include?: CompositionTypeExtraInclude<ExtArgs> | null
     /**
-     * The data needed to create a CompositionTypeIngredient.
+     * The data needed to create a CompositionTypeExtra.
      */
-    data: XOR<CompositionTypeIngredientCreateInput, CompositionTypeIngredientUncheckedCreateInput>
+    data: XOR<CompositionTypeExtraCreateInput, CompositionTypeExtraUncheckedCreateInput>
   }
 
   /**
-   * CompositionTypeIngredient createMany
+   * CompositionTypeExtra createMany
    */
-  export type CompositionTypeIngredientCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionTypeExtraCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * The data used to create many CompositionTypeIngredients.
+     * The data used to create many CompositionTypeExtras.
      */
-    data: CompositionTypeIngredientCreateManyInput | CompositionTypeIngredientCreateManyInput[]
+    data: CompositionTypeExtraCreateManyInput | CompositionTypeExtraCreateManyInput[]
     skipDuplicates?: boolean
   }
 
   /**
-   * CompositionTypeIngredient createManyAndReturn
+   * CompositionTypeExtra createManyAndReturn
    */
-  export type CompositionTypeIngredientCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionTypeExtraCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the CompositionTypeIngredient
+     * Select specific fields to fetch from the CompositionTypeExtra
      */
-    select?: CompositionTypeIngredientSelectCreateManyAndReturn<ExtArgs> | null
+    select?: CompositionTypeExtraSelectCreateManyAndReturn<ExtArgs> | null
     /**
-     * The data used to create many CompositionTypeIngredients.
+     * The data used to create many CompositionTypeExtras.
      */
-    data: CompositionTypeIngredientCreateManyInput | CompositionTypeIngredientCreateManyInput[]
+    data: CompositionTypeExtraCreateManyInput | CompositionTypeExtraCreateManyInput[]
     skipDuplicates?: boolean
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: CompositionTypeIngredientIncludeCreateManyAndReturn<ExtArgs> | null
+    include?: CompositionTypeExtraIncludeCreateManyAndReturn<ExtArgs> | null
   }
 
   /**
-   * CompositionTypeIngredient update
+   * CompositionTypeExtra update
    */
-  export type CompositionTypeIngredientUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionTypeExtraUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the CompositionTypeIngredient
+     * Select specific fields to fetch from the CompositionTypeExtra
      */
-    select?: CompositionTypeIngredientSelect<ExtArgs> | null
+    select?: CompositionTypeExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: CompositionTypeIngredientInclude<ExtArgs> | null
+    include?: CompositionTypeExtraInclude<ExtArgs> | null
     /**
-     * The data needed to update a CompositionTypeIngredient.
+     * The data needed to update a CompositionTypeExtra.
      */
-    data: XOR<CompositionTypeIngredientUpdateInput, CompositionTypeIngredientUncheckedUpdateInput>
+    data: XOR<CompositionTypeExtraUpdateInput, CompositionTypeExtraUncheckedUpdateInput>
     /**
-     * Choose, which CompositionTypeIngredient to update.
+     * Choose, which CompositionTypeExtra to update.
      */
-    where: CompositionTypeIngredientWhereUniqueInput
+    where: CompositionTypeExtraWhereUniqueInput
   }
 
   /**
-   * CompositionTypeIngredient updateMany
+   * CompositionTypeExtra updateMany
    */
-  export type CompositionTypeIngredientUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionTypeExtraUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * The data used to update CompositionTypeIngredients.
+     * The data used to update CompositionTypeExtras.
      */
-    data: XOR<CompositionTypeIngredientUpdateManyMutationInput, CompositionTypeIngredientUncheckedUpdateManyInput>
+    data: XOR<CompositionTypeExtraUpdateManyMutationInput, CompositionTypeExtraUncheckedUpdateManyInput>
     /**
-     * Filter which CompositionTypeIngredients to update
+     * Filter which CompositionTypeExtras to update
      */
-    where?: CompositionTypeIngredientWhereInput
+    where?: CompositionTypeExtraWhereInput
   }
 
   /**
-   * CompositionTypeIngredient upsert
+   * CompositionTypeExtra upsert
    */
-  export type CompositionTypeIngredientUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionTypeExtraUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the CompositionTypeIngredient
+     * Select specific fields to fetch from the CompositionTypeExtra
      */
-    select?: CompositionTypeIngredientSelect<ExtArgs> | null
+    select?: CompositionTypeExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: CompositionTypeIngredientInclude<ExtArgs> | null
+    include?: CompositionTypeExtraInclude<ExtArgs> | null
     /**
-     * The filter to search for the CompositionTypeIngredient to update in case it exists.
+     * The filter to search for the CompositionTypeExtra to update in case it exists.
      */
-    where: CompositionTypeIngredientWhereUniqueInput
+    where: CompositionTypeExtraWhereUniqueInput
     /**
-     * In case the CompositionTypeIngredient found by the `where` argument doesn't exist, create a new CompositionTypeIngredient with this data.
+     * In case the CompositionTypeExtra found by the `where` argument doesn't exist, create a new CompositionTypeExtra with this data.
      */
-    create: XOR<CompositionTypeIngredientCreateInput, CompositionTypeIngredientUncheckedCreateInput>
+    create: XOR<CompositionTypeExtraCreateInput, CompositionTypeExtraUncheckedCreateInput>
     /**
-     * In case the CompositionTypeIngredient was found with the provided `where` argument, update it with this data.
+     * In case the CompositionTypeExtra was found with the provided `where` argument, update it with this data.
      */
-    update: XOR<CompositionTypeIngredientUpdateInput, CompositionTypeIngredientUncheckedUpdateInput>
+    update: XOR<CompositionTypeExtraUpdateInput, CompositionTypeExtraUncheckedUpdateInput>
   }
 
   /**
-   * CompositionTypeIngredient delete
+   * CompositionTypeExtra delete
    */
-  export type CompositionTypeIngredientDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionTypeExtraDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the CompositionTypeIngredient
+     * Select specific fields to fetch from the CompositionTypeExtra
      */
-    select?: CompositionTypeIngredientSelect<ExtArgs> | null
+    select?: CompositionTypeExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: CompositionTypeIngredientInclude<ExtArgs> | null
+    include?: CompositionTypeExtraInclude<ExtArgs> | null
     /**
-     * Filter which CompositionTypeIngredient to delete.
+     * Filter which CompositionTypeExtra to delete.
      */
-    where: CompositionTypeIngredientWhereUniqueInput
+    where: CompositionTypeExtraWhereUniqueInput
   }
 
   /**
-   * CompositionTypeIngredient deleteMany
+   * CompositionTypeExtra deleteMany
    */
-  export type CompositionTypeIngredientDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionTypeExtraDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Filter which CompositionTypeIngredients to delete
+     * Filter which CompositionTypeExtras to delete
      */
-    where?: CompositionTypeIngredientWhereInput
+    where?: CompositionTypeExtraWhereInput
   }
 
   /**
-   * CompositionTypeIngredient without action
+   * CompositionTypeExtra without action
    */
-  export type CompositionTypeIngredientDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type CompositionTypeExtraDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the CompositionTypeIngredient
+     * Select specific fields to fetch from the CompositionTypeExtra
      */
-    select?: CompositionTypeIngredientSelect<ExtArgs> | null
+    select?: CompositionTypeExtraSelect<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: CompositionTypeIngredientInclude<ExtArgs> | null
+    include?: CompositionTypeExtraInclude<ExtArgs> | null
   }
 
 
@@ -8543,7 +8543,7 @@ export namespace Prisma {
       description: string | null
       image: string | null
       /**
-       * SIMPLE = sold as one item with optional `modifiers` JSON. COMPOSED = built from composition steps (`ProductComposition` → ingredient picks per step).
+       * SIMPLE = sold as one item with optional `modifiers` JSON. COMPOSED = built from composition steps (`ProductComposition` → extra picks per step).
        */
       kind: $Enums.ProductKind
       /**
@@ -14507,7 +14507,7 @@ export namespace Prisma {
   export type CategoryScalarFieldEnum = (typeof CategoryScalarFieldEnum)[keyof typeof CategoryScalarFieldEnum]
 
 
-  export const IngredientScalarFieldEnum: {
+  export const ExtraScalarFieldEnum: {
     id: 'id',
     name: 'name',
     image: 'image',
@@ -14519,7 +14519,7 @@ export namespace Prisma {
     createdAt: 'createdAt'
   };
 
-  export type IngredientScalarFieldEnum = (typeof IngredientScalarFieldEnum)[keyof typeof IngredientScalarFieldEnum]
+  export type ExtraScalarFieldEnum = (typeof ExtraScalarFieldEnum)[keyof typeof ExtraScalarFieldEnum]
 
 
   export const CompositionTypeScalarFieldEnum: {
@@ -14540,13 +14540,13 @@ export namespace Prisma {
   export type CompositionTypeScalarFieldEnum = (typeof CompositionTypeScalarFieldEnum)[keyof typeof CompositionTypeScalarFieldEnum]
 
 
-  export const CompositionTypeIngredientScalarFieldEnum: {
+  export const CompositionTypeExtraScalarFieldEnum: {
     compositionTypeId: 'compositionTypeId',
-    ingredientId: 'ingredientId',
+    extraId: 'extraId',
     position: 'position'
   };
 
-  export type CompositionTypeIngredientScalarFieldEnum = (typeof CompositionTypeIngredientScalarFieldEnum)[keyof typeof CompositionTypeIngredientScalarFieldEnum]
+  export type CompositionTypeExtraScalarFieldEnum = (typeof CompositionTypeExtraScalarFieldEnum)[keyof typeof CompositionTypeExtraScalarFieldEnum]
 
 
   export const ProductCompositionScalarFieldEnum: {
@@ -14968,23 +14968,23 @@ export namespace Prisma {
     createdAt?: DateTimeWithAggregatesFilter<"Category"> | Date | string
   }
 
-  export type IngredientWhereInput = {
-    AND?: IngredientWhereInput | IngredientWhereInput[]
-    OR?: IngredientWhereInput[]
-    NOT?: IngredientWhereInput | IngredientWhereInput[]
-    id?: StringFilter<"Ingredient"> | string
-    name?: StringFilter<"Ingredient"> | string
-    image?: StringNullableFilter<"Ingredient"> | string | null
-    price?: IntFilter<"Ingredient"> | number
-    suppPrice?: IntFilter<"Ingredient"> | number
-    outOfStock?: BoolFilter<"Ingredient"> | boolean
-    visible?: BoolFilter<"Ingredient"> | boolean
-    sortOrder?: IntFilter<"Ingredient"> | number
-    createdAt?: DateTimeFilter<"Ingredient"> | Date | string
-    typeLinks?: CompositionTypeIngredientListRelationFilter
+  export type ExtraWhereInput = {
+    AND?: ExtraWhereInput | ExtraWhereInput[]
+    OR?: ExtraWhereInput[]
+    NOT?: ExtraWhereInput | ExtraWhereInput[]
+    id?: StringFilter<"Extra"> | string
+    name?: StringFilter<"Extra"> | string
+    image?: StringNullableFilter<"Extra"> | string | null
+    price?: IntFilter<"Extra"> | number
+    suppPrice?: IntFilter<"Extra"> | number
+    outOfStock?: BoolFilter<"Extra"> | boolean
+    visible?: BoolFilter<"Extra"> | boolean
+    sortOrder?: IntFilter<"Extra"> | number
+    createdAt?: DateTimeFilter<"Extra"> | Date | string
+    typeLinks?: CompositionTypeExtraListRelationFilter
   }
 
-  export type IngredientOrderByWithRelationInput = {
+  export type ExtraOrderByWithRelationInput = {
     id?: SortOrder
     name?: SortOrder
     image?: SortOrderInput | SortOrder
@@ -14994,26 +14994,26 @@ export namespace Prisma {
     visible?: SortOrder
     sortOrder?: SortOrder
     createdAt?: SortOrder
-    typeLinks?: CompositionTypeIngredientOrderByRelationAggregateInput
+    typeLinks?: CompositionTypeExtraOrderByRelationAggregateInput
   }
 
-  export type IngredientWhereUniqueInput = Prisma.AtLeast<{
+  export type ExtraWhereUniqueInput = Prisma.AtLeast<{
     id?: string
-    AND?: IngredientWhereInput | IngredientWhereInput[]
-    OR?: IngredientWhereInput[]
-    NOT?: IngredientWhereInput | IngredientWhereInput[]
-    name?: StringFilter<"Ingredient"> | string
-    image?: StringNullableFilter<"Ingredient"> | string | null
-    price?: IntFilter<"Ingredient"> | number
-    suppPrice?: IntFilter<"Ingredient"> | number
-    outOfStock?: BoolFilter<"Ingredient"> | boolean
-    visible?: BoolFilter<"Ingredient"> | boolean
-    sortOrder?: IntFilter<"Ingredient"> | number
-    createdAt?: DateTimeFilter<"Ingredient"> | Date | string
-    typeLinks?: CompositionTypeIngredientListRelationFilter
+    AND?: ExtraWhereInput | ExtraWhereInput[]
+    OR?: ExtraWhereInput[]
+    NOT?: ExtraWhereInput | ExtraWhereInput[]
+    name?: StringFilter<"Extra"> | string
+    image?: StringNullableFilter<"Extra"> | string | null
+    price?: IntFilter<"Extra"> | number
+    suppPrice?: IntFilter<"Extra"> | number
+    outOfStock?: BoolFilter<"Extra"> | boolean
+    visible?: BoolFilter<"Extra"> | boolean
+    sortOrder?: IntFilter<"Extra"> | number
+    createdAt?: DateTimeFilter<"Extra"> | Date | string
+    typeLinks?: CompositionTypeExtraListRelationFilter
   }, "id">
 
-  export type IngredientOrderByWithAggregationInput = {
+  export type ExtraOrderByWithAggregationInput = {
     id?: SortOrder
     name?: SortOrder
     image?: SortOrderInput | SortOrder
@@ -15023,26 +15023,26 @@ export namespace Prisma {
     visible?: SortOrder
     sortOrder?: SortOrder
     createdAt?: SortOrder
-    _count?: IngredientCountOrderByAggregateInput
-    _avg?: IngredientAvgOrderByAggregateInput
-    _max?: IngredientMaxOrderByAggregateInput
-    _min?: IngredientMinOrderByAggregateInput
-    _sum?: IngredientSumOrderByAggregateInput
+    _count?: ExtraCountOrderByAggregateInput
+    _avg?: ExtraAvgOrderByAggregateInput
+    _max?: ExtraMaxOrderByAggregateInput
+    _min?: ExtraMinOrderByAggregateInput
+    _sum?: ExtraSumOrderByAggregateInput
   }
 
-  export type IngredientScalarWhereWithAggregatesInput = {
-    AND?: IngredientScalarWhereWithAggregatesInput | IngredientScalarWhereWithAggregatesInput[]
-    OR?: IngredientScalarWhereWithAggregatesInput[]
-    NOT?: IngredientScalarWhereWithAggregatesInput | IngredientScalarWhereWithAggregatesInput[]
-    id?: StringWithAggregatesFilter<"Ingredient"> | string
-    name?: StringWithAggregatesFilter<"Ingredient"> | string
-    image?: StringNullableWithAggregatesFilter<"Ingredient"> | string | null
-    price?: IntWithAggregatesFilter<"Ingredient"> | number
-    suppPrice?: IntWithAggregatesFilter<"Ingredient"> | number
-    outOfStock?: BoolWithAggregatesFilter<"Ingredient"> | boolean
-    visible?: BoolWithAggregatesFilter<"Ingredient"> | boolean
-    sortOrder?: IntWithAggregatesFilter<"Ingredient"> | number
-    createdAt?: DateTimeWithAggregatesFilter<"Ingredient"> | Date | string
+  export type ExtraScalarWhereWithAggregatesInput = {
+    AND?: ExtraScalarWhereWithAggregatesInput | ExtraScalarWhereWithAggregatesInput[]
+    OR?: ExtraScalarWhereWithAggregatesInput[]
+    NOT?: ExtraScalarWhereWithAggregatesInput | ExtraScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"Extra"> | string
+    name?: StringWithAggregatesFilter<"Extra"> | string
+    image?: StringNullableWithAggregatesFilter<"Extra"> | string | null
+    price?: IntWithAggregatesFilter<"Extra"> | number
+    suppPrice?: IntWithAggregatesFilter<"Extra"> | number
+    outOfStock?: BoolWithAggregatesFilter<"Extra"> | boolean
+    visible?: BoolWithAggregatesFilter<"Extra"> | boolean
+    sortOrder?: IntWithAggregatesFilter<"Extra"> | number
+    createdAt?: DateTimeWithAggregatesFilter<"Extra"> | Date | string
   }
 
   export type CompositionTypeWhereInput = {
@@ -15061,7 +15061,7 @@ export namespace Prisma {
     isActive?: BoolFilter<"CompositionType"> | boolean
     sortOrder?: IntFilter<"CompositionType"> | number
     createdAt?: DateTimeFilter<"CompositionType"> | Date | string
-    ingredients?: CompositionTypeIngredientListRelationFilter
+    extras?: CompositionTypeExtraListRelationFilter
     productSteps?: ProductCompositionListRelationFilter
   }
 
@@ -15078,7 +15078,7 @@ export namespace Prisma {
     isActive?: SortOrder
     sortOrder?: SortOrder
     createdAt?: SortOrder
-    ingredients?: CompositionTypeIngredientOrderByRelationAggregateInput
+    extras?: CompositionTypeExtraOrderByRelationAggregateInput
     productSteps?: ProductCompositionOrderByRelationAggregateInput
   }
 
@@ -15098,7 +15098,7 @@ export namespace Prisma {
     isActive?: BoolFilter<"CompositionType"> | boolean
     sortOrder?: IntFilter<"CompositionType"> | number
     createdAt?: DateTimeFilter<"CompositionType"> | Date | string
-    ingredients?: CompositionTypeIngredientListRelationFilter
+    extras?: CompositionTypeExtraListRelationFilter
     productSteps?: ProductCompositionListRelationFilter
   }, "id">
 
@@ -15140,55 +15140,55 @@ export namespace Prisma {
     createdAt?: DateTimeWithAggregatesFilter<"CompositionType"> | Date | string
   }
 
-  export type CompositionTypeIngredientWhereInput = {
-    AND?: CompositionTypeIngredientWhereInput | CompositionTypeIngredientWhereInput[]
-    OR?: CompositionTypeIngredientWhereInput[]
-    NOT?: CompositionTypeIngredientWhereInput | CompositionTypeIngredientWhereInput[]
-    compositionTypeId?: StringFilter<"CompositionTypeIngredient"> | string
-    ingredientId?: StringFilter<"CompositionTypeIngredient"> | string
-    position?: IntFilter<"CompositionTypeIngredient"> | number
+  export type CompositionTypeExtraWhereInput = {
+    AND?: CompositionTypeExtraWhereInput | CompositionTypeExtraWhereInput[]
+    OR?: CompositionTypeExtraWhereInput[]
+    NOT?: CompositionTypeExtraWhereInput | CompositionTypeExtraWhereInput[]
+    compositionTypeId?: StringFilter<"CompositionTypeExtra"> | string
+    extraId?: StringFilter<"CompositionTypeExtra"> | string
+    position?: IntFilter<"CompositionTypeExtra"> | number
     compositionType?: XOR<CompositionTypeRelationFilter, CompositionTypeWhereInput>
-    ingredient?: XOR<IngredientRelationFilter, IngredientWhereInput>
+    extra?: XOR<ExtraRelationFilter, ExtraWhereInput>
   }
 
-  export type CompositionTypeIngredientOrderByWithRelationInput = {
+  export type CompositionTypeExtraOrderByWithRelationInput = {
     compositionTypeId?: SortOrder
-    ingredientId?: SortOrder
+    extraId?: SortOrder
     position?: SortOrder
     compositionType?: CompositionTypeOrderByWithRelationInput
-    ingredient?: IngredientOrderByWithRelationInput
+    extra?: ExtraOrderByWithRelationInput
   }
 
-  export type CompositionTypeIngredientWhereUniqueInput = Prisma.AtLeast<{
-    compositionTypeId_ingredientId?: CompositionTypeIngredientCompositionTypeIdIngredientIdCompoundUniqueInput
-    AND?: CompositionTypeIngredientWhereInput | CompositionTypeIngredientWhereInput[]
-    OR?: CompositionTypeIngredientWhereInput[]
-    NOT?: CompositionTypeIngredientWhereInput | CompositionTypeIngredientWhereInput[]
-    compositionTypeId?: StringFilter<"CompositionTypeIngredient"> | string
-    ingredientId?: StringFilter<"CompositionTypeIngredient"> | string
-    position?: IntFilter<"CompositionTypeIngredient"> | number
+  export type CompositionTypeExtraWhereUniqueInput = Prisma.AtLeast<{
+    compositionTypeId_extraId?: CompositionTypeExtraCompositionTypeIdExtraIdCompoundUniqueInput
+    AND?: CompositionTypeExtraWhereInput | CompositionTypeExtraWhereInput[]
+    OR?: CompositionTypeExtraWhereInput[]
+    NOT?: CompositionTypeExtraWhereInput | CompositionTypeExtraWhereInput[]
+    compositionTypeId?: StringFilter<"CompositionTypeExtra"> | string
+    extraId?: StringFilter<"CompositionTypeExtra"> | string
+    position?: IntFilter<"CompositionTypeExtra"> | number
     compositionType?: XOR<CompositionTypeRelationFilter, CompositionTypeWhereInput>
-    ingredient?: XOR<IngredientRelationFilter, IngredientWhereInput>
-  }, "compositionTypeId_ingredientId">
+    extra?: XOR<ExtraRelationFilter, ExtraWhereInput>
+  }, "compositionTypeId_extraId">
 
-  export type CompositionTypeIngredientOrderByWithAggregationInput = {
+  export type CompositionTypeExtraOrderByWithAggregationInput = {
     compositionTypeId?: SortOrder
-    ingredientId?: SortOrder
+    extraId?: SortOrder
     position?: SortOrder
-    _count?: CompositionTypeIngredientCountOrderByAggregateInput
-    _avg?: CompositionTypeIngredientAvgOrderByAggregateInput
-    _max?: CompositionTypeIngredientMaxOrderByAggregateInput
-    _min?: CompositionTypeIngredientMinOrderByAggregateInput
-    _sum?: CompositionTypeIngredientSumOrderByAggregateInput
+    _count?: CompositionTypeExtraCountOrderByAggregateInput
+    _avg?: CompositionTypeExtraAvgOrderByAggregateInput
+    _max?: CompositionTypeExtraMaxOrderByAggregateInput
+    _min?: CompositionTypeExtraMinOrderByAggregateInput
+    _sum?: CompositionTypeExtraSumOrderByAggregateInput
   }
 
-  export type CompositionTypeIngredientScalarWhereWithAggregatesInput = {
-    AND?: CompositionTypeIngredientScalarWhereWithAggregatesInput | CompositionTypeIngredientScalarWhereWithAggregatesInput[]
-    OR?: CompositionTypeIngredientScalarWhereWithAggregatesInput[]
-    NOT?: CompositionTypeIngredientScalarWhereWithAggregatesInput | CompositionTypeIngredientScalarWhereWithAggregatesInput[]
-    compositionTypeId?: StringWithAggregatesFilter<"CompositionTypeIngredient"> | string
-    ingredientId?: StringWithAggregatesFilter<"CompositionTypeIngredient"> | string
-    position?: IntWithAggregatesFilter<"CompositionTypeIngredient"> | number
+  export type CompositionTypeExtraScalarWhereWithAggregatesInput = {
+    AND?: CompositionTypeExtraScalarWhereWithAggregatesInput | CompositionTypeExtraScalarWhereWithAggregatesInput[]
+    OR?: CompositionTypeExtraScalarWhereWithAggregatesInput[]
+    NOT?: CompositionTypeExtraScalarWhereWithAggregatesInput | CompositionTypeExtraScalarWhereWithAggregatesInput[]
+    compositionTypeId?: StringWithAggregatesFilter<"CompositionTypeExtra"> | string
+    extraId?: StringWithAggregatesFilter<"CompositionTypeExtra"> | string
+    position?: IntWithAggregatesFilter<"CompositionTypeExtra"> | number
   }
 
   export type ProductCompositionWhereInput = {
@@ -15906,7 +15906,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
-  export type IngredientCreateInput = {
+  export type ExtraCreateInput = {
     id?: string
     name: string
     image?: string | null
@@ -15916,10 +15916,10 @@ export namespace Prisma {
     visible?: boolean
     sortOrder?: number
     createdAt?: Date | string
-    typeLinks?: CompositionTypeIngredientCreateNestedManyWithoutIngredientInput
+    typeLinks?: CompositionTypeExtraCreateNestedManyWithoutExtraInput
   }
 
-  export type IngredientUncheckedCreateInput = {
+  export type ExtraUncheckedCreateInput = {
     id?: string
     name: string
     image?: string | null
@@ -15929,10 +15929,10 @@ export namespace Prisma {
     visible?: boolean
     sortOrder?: number
     createdAt?: Date | string
-    typeLinks?: CompositionTypeIngredientUncheckedCreateNestedManyWithoutIngredientInput
+    typeLinks?: CompositionTypeExtraUncheckedCreateNestedManyWithoutExtraInput
   }
 
-  export type IngredientUpdateInput = {
+  export type ExtraUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     image?: NullableStringFieldUpdateOperationsInput | string | null
@@ -15942,10 +15942,10 @@ export namespace Prisma {
     visible?: BoolFieldUpdateOperationsInput | boolean
     sortOrder?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    typeLinks?: CompositionTypeIngredientUpdateManyWithoutIngredientNestedInput
+    typeLinks?: CompositionTypeExtraUpdateManyWithoutExtraNestedInput
   }
 
-  export type IngredientUncheckedUpdateInput = {
+  export type ExtraUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     image?: NullableStringFieldUpdateOperationsInput | string | null
@@ -15955,10 +15955,10 @@ export namespace Prisma {
     visible?: BoolFieldUpdateOperationsInput | boolean
     sortOrder?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    typeLinks?: CompositionTypeIngredientUncheckedUpdateManyWithoutIngredientNestedInput
+    typeLinks?: CompositionTypeExtraUncheckedUpdateManyWithoutExtraNestedInput
   }
 
-  export type IngredientCreateManyInput = {
+  export type ExtraCreateManyInput = {
     id?: string
     name: string
     image?: string | null
@@ -15970,7 +15970,7 @@ export namespace Prisma {
     createdAt?: Date | string
   }
 
-  export type IngredientUpdateManyMutationInput = {
+  export type ExtraUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     image?: NullableStringFieldUpdateOperationsInput | string | null
@@ -15982,7 +15982,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
-  export type IngredientUncheckedUpdateManyInput = {
+  export type ExtraUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     image?: NullableStringFieldUpdateOperationsInput | string | null
@@ -16007,7 +16007,7 @@ export namespace Prisma {
     isActive?: boolean
     sortOrder?: number
     createdAt?: Date | string
-    ingredients?: CompositionTypeIngredientCreateNestedManyWithoutCompositionTypeInput
+    extras?: CompositionTypeExtraCreateNestedManyWithoutCompositionTypeInput
     productSteps?: ProductCompositionCreateNestedManyWithoutCompositionTypeInput
   }
 
@@ -16024,7 +16024,7 @@ export namespace Prisma {
     isActive?: boolean
     sortOrder?: number
     createdAt?: Date | string
-    ingredients?: CompositionTypeIngredientUncheckedCreateNestedManyWithoutCompositionTypeInput
+    extras?: CompositionTypeExtraUncheckedCreateNestedManyWithoutCompositionTypeInput
     productSteps?: ProductCompositionUncheckedCreateNestedManyWithoutCompositionTypeInput
   }
 
@@ -16041,7 +16041,7 @@ export namespace Prisma {
     isActive?: BoolFieldUpdateOperationsInput | boolean
     sortOrder?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    ingredients?: CompositionTypeIngredientUpdateManyWithoutCompositionTypeNestedInput
+    extras?: CompositionTypeExtraUpdateManyWithoutCompositionTypeNestedInput
     productSteps?: ProductCompositionUpdateManyWithoutCompositionTypeNestedInput
   }
 
@@ -16058,7 +16058,7 @@ export namespace Prisma {
     isActive?: BoolFieldUpdateOperationsInput | boolean
     sortOrder?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    ingredients?: CompositionTypeIngredientUncheckedUpdateManyWithoutCompositionTypeNestedInput
+    extras?: CompositionTypeExtraUncheckedUpdateManyWithoutCompositionTypeNestedInput
     productSteps?: ProductCompositionUncheckedUpdateManyWithoutCompositionTypeNestedInput
   }
 
@@ -16107,43 +16107,43 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
-  export type CompositionTypeIngredientCreateInput = {
+  export type CompositionTypeExtraCreateInput = {
     position?: number
-    compositionType: CompositionTypeCreateNestedOneWithoutIngredientsInput
-    ingredient: IngredientCreateNestedOneWithoutTypeLinksInput
+    compositionType: CompositionTypeCreateNestedOneWithoutExtrasInput
+    extra: ExtraCreateNestedOneWithoutTypeLinksInput
   }
 
-  export type CompositionTypeIngredientUncheckedCreateInput = {
+  export type CompositionTypeExtraUncheckedCreateInput = {
     compositionTypeId: string
-    ingredientId: string
+    extraId: string
     position?: number
   }
 
-  export type CompositionTypeIngredientUpdateInput = {
+  export type CompositionTypeExtraUpdateInput = {
     position?: IntFieldUpdateOperationsInput | number
-    compositionType?: CompositionTypeUpdateOneRequiredWithoutIngredientsNestedInput
-    ingredient?: IngredientUpdateOneRequiredWithoutTypeLinksNestedInput
+    compositionType?: CompositionTypeUpdateOneRequiredWithoutExtrasNestedInput
+    extra?: ExtraUpdateOneRequiredWithoutTypeLinksNestedInput
   }
 
-  export type CompositionTypeIngredientUncheckedUpdateInput = {
+  export type CompositionTypeExtraUncheckedUpdateInput = {
     compositionTypeId?: StringFieldUpdateOperationsInput | string
-    ingredientId?: StringFieldUpdateOperationsInput | string
+    extraId?: StringFieldUpdateOperationsInput | string
     position?: IntFieldUpdateOperationsInput | number
   }
 
-  export type CompositionTypeIngredientCreateManyInput = {
+  export type CompositionTypeExtraCreateManyInput = {
     compositionTypeId: string
-    ingredientId: string
+    extraId: string
     position?: number
   }
 
-  export type CompositionTypeIngredientUpdateManyMutationInput = {
+  export type CompositionTypeExtraUpdateManyMutationInput = {
     position?: IntFieldUpdateOperationsInput | number
   }
 
-  export type CompositionTypeIngredientUncheckedUpdateManyInput = {
+  export type CompositionTypeExtraUncheckedUpdateManyInput = {
     compositionTypeId?: StringFieldUpdateOperationsInput | string
-    ingredientId?: StringFieldUpdateOperationsInput | string
+    extraId?: StringFieldUpdateOperationsInput | string
     position?: IntFieldUpdateOperationsInput | number
   }
 
@@ -17008,17 +17008,17 @@ export namespace Prisma {
     _max?: NestedIntFilter<$PrismaModel>
   }
 
-  export type CompositionTypeIngredientListRelationFilter = {
-    every?: CompositionTypeIngredientWhereInput
-    some?: CompositionTypeIngredientWhereInput
-    none?: CompositionTypeIngredientWhereInput
+  export type CompositionTypeExtraListRelationFilter = {
+    every?: CompositionTypeExtraWhereInput
+    some?: CompositionTypeExtraWhereInput
+    none?: CompositionTypeExtraWhereInput
   }
 
-  export type CompositionTypeIngredientOrderByRelationAggregateInput = {
+  export type CompositionTypeExtraOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
-  export type IngredientCountOrderByAggregateInput = {
+  export type ExtraCountOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
     image?: SortOrder
@@ -17030,13 +17030,13 @@ export namespace Prisma {
     createdAt?: SortOrder
   }
 
-  export type IngredientAvgOrderByAggregateInput = {
+  export type ExtraAvgOrderByAggregateInput = {
     price?: SortOrder
     suppPrice?: SortOrder
     sortOrder?: SortOrder
   }
 
-  export type IngredientMaxOrderByAggregateInput = {
+  export type ExtraMaxOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
     image?: SortOrder
@@ -17048,7 +17048,7 @@ export namespace Prisma {
     createdAt?: SortOrder
   }
 
-  export type IngredientMinOrderByAggregateInput = {
+  export type ExtraMinOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
     image?: SortOrder
@@ -17060,7 +17060,7 @@ export namespace Prisma {
     createdAt?: SortOrder
   }
 
-  export type IngredientSumOrderByAggregateInput = {
+  export type ExtraSumOrderByAggregateInput = {
     price?: SortOrder
     suppPrice?: SortOrder
     sortOrder?: SortOrder
@@ -17155,39 +17155,39 @@ export namespace Prisma {
     isNot?: CompositionTypeWhereInput
   }
 
-  export type IngredientRelationFilter = {
-    is?: IngredientWhereInput
-    isNot?: IngredientWhereInput
+  export type ExtraRelationFilter = {
+    is?: ExtraWhereInput
+    isNot?: ExtraWhereInput
   }
 
-  export type CompositionTypeIngredientCompositionTypeIdIngredientIdCompoundUniqueInput = {
+  export type CompositionTypeExtraCompositionTypeIdExtraIdCompoundUniqueInput = {
     compositionTypeId: string
-    ingredientId: string
+    extraId: string
   }
 
-  export type CompositionTypeIngredientCountOrderByAggregateInput = {
+  export type CompositionTypeExtraCountOrderByAggregateInput = {
     compositionTypeId?: SortOrder
-    ingredientId?: SortOrder
+    extraId?: SortOrder
     position?: SortOrder
   }
 
-  export type CompositionTypeIngredientAvgOrderByAggregateInput = {
+  export type CompositionTypeExtraAvgOrderByAggregateInput = {
     position?: SortOrder
   }
 
-  export type CompositionTypeIngredientMaxOrderByAggregateInput = {
+  export type CompositionTypeExtraMaxOrderByAggregateInput = {
     compositionTypeId?: SortOrder
-    ingredientId?: SortOrder
+    extraId?: SortOrder
     position?: SortOrder
   }
 
-  export type CompositionTypeIngredientMinOrderByAggregateInput = {
+  export type CompositionTypeExtraMinOrderByAggregateInput = {
     compositionTypeId?: SortOrder
-    ingredientId?: SortOrder
+    extraId?: SortOrder
     position?: SortOrder
   }
 
-  export type CompositionTypeIngredientSumOrderByAggregateInput = {
+  export type CompositionTypeExtraSumOrderByAggregateInput = {
     position?: SortOrder
   }
 
@@ -17898,53 +17898,53 @@ export namespace Prisma {
     deleteMany?: ProductScalarWhereInput | ProductScalarWhereInput[]
   }
 
-  export type CompositionTypeIngredientCreateNestedManyWithoutIngredientInput = {
-    create?: XOR<CompositionTypeIngredientCreateWithoutIngredientInput, CompositionTypeIngredientUncheckedCreateWithoutIngredientInput> | CompositionTypeIngredientCreateWithoutIngredientInput[] | CompositionTypeIngredientUncheckedCreateWithoutIngredientInput[]
-    connectOrCreate?: CompositionTypeIngredientCreateOrConnectWithoutIngredientInput | CompositionTypeIngredientCreateOrConnectWithoutIngredientInput[]
-    createMany?: CompositionTypeIngredientCreateManyIngredientInputEnvelope
-    connect?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
+  export type CompositionTypeExtraCreateNestedManyWithoutExtraInput = {
+    create?: XOR<CompositionTypeExtraCreateWithoutExtraInput, CompositionTypeExtraUncheckedCreateWithoutExtraInput> | CompositionTypeExtraCreateWithoutExtraInput[] | CompositionTypeExtraUncheckedCreateWithoutExtraInput[]
+    connectOrCreate?: CompositionTypeExtraCreateOrConnectWithoutExtraInput | CompositionTypeExtraCreateOrConnectWithoutExtraInput[]
+    createMany?: CompositionTypeExtraCreateManyExtraInputEnvelope
+    connect?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
   }
 
-  export type CompositionTypeIngredientUncheckedCreateNestedManyWithoutIngredientInput = {
-    create?: XOR<CompositionTypeIngredientCreateWithoutIngredientInput, CompositionTypeIngredientUncheckedCreateWithoutIngredientInput> | CompositionTypeIngredientCreateWithoutIngredientInput[] | CompositionTypeIngredientUncheckedCreateWithoutIngredientInput[]
-    connectOrCreate?: CompositionTypeIngredientCreateOrConnectWithoutIngredientInput | CompositionTypeIngredientCreateOrConnectWithoutIngredientInput[]
-    createMany?: CompositionTypeIngredientCreateManyIngredientInputEnvelope
-    connect?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
+  export type CompositionTypeExtraUncheckedCreateNestedManyWithoutExtraInput = {
+    create?: XOR<CompositionTypeExtraCreateWithoutExtraInput, CompositionTypeExtraUncheckedCreateWithoutExtraInput> | CompositionTypeExtraCreateWithoutExtraInput[] | CompositionTypeExtraUncheckedCreateWithoutExtraInput[]
+    connectOrCreate?: CompositionTypeExtraCreateOrConnectWithoutExtraInput | CompositionTypeExtraCreateOrConnectWithoutExtraInput[]
+    createMany?: CompositionTypeExtraCreateManyExtraInputEnvelope
+    connect?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
   }
 
-  export type CompositionTypeIngredientUpdateManyWithoutIngredientNestedInput = {
-    create?: XOR<CompositionTypeIngredientCreateWithoutIngredientInput, CompositionTypeIngredientUncheckedCreateWithoutIngredientInput> | CompositionTypeIngredientCreateWithoutIngredientInput[] | CompositionTypeIngredientUncheckedCreateWithoutIngredientInput[]
-    connectOrCreate?: CompositionTypeIngredientCreateOrConnectWithoutIngredientInput | CompositionTypeIngredientCreateOrConnectWithoutIngredientInput[]
-    upsert?: CompositionTypeIngredientUpsertWithWhereUniqueWithoutIngredientInput | CompositionTypeIngredientUpsertWithWhereUniqueWithoutIngredientInput[]
-    createMany?: CompositionTypeIngredientCreateManyIngredientInputEnvelope
-    set?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
-    disconnect?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
-    delete?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
-    connect?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
-    update?: CompositionTypeIngredientUpdateWithWhereUniqueWithoutIngredientInput | CompositionTypeIngredientUpdateWithWhereUniqueWithoutIngredientInput[]
-    updateMany?: CompositionTypeIngredientUpdateManyWithWhereWithoutIngredientInput | CompositionTypeIngredientUpdateManyWithWhereWithoutIngredientInput[]
-    deleteMany?: CompositionTypeIngredientScalarWhereInput | CompositionTypeIngredientScalarWhereInput[]
+  export type CompositionTypeExtraUpdateManyWithoutExtraNestedInput = {
+    create?: XOR<CompositionTypeExtraCreateWithoutExtraInput, CompositionTypeExtraUncheckedCreateWithoutExtraInput> | CompositionTypeExtraCreateWithoutExtraInput[] | CompositionTypeExtraUncheckedCreateWithoutExtraInput[]
+    connectOrCreate?: CompositionTypeExtraCreateOrConnectWithoutExtraInput | CompositionTypeExtraCreateOrConnectWithoutExtraInput[]
+    upsert?: CompositionTypeExtraUpsertWithWhereUniqueWithoutExtraInput | CompositionTypeExtraUpsertWithWhereUniqueWithoutExtraInput[]
+    createMany?: CompositionTypeExtraCreateManyExtraInputEnvelope
+    set?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
+    disconnect?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
+    delete?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
+    connect?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
+    update?: CompositionTypeExtraUpdateWithWhereUniqueWithoutExtraInput | CompositionTypeExtraUpdateWithWhereUniqueWithoutExtraInput[]
+    updateMany?: CompositionTypeExtraUpdateManyWithWhereWithoutExtraInput | CompositionTypeExtraUpdateManyWithWhereWithoutExtraInput[]
+    deleteMany?: CompositionTypeExtraScalarWhereInput | CompositionTypeExtraScalarWhereInput[]
   }
 
-  export type CompositionTypeIngredientUncheckedUpdateManyWithoutIngredientNestedInput = {
-    create?: XOR<CompositionTypeIngredientCreateWithoutIngredientInput, CompositionTypeIngredientUncheckedCreateWithoutIngredientInput> | CompositionTypeIngredientCreateWithoutIngredientInput[] | CompositionTypeIngredientUncheckedCreateWithoutIngredientInput[]
-    connectOrCreate?: CompositionTypeIngredientCreateOrConnectWithoutIngredientInput | CompositionTypeIngredientCreateOrConnectWithoutIngredientInput[]
-    upsert?: CompositionTypeIngredientUpsertWithWhereUniqueWithoutIngredientInput | CompositionTypeIngredientUpsertWithWhereUniqueWithoutIngredientInput[]
-    createMany?: CompositionTypeIngredientCreateManyIngredientInputEnvelope
-    set?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
-    disconnect?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
-    delete?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
-    connect?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
-    update?: CompositionTypeIngredientUpdateWithWhereUniqueWithoutIngredientInput | CompositionTypeIngredientUpdateWithWhereUniqueWithoutIngredientInput[]
-    updateMany?: CompositionTypeIngredientUpdateManyWithWhereWithoutIngredientInput | CompositionTypeIngredientUpdateManyWithWhereWithoutIngredientInput[]
-    deleteMany?: CompositionTypeIngredientScalarWhereInput | CompositionTypeIngredientScalarWhereInput[]
+  export type CompositionTypeExtraUncheckedUpdateManyWithoutExtraNestedInput = {
+    create?: XOR<CompositionTypeExtraCreateWithoutExtraInput, CompositionTypeExtraUncheckedCreateWithoutExtraInput> | CompositionTypeExtraCreateWithoutExtraInput[] | CompositionTypeExtraUncheckedCreateWithoutExtraInput[]
+    connectOrCreate?: CompositionTypeExtraCreateOrConnectWithoutExtraInput | CompositionTypeExtraCreateOrConnectWithoutExtraInput[]
+    upsert?: CompositionTypeExtraUpsertWithWhereUniqueWithoutExtraInput | CompositionTypeExtraUpsertWithWhereUniqueWithoutExtraInput[]
+    createMany?: CompositionTypeExtraCreateManyExtraInputEnvelope
+    set?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
+    disconnect?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
+    delete?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
+    connect?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
+    update?: CompositionTypeExtraUpdateWithWhereUniqueWithoutExtraInput | CompositionTypeExtraUpdateWithWhereUniqueWithoutExtraInput[]
+    updateMany?: CompositionTypeExtraUpdateManyWithWhereWithoutExtraInput | CompositionTypeExtraUpdateManyWithWhereWithoutExtraInput[]
+    deleteMany?: CompositionTypeExtraScalarWhereInput | CompositionTypeExtraScalarWhereInput[]
   }
 
-  export type CompositionTypeIngredientCreateNestedManyWithoutCompositionTypeInput = {
-    create?: XOR<CompositionTypeIngredientCreateWithoutCompositionTypeInput, CompositionTypeIngredientUncheckedCreateWithoutCompositionTypeInput> | CompositionTypeIngredientCreateWithoutCompositionTypeInput[] | CompositionTypeIngredientUncheckedCreateWithoutCompositionTypeInput[]
-    connectOrCreate?: CompositionTypeIngredientCreateOrConnectWithoutCompositionTypeInput | CompositionTypeIngredientCreateOrConnectWithoutCompositionTypeInput[]
-    createMany?: CompositionTypeIngredientCreateManyCompositionTypeInputEnvelope
-    connect?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
+  export type CompositionTypeExtraCreateNestedManyWithoutCompositionTypeInput = {
+    create?: XOR<CompositionTypeExtraCreateWithoutCompositionTypeInput, CompositionTypeExtraUncheckedCreateWithoutCompositionTypeInput> | CompositionTypeExtraCreateWithoutCompositionTypeInput[] | CompositionTypeExtraUncheckedCreateWithoutCompositionTypeInput[]
+    connectOrCreate?: CompositionTypeExtraCreateOrConnectWithoutCompositionTypeInput | CompositionTypeExtraCreateOrConnectWithoutCompositionTypeInput[]
+    createMany?: CompositionTypeExtraCreateManyCompositionTypeInputEnvelope
+    connect?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
   }
 
   export type ProductCompositionCreateNestedManyWithoutCompositionTypeInput = {
@@ -17954,11 +17954,11 @@ export namespace Prisma {
     connect?: ProductCompositionWhereUniqueInput | ProductCompositionWhereUniqueInput[]
   }
 
-  export type CompositionTypeIngredientUncheckedCreateNestedManyWithoutCompositionTypeInput = {
-    create?: XOR<CompositionTypeIngredientCreateWithoutCompositionTypeInput, CompositionTypeIngredientUncheckedCreateWithoutCompositionTypeInput> | CompositionTypeIngredientCreateWithoutCompositionTypeInput[] | CompositionTypeIngredientUncheckedCreateWithoutCompositionTypeInput[]
-    connectOrCreate?: CompositionTypeIngredientCreateOrConnectWithoutCompositionTypeInput | CompositionTypeIngredientCreateOrConnectWithoutCompositionTypeInput[]
-    createMany?: CompositionTypeIngredientCreateManyCompositionTypeInputEnvelope
-    connect?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
+  export type CompositionTypeExtraUncheckedCreateNestedManyWithoutCompositionTypeInput = {
+    create?: XOR<CompositionTypeExtraCreateWithoutCompositionTypeInput, CompositionTypeExtraUncheckedCreateWithoutCompositionTypeInput> | CompositionTypeExtraCreateWithoutCompositionTypeInput[] | CompositionTypeExtraUncheckedCreateWithoutCompositionTypeInput[]
+    connectOrCreate?: CompositionTypeExtraCreateOrConnectWithoutCompositionTypeInput | CompositionTypeExtraCreateOrConnectWithoutCompositionTypeInput[]
+    createMany?: CompositionTypeExtraCreateManyCompositionTypeInputEnvelope
+    connect?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
   }
 
   export type ProductCompositionUncheckedCreateNestedManyWithoutCompositionTypeInput = {
@@ -17972,18 +17972,18 @@ export namespace Prisma {
     set?: $Enums.CompositionSlotMode
   }
 
-  export type CompositionTypeIngredientUpdateManyWithoutCompositionTypeNestedInput = {
-    create?: XOR<CompositionTypeIngredientCreateWithoutCompositionTypeInput, CompositionTypeIngredientUncheckedCreateWithoutCompositionTypeInput> | CompositionTypeIngredientCreateWithoutCompositionTypeInput[] | CompositionTypeIngredientUncheckedCreateWithoutCompositionTypeInput[]
-    connectOrCreate?: CompositionTypeIngredientCreateOrConnectWithoutCompositionTypeInput | CompositionTypeIngredientCreateOrConnectWithoutCompositionTypeInput[]
-    upsert?: CompositionTypeIngredientUpsertWithWhereUniqueWithoutCompositionTypeInput | CompositionTypeIngredientUpsertWithWhereUniqueWithoutCompositionTypeInput[]
-    createMany?: CompositionTypeIngredientCreateManyCompositionTypeInputEnvelope
-    set?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
-    disconnect?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
-    delete?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
-    connect?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
-    update?: CompositionTypeIngredientUpdateWithWhereUniqueWithoutCompositionTypeInput | CompositionTypeIngredientUpdateWithWhereUniqueWithoutCompositionTypeInput[]
-    updateMany?: CompositionTypeIngredientUpdateManyWithWhereWithoutCompositionTypeInput | CompositionTypeIngredientUpdateManyWithWhereWithoutCompositionTypeInput[]
-    deleteMany?: CompositionTypeIngredientScalarWhereInput | CompositionTypeIngredientScalarWhereInput[]
+  export type CompositionTypeExtraUpdateManyWithoutCompositionTypeNestedInput = {
+    create?: XOR<CompositionTypeExtraCreateWithoutCompositionTypeInput, CompositionTypeExtraUncheckedCreateWithoutCompositionTypeInput> | CompositionTypeExtraCreateWithoutCompositionTypeInput[] | CompositionTypeExtraUncheckedCreateWithoutCompositionTypeInput[]
+    connectOrCreate?: CompositionTypeExtraCreateOrConnectWithoutCompositionTypeInput | CompositionTypeExtraCreateOrConnectWithoutCompositionTypeInput[]
+    upsert?: CompositionTypeExtraUpsertWithWhereUniqueWithoutCompositionTypeInput | CompositionTypeExtraUpsertWithWhereUniqueWithoutCompositionTypeInput[]
+    createMany?: CompositionTypeExtraCreateManyCompositionTypeInputEnvelope
+    set?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
+    disconnect?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
+    delete?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
+    connect?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
+    update?: CompositionTypeExtraUpdateWithWhereUniqueWithoutCompositionTypeInput | CompositionTypeExtraUpdateWithWhereUniqueWithoutCompositionTypeInput[]
+    updateMany?: CompositionTypeExtraUpdateManyWithWhereWithoutCompositionTypeInput | CompositionTypeExtraUpdateManyWithWhereWithoutCompositionTypeInput[]
+    deleteMany?: CompositionTypeExtraScalarWhereInput | CompositionTypeExtraScalarWhereInput[]
   }
 
   export type ProductCompositionUpdateManyWithoutCompositionTypeNestedInput = {
@@ -18000,18 +18000,18 @@ export namespace Prisma {
     deleteMany?: ProductCompositionScalarWhereInput | ProductCompositionScalarWhereInput[]
   }
 
-  export type CompositionTypeIngredientUncheckedUpdateManyWithoutCompositionTypeNestedInput = {
-    create?: XOR<CompositionTypeIngredientCreateWithoutCompositionTypeInput, CompositionTypeIngredientUncheckedCreateWithoutCompositionTypeInput> | CompositionTypeIngredientCreateWithoutCompositionTypeInput[] | CompositionTypeIngredientUncheckedCreateWithoutCompositionTypeInput[]
-    connectOrCreate?: CompositionTypeIngredientCreateOrConnectWithoutCompositionTypeInput | CompositionTypeIngredientCreateOrConnectWithoutCompositionTypeInput[]
-    upsert?: CompositionTypeIngredientUpsertWithWhereUniqueWithoutCompositionTypeInput | CompositionTypeIngredientUpsertWithWhereUniqueWithoutCompositionTypeInput[]
-    createMany?: CompositionTypeIngredientCreateManyCompositionTypeInputEnvelope
-    set?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
-    disconnect?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
-    delete?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
-    connect?: CompositionTypeIngredientWhereUniqueInput | CompositionTypeIngredientWhereUniqueInput[]
-    update?: CompositionTypeIngredientUpdateWithWhereUniqueWithoutCompositionTypeInput | CompositionTypeIngredientUpdateWithWhereUniqueWithoutCompositionTypeInput[]
-    updateMany?: CompositionTypeIngredientUpdateManyWithWhereWithoutCompositionTypeInput | CompositionTypeIngredientUpdateManyWithWhereWithoutCompositionTypeInput[]
-    deleteMany?: CompositionTypeIngredientScalarWhereInput | CompositionTypeIngredientScalarWhereInput[]
+  export type CompositionTypeExtraUncheckedUpdateManyWithoutCompositionTypeNestedInput = {
+    create?: XOR<CompositionTypeExtraCreateWithoutCompositionTypeInput, CompositionTypeExtraUncheckedCreateWithoutCompositionTypeInput> | CompositionTypeExtraCreateWithoutCompositionTypeInput[] | CompositionTypeExtraUncheckedCreateWithoutCompositionTypeInput[]
+    connectOrCreate?: CompositionTypeExtraCreateOrConnectWithoutCompositionTypeInput | CompositionTypeExtraCreateOrConnectWithoutCompositionTypeInput[]
+    upsert?: CompositionTypeExtraUpsertWithWhereUniqueWithoutCompositionTypeInput | CompositionTypeExtraUpsertWithWhereUniqueWithoutCompositionTypeInput[]
+    createMany?: CompositionTypeExtraCreateManyCompositionTypeInputEnvelope
+    set?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
+    disconnect?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
+    delete?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
+    connect?: CompositionTypeExtraWhereUniqueInput | CompositionTypeExtraWhereUniqueInput[]
+    update?: CompositionTypeExtraUpdateWithWhereUniqueWithoutCompositionTypeInput | CompositionTypeExtraUpdateWithWhereUniqueWithoutCompositionTypeInput[]
+    updateMany?: CompositionTypeExtraUpdateManyWithWhereWithoutCompositionTypeInput | CompositionTypeExtraUpdateManyWithWhereWithoutCompositionTypeInput[]
+    deleteMany?: CompositionTypeExtraScalarWhereInput | CompositionTypeExtraScalarWhereInput[]
   }
 
   export type ProductCompositionUncheckedUpdateManyWithoutCompositionTypeNestedInput = {
@@ -18028,32 +18028,32 @@ export namespace Prisma {
     deleteMany?: ProductCompositionScalarWhereInput | ProductCompositionScalarWhereInput[]
   }
 
-  export type CompositionTypeCreateNestedOneWithoutIngredientsInput = {
-    create?: XOR<CompositionTypeCreateWithoutIngredientsInput, CompositionTypeUncheckedCreateWithoutIngredientsInput>
-    connectOrCreate?: CompositionTypeCreateOrConnectWithoutIngredientsInput
+  export type CompositionTypeCreateNestedOneWithoutExtrasInput = {
+    create?: XOR<CompositionTypeCreateWithoutExtrasInput, CompositionTypeUncheckedCreateWithoutExtrasInput>
+    connectOrCreate?: CompositionTypeCreateOrConnectWithoutExtrasInput
     connect?: CompositionTypeWhereUniqueInput
   }
 
-  export type IngredientCreateNestedOneWithoutTypeLinksInput = {
-    create?: XOR<IngredientCreateWithoutTypeLinksInput, IngredientUncheckedCreateWithoutTypeLinksInput>
-    connectOrCreate?: IngredientCreateOrConnectWithoutTypeLinksInput
-    connect?: IngredientWhereUniqueInput
+  export type ExtraCreateNestedOneWithoutTypeLinksInput = {
+    create?: XOR<ExtraCreateWithoutTypeLinksInput, ExtraUncheckedCreateWithoutTypeLinksInput>
+    connectOrCreate?: ExtraCreateOrConnectWithoutTypeLinksInput
+    connect?: ExtraWhereUniqueInput
   }
 
-  export type CompositionTypeUpdateOneRequiredWithoutIngredientsNestedInput = {
-    create?: XOR<CompositionTypeCreateWithoutIngredientsInput, CompositionTypeUncheckedCreateWithoutIngredientsInput>
-    connectOrCreate?: CompositionTypeCreateOrConnectWithoutIngredientsInput
-    upsert?: CompositionTypeUpsertWithoutIngredientsInput
+  export type CompositionTypeUpdateOneRequiredWithoutExtrasNestedInput = {
+    create?: XOR<CompositionTypeCreateWithoutExtrasInput, CompositionTypeUncheckedCreateWithoutExtrasInput>
+    connectOrCreate?: CompositionTypeCreateOrConnectWithoutExtrasInput
+    upsert?: CompositionTypeUpsertWithoutExtrasInput
     connect?: CompositionTypeWhereUniqueInput
-    update?: XOR<XOR<CompositionTypeUpdateToOneWithWhereWithoutIngredientsInput, CompositionTypeUpdateWithoutIngredientsInput>, CompositionTypeUncheckedUpdateWithoutIngredientsInput>
+    update?: XOR<XOR<CompositionTypeUpdateToOneWithWhereWithoutExtrasInput, CompositionTypeUpdateWithoutExtrasInput>, CompositionTypeUncheckedUpdateWithoutExtrasInput>
   }
 
-  export type IngredientUpdateOneRequiredWithoutTypeLinksNestedInput = {
-    create?: XOR<IngredientCreateWithoutTypeLinksInput, IngredientUncheckedCreateWithoutTypeLinksInput>
-    connectOrCreate?: IngredientCreateOrConnectWithoutTypeLinksInput
-    upsert?: IngredientUpsertWithoutTypeLinksInput
-    connect?: IngredientWhereUniqueInput
-    update?: XOR<XOR<IngredientUpdateToOneWithWhereWithoutTypeLinksInput, IngredientUpdateWithoutTypeLinksInput>, IngredientUncheckedUpdateWithoutTypeLinksInput>
+  export type ExtraUpdateOneRequiredWithoutTypeLinksNestedInput = {
+    create?: XOR<ExtraCreateWithoutTypeLinksInput, ExtraUncheckedCreateWithoutTypeLinksInput>
+    connectOrCreate?: ExtraCreateOrConnectWithoutTypeLinksInput
+    upsert?: ExtraUpsertWithoutTypeLinksInput
+    connect?: ExtraWhereUniqueInput
+    update?: XOR<XOR<ExtraUpdateToOneWithWhereWithoutTypeLinksInput, ExtraUpdateWithoutTypeLinksInput>, ExtraUncheckedUpdateWithoutTypeLinksInput>
   }
 
   export type ProductCreateNestedOneWithoutCompositionsInput = {
@@ -18976,68 +18976,68 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"Product"> | Date | string
   }
 
-  export type CompositionTypeIngredientCreateWithoutIngredientInput = {
+  export type CompositionTypeExtraCreateWithoutExtraInput = {
     position?: number
-    compositionType: CompositionTypeCreateNestedOneWithoutIngredientsInput
+    compositionType: CompositionTypeCreateNestedOneWithoutExtrasInput
   }
 
-  export type CompositionTypeIngredientUncheckedCreateWithoutIngredientInput = {
+  export type CompositionTypeExtraUncheckedCreateWithoutExtraInput = {
     compositionTypeId: string
     position?: number
   }
 
-  export type CompositionTypeIngredientCreateOrConnectWithoutIngredientInput = {
-    where: CompositionTypeIngredientWhereUniqueInput
-    create: XOR<CompositionTypeIngredientCreateWithoutIngredientInput, CompositionTypeIngredientUncheckedCreateWithoutIngredientInput>
+  export type CompositionTypeExtraCreateOrConnectWithoutExtraInput = {
+    where: CompositionTypeExtraWhereUniqueInput
+    create: XOR<CompositionTypeExtraCreateWithoutExtraInput, CompositionTypeExtraUncheckedCreateWithoutExtraInput>
   }
 
-  export type CompositionTypeIngredientCreateManyIngredientInputEnvelope = {
-    data: CompositionTypeIngredientCreateManyIngredientInput | CompositionTypeIngredientCreateManyIngredientInput[]
+  export type CompositionTypeExtraCreateManyExtraInputEnvelope = {
+    data: CompositionTypeExtraCreateManyExtraInput | CompositionTypeExtraCreateManyExtraInput[]
     skipDuplicates?: boolean
   }
 
-  export type CompositionTypeIngredientUpsertWithWhereUniqueWithoutIngredientInput = {
-    where: CompositionTypeIngredientWhereUniqueInput
-    update: XOR<CompositionTypeIngredientUpdateWithoutIngredientInput, CompositionTypeIngredientUncheckedUpdateWithoutIngredientInput>
-    create: XOR<CompositionTypeIngredientCreateWithoutIngredientInput, CompositionTypeIngredientUncheckedCreateWithoutIngredientInput>
+  export type CompositionTypeExtraUpsertWithWhereUniqueWithoutExtraInput = {
+    where: CompositionTypeExtraWhereUniqueInput
+    update: XOR<CompositionTypeExtraUpdateWithoutExtraInput, CompositionTypeExtraUncheckedUpdateWithoutExtraInput>
+    create: XOR<CompositionTypeExtraCreateWithoutExtraInput, CompositionTypeExtraUncheckedCreateWithoutExtraInput>
   }
 
-  export type CompositionTypeIngredientUpdateWithWhereUniqueWithoutIngredientInput = {
-    where: CompositionTypeIngredientWhereUniqueInput
-    data: XOR<CompositionTypeIngredientUpdateWithoutIngredientInput, CompositionTypeIngredientUncheckedUpdateWithoutIngredientInput>
+  export type CompositionTypeExtraUpdateWithWhereUniqueWithoutExtraInput = {
+    where: CompositionTypeExtraWhereUniqueInput
+    data: XOR<CompositionTypeExtraUpdateWithoutExtraInput, CompositionTypeExtraUncheckedUpdateWithoutExtraInput>
   }
 
-  export type CompositionTypeIngredientUpdateManyWithWhereWithoutIngredientInput = {
-    where: CompositionTypeIngredientScalarWhereInput
-    data: XOR<CompositionTypeIngredientUpdateManyMutationInput, CompositionTypeIngredientUncheckedUpdateManyWithoutIngredientInput>
+  export type CompositionTypeExtraUpdateManyWithWhereWithoutExtraInput = {
+    where: CompositionTypeExtraScalarWhereInput
+    data: XOR<CompositionTypeExtraUpdateManyMutationInput, CompositionTypeExtraUncheckedUpdateManyWithoutExtraInput>
   }
 
-  export type CompositionTypeIngredientScalarWhereInput = {
-    AND?: CompositionTypeIngredientScalarWhereInput | CompositionTypeIngredientScalarWhereInput[]
-    OR?: CompositionTypeIngredientScalarWhereInput[]
-    NOT?: CompositionTypeIngredientScalarWhereInput | CompositionTypeIngredientScalarWhereInput[]
-    compositionTypeId?: StringFilter<"CompositionTypeIngredient"> | string
-    ingredientId?: StringFilter<"CompositionTypeIngredient"> | string
-    position?: IntFilter<"CompositionTypeIngredient"> | number
+  export type CompositionTypeExtraScalarWhereInput = {
+    AND?: CompositionTypeExtraScalarWhereInput | CompositionTypeExtraScalarWhereInput[]
+    OR?: CompositionTypeExtraScalarWhereInput[]
+    NOT?: CompositionTypeExtraScalarWhereInput | CompositionTypeExtraScalarWhereInput[]
+    compositionTypeId?: StringFilter<"CompositionTypeExtra"> | string
+    extraId?: StringFilter<"CompositionTypeExtra"> | string
+    position?: IntFilter<"CompositionTypeExtra"> | number
   }
 
-  export type CompositionTypeIngredientCreateWithoutCompositionTypeInput = {
+  export type CompositionTypeExtraCreateWithoutCompositionTypeInput = {
     position?: number
-    ingredient: IngredientCreateNestedOneWithoutTypeLinksInput
+    extra: ExtraCreateNestedOneWithoutTypeLinksInput
   }
 
-  export type CompositionTypeIngredientUncheckedCreateWithoutCompositionTypeInput = {
-    ingredientId: string
+  export type CompositionTypeExtraUncheckedCreateWithoutCompositionTypeInput = {
+    extraId: string
     position?: number
   }
 
-  export type CompositionTypeIngredientCreateOrConnectWithoutCompositionTypeInput = {
-    where: CompositionTypeIngredientWhereUniqueInput
-    create: XOR<CompositionTypeIngredientCreateWithoutCompositionTypeInput, CompositionTypeIngredientUncheckedCreateWithoutCompositionTypeInput>
+  export type CompositionTypeExtraCreateOrConnectWithoutCompositionTypeInput = {
+    where: CompositionTypeExtraWhereUniqueInput
+    create: XOR<CompositionTypeExtraCreateWithoutCompositionTypeInput, CompositionTypeExtraUncheckedCreateWithoutCompositionTypeInput>
   }
 
-  export type CompositionTypeIngredientCreateManyCompositionTypeInputEnvelope = {
-    data: CompositionTypeIngredientCreateManyCompositionTypeInput | CompositionTypeIngredientCreateManyCompositionTypeInput[]
+  export type CompositionTypeExtraCreateManyCompositionTypeInputEnvelope = {
+    data: CompositionTypeExtraCreateManyCompositionTypeInput | CompositionTypeExtraCreateManyCompositionTypeInput[]
     skipDuplicates?: boolean
   }
 
@@ -19061,20 +19061,20 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
-  export type CompositionTypeIngredientUpsertWithWhereUniqueWithoutCompositionTypeInput = {
-    where: CompositionTypeIngredientWhereUniqueInput
-    update: XOR<CompositionTypeIngredientUpdateWithoutCompositionTypeInput, CompositionTypeIngredientUncheckedUpdateWithoutCompositionTypeInput>
-    create: XOR<CompositionTypeIngredientCreateWithoutCompositionTypeInput, CompositionTypeIngredientUncheckedCreateWithoutCompositionTypeInput>
+  export type CompositionTypeExtraUpsertWithWhereUniqueWithoutCompositionTypeInput = {
+    where: CompositionTypeExtraWhereUniqueInput
+    update: XOR<CompositionTypeExtraUpdateWithoutCompositionTypeInput, CompositionTypeExtraUncheckedUpdateWithoutCompositionTypeInput>
+    create: XOR<CompositionTypeExtraCreateWithoutCompositionTypeInput, CompositionTypeExtraUncheckedCreateWithoutCompositionTypeInput>
   }
 
-  export type CompositionTypeIngredientUpdateWithWhereUniqueWithoutCompositionTypeInput = {
-    where: CompositionTypeIngredientWhereUniqueInput
-    data: XOR<CompositionTypeIngredientUpdateWithoutCompositionTypeInput, CompositionTypeIngredientUncheckedUpdateWithoutCompositionTypeInput>
+  export type CompositionTypeExtraUpdateWithWhereUniqueWithoutCompositionTypeInput = {
+    where: CompositionTypeExtraWhereUniqueInput
+    data: XOR<CompositionTypeExtraUpdateWithoutCompositionTypeInput, CompositionTypeExtraUncheckedUpdateWithoutCompositionTypeInput>
   }
 
-  export type CompositionTypeIngredientUpdateManyWithWhereWithoutCompositionTypeInput = {
-    where: CompositionTypeIngredientScalarWhereInput
-    data: XOR<CompositionTypeIngredientUpdateManyMutationInput, CompositionTypeIngredientUncheckedUpdateManyWithoutCompositionTypeInput>
+  export type CompositionTypeExtraUpdateManyWithWhereWithoutCompositionTypeInput = {
+    where: CompositionTypeExtraScalarWhereInput
+    data: XOR<CompositionTypeExtraUpdateManyMutationInput, CompositionTypeExtraUncheckedUpdateManyWithoutCompositionTypeInput>
   }
 
   export type ProductCompositionUpsertWithWhereUniqueWithoutCompositionTypeInput = {
@@ -19102,7 +19102,7 @@ export namespace Prisma {
     sortOrder?: IntFilter<"ProductComposition"> | number
   }
 
-  export type CompositionTypeCreateWithoutIngredientsInput = {
+  export type CompositionTypeCreateWithoutExtrasInput = {
     id?: string
     name: string
     label: string
@@ -19118,7 +19118,7 @@ export namespace Prisma {
     productSteps?: ProductCompositionCreateNestedManyWithoutCompositionTypeInput
   }
 
-  export type CompositionTypeUncheckedCreateWithoutIngredientsInput = {
+  export type CompositionTypeUncheckedCreateWithoutExtrasInput = {
     id?: string
     name: string
     label: string
@@ -19134,12 +19134,12 @@ export namespace Prisma {
     productSteps?: ProductCompositionUncheckedCreateNestedManyWithoutCompositionTypeInput
   }
 
-  export type CompositionTypeCreateOrConnectWithoutIngredientsInput = {
+  export type CompositionTypeCreateOrConnectWithoutExtrasInput = {
     where: CompositionTypeWhereUniqueInput
-    create: XOR<CompositionTypeCreateWithoutIngredientsInput, CompositionTypeUncheckedCreateWithoutIngredientsInput>
+    create: XOR<CompositionTypeCreateWithoutExtrasInput, CompositionTypeUncheckedCreateWithoutExtrasInput>
   }
 
-  export type IngredientCreateWithoutTypeLinksInput = {
+  export type ExtraCreateWithoutTypeLinksInput = {
     id?: string
     name: string
     image?: string | null
@@ -19151,7 +19151,7 @@ export namespace Prisma {
     createdAt?: Date | string
   }
 
-  export type IngredientUncheckedCreateWithoutTypeLinksInput = {
+  export type ExtraUncheckedCreateWithoutTypeLinksInput = {
     id?: string
     name: string
     image?: string | null
@@ -19163,23 +19163,23 @@ export namespace Prisma {
     createdAt?: Date | string
   }
 
-  export type IngredientCreateOrConnectWithoutTypeLinksInput = {
-    where: IngredientWhereUniqueInput
-    create: XOR<IngredientCreateWithoutTypeLinksInput, IngredientUncheckedCreateWithoutTypeLinksInput>
+  export type ExtraCreateOrConnectWithoutTypeLinksInput = {
+    where: ExtraWhereUniqueInput
+    create: XOR<ExtraCreateWithoutTypeLinksInput, ExtraUncheckedCreateWithoutTypeLinksInput>
   }
 
-  export type CompositionTypeUpsertWithoutIngredientsInput = {
-    update: XOR<CompositionTypeUpdateWithoutIngredientsInput, CompositionTypeUncheckedUpdateWithoutIngredientsInput>
-    create: XOR<CompositionTypeCreateWithoutIngredientsInput, CompositionTypeUncheckedCreateWithoutIngredientsInput>
+  export type CompositionTypeUpsertWithoutExtrasInput = {
+    update: XOR<CompositionTypeUpdateWithoutExtrasInput, CompositionTypeUncheckedUpdateWithoutExtrasInput>
+    create: XOR<CompositionTypeCreateWithoutExtrasInput, CompositionTypeUncheckedCreateWithoutExtrasInput>
     where?: CompositionTypeWhereInput
   }
 
-  export type CompositionTypeUpdateToOneWithWhereWithoutIngredientsInput = {
+  export type CompositionTypeUpdateToOneWithWhereWithoutExtrasInput = {
     where?: CompositionTypeWhereInput
-    data: XOR<CompositionTypeUpdateWithoutIngredientsInput, CompositionTypeUncheckedUpdateWithoutIngredientsInput>
+    data: XOR<CompositionTypeUpdateWithoutExtrasInput, CompositionTypeUncheckedUpdateWithoutExtrasInput>
   }
 
-  export type CompositionTypeUpdateWithoutIngredientsInput = {
+  export type CompositionTypeUpdateWithoutExtrasInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     label?: StringFieldUpdateOperationsInput | string
@@ -19195,7 +19195,7 @@ export namespace Prisma {
     productSteps?: ProductCompositionUpdateManyWithoutCompositionTypeNestedInput
   }
 
-  export type CompositionTypeUncheckedUpdateWithoutIngredientsInput = {
+  export type CompositionTypeUncheckedUpdateWithoutExtrasInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     label?: StringFieldUpdateOperationsInput | string
@@ -19211,18 +19211,18 @@ export namespace Prisma {
     productSteps?: ProductCompositionUncheckedUpdateManyWithoutCompositionTypeNestedInput
   }
 
-  export type IngredientUpsertWithoutTypeLinksInput = {
-    update: XOR<IngredientUpdateWithoutTypeLinksInput, IngredientUncheckedUpdateWithoutTypeLinksInput>
-    create: XOR<IngredientCreateWithoutTypeLinksInput, IngredientUncheckedCreateWithoutTypeLinksInput>
-    where?: IngredientWhereInput
+  export type ExtraUpsertWithoutTypeLinksInput = {
+    update: XOR<ExtraUpdateWithoutTypeLinksInput, ExtraUncheckedUpdateWithoutTypeLinksInput>
+    create: XOR<ExtraCreateWithoutTypeLinksInput, ExtraUncheckedCreateWithoutTypeLinksInput>
+    where?: ExtraWhereInput
   }
 
-  export type IngredientUpdateToOneWithWhereWithoutTypeLinksInput = {
-    where?: IngredientWhereInput
-    data: XOR<IngredientUpdateWithoutTypeLinksInput, IngredientUncheckedUpdateWithoutTypeLinksInput>
+  export type ExtraUpdateToOneWithWhereWithoutTypeLinksInput = {
+    where?: ExtraWhereInput
+    data: XOR<ExtraUpdateWithoutTypeLinksInput, ExtraUncheckedUpdateWithoutTypeLinksInput>
   }
 
-  export type IngredientUpdateWithoutTypeLinksInput = {
+  export type ExtraUpdateWithoutTypeLinksInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     image?: NullableStringFieldUpdateOperationsInput | string | null
@@ -19234,7 +19234,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
-  export type IngredientUncheckedUpdateWithoutTypeLinksInput = {
+  export type ExtraUncheckedUpdateWithoutTypeLinksInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     image?: NullableStringFieldUpdateOperationsInput | string | null
@@ -19308,7 +19308,7 @@ export namespace Prisma {
     isActive?: boolean
     sortOrder?: number
     createdAt?: Date | string
-    ingredients?: CompositionTypeIngredientCreateNestedManyWithoutCompositionTypeInput
+    extras?: CompositionTypeExtraCreateNestedManyWithoutCompositionTypeInput
   }
 
   export type CompositionTypeUncheckedCreateWithoutProductStepsInput = {
@@ -19324,7 +19324,7 @@ export namespace Prisma {
     isActive?: boolean
     sortOrder?: number
     createdAt?: Date | string
-    ingredients?: CompositionTypeIngredientUncheckedCreateNestedManyWithoutCompositionTypeInput
+    extras?: CompositionTypeExtraUncheckedCreateNestedManyWithoutCompositionTypeInput
   }
 
   export type CompositionTypeCreateOrConnectWithoutProductStepsInput = {
@@ -19411,7 +19411,7 @@ export namespace Prisma {
     isActive?: BoolFieldUpdateOperationsInput | boolean
     sortOrder?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    ingredients?: CompositionTypeIngredientUpdateManyWithoutCompositionTypeNestedInput
+    extras?: CompositionTypeExtraUpdateManyWithoutCompositionTypeNestedInput
   }
 
   export type CompositionTypeUncheckedUpdateWithoutProductStepsInput = {
@@ -19427,7 +19427,7 @@ export namespace Prisma {
     isActive?: BoolFieldUpdateOperationsInput | boolean
     sortOrder?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    ingredients?: CompositionTypeIngredientUncheckedUpdateManyWithoutCompositionTypeNestedInput
+    extras?: CompositionTypeExtraUncheckedUpdateManyWithoutCompositionTypeNestedInput
   }
 
   export type CategoryCreateWithoutProductsInput = {
@@ -20410,28 +20410,28 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
-  export type CompositionTypeIngredientCreateManyIngredientInput = {
+  export type CompositionTypeExtraCreateManyExtraInput = {
     compositionTypeId: string
     position?: number
   }
 
-  export type CompositionTypeIngredientUpdateWithoutIngredientInput = {
+  export type CompositionTypeExtraUpdateWithoutExtraInput = {
     position?: IntFieldUpdateOperationsInput | number
-    compositionType?: CompositionTypeUpdateOneRequiredWithoutIngredientsNestedInput
+    compositionType?: CompositionTypeUpdateOneRequiredWithoutExtrasNestedInput
   }
 
-  export type CompositionTypeIngredientUncheckedUpdateWithoutIngredientInput = {
+  export type CompositionTypeExtraUncheckedUpdateWithoutExtraInput = {
     compositionTypeId?: StringFieldUpdateOperationsInput | string
     position?: IntFieldUpdateOperationsInput | number
   }
 
-  export type CompositionTypeIngredientUncheckedUpdateManyWithoutIngredientInput = {
+  export type CompositionTypeExtraUncheckedUpdateManyWithoutExtraInput = {
     compositionTypeId?: StringFieldUpdateOperationsInput | string
     position?: IntFieldUpdateOperationsInput | number
   }
 
-  export type CompositionTypeIngredientCreateManyCompositionTypeInput = {
-    ingredientId: string
+  export type CompositionTypeExtraCreateManyCompositionTypeInput = {
+    extraId: string
     position?: number
   }
 
@@ -20440,18 +20440,18 @@ export namespace Prisma {
     sortOrder?: number
   }
 
-  export type CompositionTypeIngredientUpdateWithoutCompositionTypeInput = {
+  export type CompositionTypeExtraUpdateWithoutCompositionTypeInput = {
     position?: IntFieldUpdateOperationsInput | number
-    ingredient?: IngredientUpdateOneRequiredWithoutTypeLinksNestedInput
+    extra?: ExtraUpdateOneRequiredWithoutTypeLinksNestedInput
   }
 
-  export type CompositionTypeIngredientUncheckedUpdateWithoutCompositionTypeInput = {
-    ingredientId?: StringFieldUpdateOperationsInput | string
+  export type CompositionTypeExtraUncheckedUpdateWithoutCompositionTypeInput = {
+    extraId?: StringFieldUpdateOperationsInput | string
     position?: IntFieldUpdateOperationsInput | number
   }
 
-  export type CompositionTypeIngredientUncheckedUpdateManyWithoutCompositionTypeInput = {
-    ingredientId?: StringFieldUpdateOperationsInput | string
+  export type CompositionTypeExtraUncheckedUpdateManyWithoutCompositionTypeInput = {
+    extraId?: StringFieldUpdateOperationsInput | string
     position?: IntFieldUpdateOperationsInput | number
   }
 
@@ -20772,9 +20772,9 @@ export namespace Prisma {
      */
     export type CategoryCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = CategoryCountOutputTypeDefaultArgs<ExtArgs>
     /**
-     * @deprecated Use IngredientCountOutputTypeDefaultArgs instead
+     * @deprecated Use ExtraCountOutputTypeDefaultArgs instead
      */
-    export type IngredientCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = IngredientCountOutputTypeDefaultArgs<ExtArgs>
+    export type ExtraCountOutputTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ExtraCountOutputTypeDefaultArgs<ExtArgs>
     /**
      * @deprecated Use CompositionTypeCountOutputTypeDefaultArgs instead
      */
@@ -20804,17 +20804,17 @@ export namespace Prisma {
      */
     export type CategoryArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = CategoryDefaultArgs<ExtArgs>
     /**
-     * @deprecated Use IngredientDefaultArgs instead
+     * @deprecated Use ExtraDefaultArgs instead
      */
-    export type IngredientArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = IngredientDefaultArgs<ExtArgs>
+    export type ExtraArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ExtraDefaultArgs<ExtArgs>
     /**
      * @deprecated Use CompositionTypeDefaultArgs instead
      */
     export type CompositionTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = CompositionTypeDefaultArgs<ExtArgs>
     /**
-     * @deprecated Use CompositionTypeIngredientDefaultArgs instead
+     * @deprecated Use CompositionTypeExtraDefaultArgs instead
      */
-    export type CompositionTypeIngredientArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = CompositionTypeIngredientDefaultArgs<ExtArgs>
+    export type CompositionTypeExtraArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = CompositionTypeExtraDefaultArgs<ExtArgs>
     /**
      * @deprecated Use ProductCompositionDefaultArgs instead
      */
