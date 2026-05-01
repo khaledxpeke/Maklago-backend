@@ -345,10 +345,10 @@ catalogRouter.post(
       sendError(res, 400, 'validation_error', 'Expected multipart field `file`');
       return;
     }
-    const rel = `/uploads/${req.tenant.id}/${file.filename}`;
+    const rel = `uploads/${req.tenant.id}/${file.filename}`;
     res.status(201).json({
-      url: resolveImageForClient(req, rel),
       path: rel,
+      url: resolveImageForClient(req, rel),
     });
   }),
 );

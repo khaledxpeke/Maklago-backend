@@ -316,6 +316,86 @@
           }
         }
       },
+      "OrderProductSummary": {
+        "type": "object",
+        "description": "Product on an order line — aligned with catalog product JSON (_id, categoryName, price + priceCents, resolved image URL).",
+        "properties": {
+          "_id": { "type": "string", "format": "uuid" },
+          "id": { "type": "string", "format": "uuid" },
+          "categoryId": { "type": "string", "format": "uuid" },
+          "categoryName": { "type": "string" },
+          "categories": {
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" }
+          },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "kind": { "type": "string", "enum": ["simple", "composed"] },
+          "priceCents": { "type": "integer" },
+          "price": { "type": "number" },
+          "taxRateBps": { "type": "integer", "nullable": true },
+          "tva": { "type": "number", "nullable": true },
+          "image": { "type": "string", "nullable": true }
+        }
+      },
+      "OrderLineSerialized": {
+        "type": "object",
+        "description": "Order line with Mongo-style _id, major-unit money fields, enriched snapshots, and catalog-aligned product.",
+        "properties": {
+          "_id": { "type": "string", "format": "uuid" },
+          "id": { "type": "string", "format": "uuid" },
+          "orderId": { "type": "string", "format": "uuid" },
+          "productId": { "type": "string", "format": "uuid" },
+          "quantity": { "type": "integer" },
+          "unitPriceCents": { "type": "integer" },
+          "unitPrice": { "type": "number" },
+          "lineTotalCents": { "type": "integer" },
+          "lineTotal": { "type": "number" },
+          "taxCents": { "type": "integer" },
+          "tax": { "type": "number" },
+          "note": { "type": "string", "nullable": true },
+          "modifiersSnapshot": { "type": "object", "additionalProperties": true },
+          "compositionSnapshot": { "type": "object", "additionalProperties": true },
+          "product": {
+            "$ref": "#/components/schemas/OrderProductSummary"
+          }
+        }
+      },
+      "OrderSerialized": {
+        "type": "object",
+        "description": "Full order response with _id, major-unit totals, serialized lines; table and staff use _id aliases where present.",
+        "properties": {
+          "_id": { "type": "string", "format": "uuid" },
+          "id": { "type": "string", "format": "uuid" },
+          "status": { "$ref": "#/components/schemas/OrderStatus" },
+          "fulfillment": { "type": "string", "enum": ["dine_in", "takeaway"] },
+          "tableId": { "type": "string", "format": "uuid", "nullable": true },
+          "staffId": { "type": "string", "format": "uuid", "nullable": true },
+          "sessionId": { "type": "string", "format": "uuid", "nullable": true },
+          "subtotalCents": { "type": "integer" },
+          "subtotal": { "type": "number" },
+          "taxCents": { "type": "integer" },
+          "tax": { "type": "number" },
+          "totalCents": { "type": "integer" },
+          "total": { "type": "number" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "lines": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OrderLineSerialized" }
+          },
+          "table": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true
+          },
+          "staff": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true
+          }
+        }
+      },
       "TableBody": {
         "type": "object",
         "required": [
@@ -1654,11 +1734,13 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "url": {
-                      "type": "string"
-                    },
                     "path": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Portable value to store on entities: uploads/<tenantId>/<filename>"
+                    },
+                    "url": {
+                      "type": "string",
+                      "description": "Absolute URL for the same file (derived from Host or PUBLIC_BASE_URL)"
                     }
                   }
                 }
@@ -2185,10 +2267,33 @@
         },
         "responses": {
           "200": {
-            "description": "Idempotent replay"
+            "description": "Idempotent replay — same body as create; `order` matches catalog-aligned serialization.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": { "$ref": "#/components/schemas/OrderSerialized" },
+                    "printJobs": { "type": "array", "items": { "type": "object" } },
+                    "idempotentReplay": { "type": "boolean", "enum": [true] }
+                  }
+                }
+              }
+            }
           },
           "201": {
-            "description": "Created"
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": { "$ref": "#/components/schemas/OrderSerialized" },
+                    "printJobs": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Validation / product not found",
@@ -2246,7 +2351,20 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "orders": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/OrderSerialized" }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "description": "Unauthorized",
@@ -2282,7 +2400,17 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": { "$ref": "#/components/schemas/OrderSerialized" }
+                  }
+                }
+              }
+            }
           },
           "404": {
             "description": "Not found",
@@ -2328,7 +2456,17 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": { "$ref": "#/components/schemas/OrderSerialized" }
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Validation",

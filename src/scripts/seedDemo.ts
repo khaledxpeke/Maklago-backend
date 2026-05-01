@@ -3,6 +3,8 @@
  * Run after migrations: `npm run seed`
  */
 import 'dotenv/config';
+import fs from 'node:fs';
+import path from 'node:path';
 import bcrypt from 'bcrypt';
 import { env } from '../config/env';
 import { getRegistryClient } from '../db/registry';
@@ -10,8 +12,8 @@ import { getTenantPrisma } from '../db/tenantPool';
 import { upsertStaffLoginDirectory, removeStaffLoginDirectory } from '../services/staffLoginDirectory';
 import { refreshTableOccupancyFromOrders } from '../services/tableOccupancy';
 
-/** Stable Unsplash URLs for demo catalog images (no local upload required). */
-const DEMO_IMAGES = {
+/** Source URLs — downloaded into `uploads/<tenantId>/` as portable `uploads/…` paths in the DB. */
+const SEED_IMAGE_SOURCES = {
   categoryDrinks:
     'https://images.unsplash.com/photo-1437418747212-8d9709a3e9e2?w=800&q=80&auto=format&fit=crop',
   categoryFood:
@@ -25,6 +27,21 @@ const DEMO_IMAGES = {
   productComposed:
     'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800&q=80&auto=format&fit=crop',
 } as const;
+
+async function ensureSeedImage(tenantId: string, filename: string, sourceUrl: string): Promise<string> {
+  const dir = path.join(process.cwd(), 'uploads', tenantId);
+  fs.mkdirSync(dir, { recursive: true });
+  const dest = path.join(dir, filename);
+  if (!fs.existsSync(dest)) {
+    const res = await fetch(sourceUrl);
+    if (!res.ok) {
+      throw new Error(`Seed: failed to download ${filename} (${res.status})`);
+    }
+    fs.writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
+    console.log('Saved seed image', path.relative(process.cwd(), dest));
+  }
+  return `uploads/${tenantId}/${filename}`;
+}
 
 async function main(): Promise<void> {
   if (!process.env.REGISTRY_DATABASE_URL || !process.env.TENANT_DATABASE_URL) {
@@ -69,6 +86,15 @@ async function main(): Promise<void> {
   }
 
   const prisma = getTenantPrisma(tenant.id, tenant.databaseUrl);
+
+  const demoImages = {
+    categoryDrinks: await ensureSeedImage(tenant.id, 'seed-category-drinks.jpg', SEED_IMAGE_SOURCES.categoryDrinks),
+    categoryFood: await ensureSeedImage(tenant.id, 'seed-category-food.jpg', SEED_IMAGE_SOURCES.categoryFood),
+    productCoffee: await ensureSeedImage(tenant.id, 'seed-product-coffee.jpg', SEED_IMAGE_SOURCES.productCoffee),
+    productSandwich: await ensureSeedImage(tenant.id, 'seed-product-sandwich.jpg', SEED_IMAGE_SOURCES.productSandwich),
+    productJuice: await ensureSeedImage(tenant.id, 'seed-product-juice.jpg', SEED_IMAGE_SOURCES.productJuice),
+    productComposed: await ensureSeedImage(tenant.id, 'seed-product-composed.jpg', SEED_IMAGE_SOURCES.productComposed),
+  };
 
   const legacyDemoEmail = 'cashier@demo.local';
   const legacyStaff = await prisma.staff.findUnique({ where: { email: legacyDemoEmail } });
@@ -127,9 +153,9 @@ async function main(): Promise<void> {
       id: '00000000-0000-4000-8000-000000000001',
       name: 'Drinks',
       sortOrder: 0,
-      image: DEMO_IMAGES.categoryDrinks,
+      image: demoImages.categoryDrinks,
     },
-    update: { name: 'Drinks', image: DEMO_IMAGES.categoryDrinks },
+    update: { name: 'Drinks', image: demoImages.categoryDrinks },
   });
 
   const catFood = await prisma.category.upsert({
@@ -138,9 +164,9 @@ async function main(): Promise<void> {
       id: '00000000-0000-4000-8000-000000000002',
       name: 'Food',
       sortOrder: 1,
-      image: DEMO_IMAGES.categoryFood,
+      image: demoImages.categoryFood,
     },
-    update: { name: 'Food', image: DEMO_IMAGES.categoryFood },
+    update: { name: 'Food', image: demoImages.categoryFood },
   });
 
   await prisma.product.upsert({
@@ -151,7 +177,7 @@ async function main(): Promise<void> {
       name: 'Coffee',
       kind: 'simple',
       description: 'House blend. Hot or iced.',
-      image: DEMO_IMAGES.productCoffee,
+      image: demoImages.productCoffee,
       price: 250,
       taxRateBps: 1000,
       sortOrder: 0,
@@ -164,7 +190,7 @@ async function main(): Promise<void> {
     update: {
       kind: 'simple',
       description: 'House blend. Hot or iced.',
-      image: DEMO_IMAGES.productCoffee,
+      image: demoImages.productCoffee,
       price: 250,
       taxRateBps: 1000,
       outOfStock: false,
@@ -183,7 +209,7 @@ async function main(): Promise<void> {
       name: 'Sandwich',
       kind: 'simple',
       description: 'Ham, cheese, and greens on a toasted baguette.',
-      image: DEMO_IMAGES.productSandwich,
+      image: demoImages.productSandwich,
       price: 899,
       taxRateBps: 1000,
       sortOrder: 0,
@@ -192,7 +218,7 @@ async function main(): Promise<void> {
     update: {
       kind: 'simple',
       description: 'Ham, cheese, and greens on a toasted baguette.',
-      image: DEMO_IMAGES.productSandwich,
+      image: demoImages.productSandwich,
       price: 899,
       taxRateBps: 1000,
       outOfStock: false,
@@ -207,7 +233,7 @@ async function main(): Promise<void> {
       name: 'Fresh orange juice',
       kind: 'simple',
       description: 'Pressed daily. Currently unavailable (demo out-of-stock).',
-      image: DEMO_IMAGES.productJuice,
+      image: demoImages.productJuice,
       price: 450,
       sortOrder: 1,
       outOfStock: true,
@@ -215,7 +241,7 @@ async function main(): Promise<void> {
     update: {
       kind: 'simple',
       description: 'Pressed daily. Currently unavailable (demo out-of-stock).',
-      image: DEMO_IMAGES.productJuice,
+      image: demoImages.productJuice,
       price: 450,
       sortOrder: 1,
       outOfStock: true,
@@ -331,7 +357,7 @@ async function main(): Promise<void> {
       name: 'Tacos composé (démo)',
       kind: 'composed',
       description: 'Produit composé: choix sauce puis garnitures (comme Tacos Korner).',
-      image: DEMO_IMAGES.productComposed,
+      image: demoImages.productComposed,
       price: 799,
       taxRateBps: 1000,
       sortOrder: 2,
@@ -341,7 +367,7 @@ async function main(): Promise<void> {
     update: {
       kind: 'composed',
       description: 'Produit composé: choix sauce puis garnitures (comme Tacos Korner).',
-      image: DEMO_IMAGES.productComposed,
+      image: demoImages.productComposed,
       price: 799,
       taxRateBps: 1000,
       outOfStock: false,

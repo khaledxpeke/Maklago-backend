@@ -33,7 +33,7 @@ function toEscPosBase64(lines: ReceiptLine[]): string {
 
 export function buildCustomerReceiptJobs(args: {
   order: Order;
-  lines: (OrderLine & { product: Product })[];
+  lines: (OrderLine & { product: Pick<Product, 'name'> })[];
   venueName: string;
 }): PrintJob[] {
   const textLines: ReceiptLine[] = [
@@ -71,7 +71,7 @@ export function buildCustomerReceiptJobs(args: {
 
 export function buildKitchenTicketJobs(args: {
   order: Order;
-  lines: (OrderLine & { product: Product })[];
+  lines: (OrderLine & { product: Pick<Product, 'name'> })[];
 }): PrintJob[] {
   const textLines: ReceiptLine[] = [
     { text: `KITCHEN  ${args.order.id.slice(0, 8)}`, bold: true },

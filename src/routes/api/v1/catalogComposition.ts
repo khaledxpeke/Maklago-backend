@@ -1,7 +1,9 @@
 import { Router } from 'express';
+import type { Request } from 'express';
 import { z } from 'zod';
 import type { Extra } from '../../../db/tenant-client';
 import { asyncHandler } from '../../../http/asyncHandler';
+import { normalizeImageForStorage, resolveImageForClient } from '../../../http/imageUrl';
 import { majorToCents } from '../../../http/money';
 import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
@@ -10,12 +12,12 @@ import { requireRole } from '../../../middleware/requireRole';
 const admin = requireRole('owner', 'manager');
 
 /** Mongo-like extra JSON: `price` / `suppPrice` in main currency units; `_id` alias. */
-export function extraToMongoShape(i: Extra): Record<string, unknown> {
+export function extraToMongoShape(req: Request, i: Extra): Record<string, unknown> {
   return {
     _id: i.id,
     id: i.id,
     name: i.name,
-    image: i.image,
+    image: resolveImageForClient(req, i.image) ?? '',
     price: i.price / 100,
     suppPrice: i.suppPrice / 100,
     priceCents: i.price,
@@ -103,7 +105,7 @@ export function attachCompositionCatalogRoutes(router: Router): void {
       const rows = await req.tenant.prisma.extra.findMany({
         orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       });
-      res.json({ extras: rows.map((r) => extraToMongoShape(r)) });
+      res.json({ extras: rows.map((r) => extraToMongoShape(req, r)) });
     }),
   );
 
@@ -118,10 +120,11 @@ export function attachCompositionCatalogRoutes(router: Router): void {
       }
       if (!req.tenant) return;
       const cents = extraPricesFromBody(parsed.data);
+      const img = normalizeImageForStorage(parsed.data.image);
       const row = await req.tenant.prisma.extra.create({
         data: {
           name: parsed.data.name,
-          image: parsed.data.image ?? null,
+          ...(img !== undefined ? { image: img ?? null } : {}),
           price: cents.price,
           suppPrice: cents.suppPrice,
           sortOrder: sortFromBody(parsed.data),
@@ -129,7 +132,7 @@ export function attachCompositionCatalogRoutes(router: Router): void {
           ...(parsed.data.visible !== undefined ? { visible: parsed.data.visible } : {}),
         },
       });
-      res.status(201).json({ extra: extraToMongoShape(row) });
+      res.status(201).json({ extra: extraToMongoShape(req, row) });
     }),
   );
 
@@ -173,11 +176,12 @@ export function attachCompositionCatalogRoutes(router: Router): void {
           suppPrice = majorToCents(parsed.data.suppPrice);
         }
 
+        const img = normalizeImageForStorage(parsed.data.image);
         const row = await req.tenant.prisma.extra.update({
           where: { id },
           data: {
             ...('name' in parsed.data && parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
-            ...('image' in parsed.data ? { image: parsed.data.image ?? null } : {}),
+            ...(img !== undefined ? { image: img ?? null } : {}),
             price,
             suppPrice,
             ...('outOfStock' in parsed.data ? { outOfStock: parsed.data.outOfStock } : {}),
@@ -185,7 +189,7 @@ export function attachCompositionCatalogRoutes(router: Router): void {
             ...(sort !== undefined ? { sortOrder: sort } : {}),
           },
         });
-        res.json({ extra: extraToMongoShape(row) });
+        res.json({ extra: extraToMongoShape(req, row) });
       } catch {
         sendError(res, 404, 'not_found', 'Extra not found');
       }
@@ -224,7 +228,7 @@ export function attachCompositionCatalogRoutes(router: Router): void {
         isActive: t.isActive,
         extraIds: t.extras.map((x) => x.extraId),
         extras: t.extras.map((x) => ({
-          ...extraToMongoShape(x.extra),
+          ...extraToMongoShape(req, x.extra),
           position: x.position,
         })),
       });
@@ -400,7 +404,7 @@ export function attachCompositionCatalogRoutes(router: Router): void {
         compositionType: {
           ...updated,
           extras: updated.extras.map((x) => ({
-            ...extraToMongoShape(x.extra),
+            ...extraToMongoShape(req, x.extra),
             position: x.position,
           })),
         },

@@ -21,6 +21,7 @@ import {
 import { getDefaultTaxBps } from '../../../services/settings';
 import { buildCustomerReceiptJobs, buildKitchenTicketJobs } from '../../../services/printJob';
 import { refreshTableOccupancyFromOrders } from '../../../services/tableOccupancy';
+import { orderDetailInclude, orderListInclude, serializeOrder } from '../../../services/orderJson';
 
 const lineSchema = z.object({
   productId: z.string().uuid(),
@@ -97,7 +98,7 @@ ordersRouter.post(
     if (idemKey) {
       const existing = await prisma.order.findUnique({
         where: { idempotencyKey: idemKey },
-        include: { lines: { include: { product: true } } },
+        include: orderDetailInclude,
       });
       if (existing) {
         const printJobs = [
@@ -111,7 +112,11 @@ ordersRouter.post(
             lines: existing.lines.map((l) => ({ ...l, product: l.product })),
           }),
         ];
-        res.status(200).json({ order: existing, printJobs, idempotentReplay: true });
+        res.status(200).json({
+          order: serializeOrder(req, existing),
+          printJobs,
+          idempotentReplay: true,
+        });
         return;
       }
     }
@@ -265,7 +270,7 @@ ordersRouter.post(
               })),
             },
           },
-          include: { lines: { include: { product: true } } },
+          include: orderDetailInclude,
         });
 
         if (fulfillment === 'dine_in' && tableId && ['draft', 'active'].includes(status)) {
@@ -287,7 +292,7 @@ ordersRouter.post(
         }),
       ];
 
-      res.status(201).json({ order, printJobs });
+      res.status(201).json({ order: serializeOrder(req, order), printJobs });
     } catch (e) {
       if (e instanceof ProductNotFoundError) {
         sendError(res, 400, 'product_not_found', 'Product not found or inactive', {
@@ -345,12 +350,9 @@ ordersRouter.get(
       where,
       orderBy: { createdAt: 'desc' },
       take,
-      include: {
-        lines: { include: { product: { select: { id: true, name: true } } } },
-        table: true,
-      },
+      include: orderListInclude,
     });
-    res.json({ orders: rows });
+    res.json({ orders: rows.map((o) => serializeOrder(req, o)) });
   }),
 );
 
@@ -365,13 +367,13 @@ ordersRouter.get(
     }
     const row = await req.tenant.prisma.order.findUnique({
       where: { id },
-      include: { lines: { include: { product: true } }, table: true, staff: true },
+      include: orderDetailInclude,
     });
     if (!row) {
       sendError(res, 404, 'not_found', 'Order not found');
       return;
     }
-    res.json({ order: row });
+    res.json({ order: serializeOrder(req, row) });
   }),
 );
 
@@ -398,12 +400,12 @@ ordersRouter.patch(
       const order = await prisma.order.update({
         where: { id: orderId },
         data: { status: parsed.data.status as OrderStatus },
-        include: { lines: { include: { product: true } } },
+        include: orderDetailInclude,
       });
       if (order.tableId && order.fulfillment === 'dine_in') {
         await refreshTableOccupancyFromOrders(prisma, order.tableId);
       }
-      res.json({ order });
+      res.json({ order: serializeOrder(req, order) });
     } catch {
       sendError(res, 404, 'not_found', 'Order not found');
     }

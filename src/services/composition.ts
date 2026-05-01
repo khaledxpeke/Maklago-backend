@@ -133,7 +133,14 @@ export function resolveCompositionSelection(
 
     const allowed = new Map(slot.rows.map((row) => [row.extra.id, row.extra]));
     const seen = new Set<string>();
-    const picked: { id: string; name: string; extraCents: number }[] = [];
+    const picked: {
+      _id: string;
+      id: string;
+      name: string;
+      extraCents: number;
+      priceCents: number;
+      price: number;
+    }[] = [];
 
     for (const id of selected) {
       if (seen.has(id)) {
@@ -149,7 +156,14 @@ export function resolveCompositionSelection(
       }
       const add = extraAddonCents(slot.payment, row);
       extraCents += add;
-      picked.push({ id: row.id, name: row.name, extraCents: add });
+      picked.push({
+        _id: row.id,
+        id: row.id,
+        name: row.name,
+        extraCents: add,
+        priceCents: add,
+        price: add / 100,
+      });
     }
 
     snapshotSteps.push({
