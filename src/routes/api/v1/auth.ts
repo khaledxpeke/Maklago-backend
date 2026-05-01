@@ -7,8 +7,32 @@ import { getRegistryClient } from '../../../db/registry';
 import { getTenantPrisma } from '../../../db/tenantPool';
 import { asyncHandler } from '../../../http/asyncHandler';
 import { sendError } from '../../../http/errorResponse';
+import { requireRole } from '../../../middleware/requireRole';
 import { requireStaff } from '../../../middleware/requireStaff';
 import { normalizeStaffLoginEmail } from '../../../services/staffLoginDirectory';
+
+const verifyPinSchema = z.object({
+  pin: z.string().regex(/^\d{4}$/, 'Must be exactly 4 digits'),
+});
+
+const patchPinMobileSchema = z.object({
+  pinMobileEnabled: z.boolean(),
+  currentPin: z.string().regex(/^\d{4}$/).optional(),
+});
+
+/** PIN flags for clients: `hasPin` = PIN stored; `requiresMobilePin` = enforce on mobile (owner && PIN && gate on). */
+function staffAuthPinFields(staff: {
+  role: string;
+  pinHash: string | null;
+  pinMobileEnabled: boolean;
+}) {
+  const owner = staff.role === 'owner';
+  const hasPin = Boolean(staff.pinHash);
+  return {
+    hasPin,
+    requiresMobilePin: owner && hasPin && staff.pinMobileEnabled,
+  };
+}
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -109,6 +133,7 @@ authRouter.post(
         email: staff.email,
         fullName: staff.fullName,
         role: staff.role,
+        ...staffAuthPinFields(staff),
       },
     });
   }),
@@ -135,7 +160,101 @@ authRouter.get(
         email: staff.email,
         fullName: staff.fullName,
         role: staff.role,
+        ...staffAuthPinFields(staff),
       },
     });
+  }),
+);
+
+authRouter.patch(
+  '/me/pin-mobile-enabled',
+  requireStaff,
+  requireRole('owner'),
+  asyncHandler(async (req, res) => {
+    const parsed = patchPinMobileSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendError(res, 400, 'validation_error', 'Invalid body', parsed.error.flatten());
+      return;
+    }
+    if (!req.tenant || !req.staff) {
+      sendError(res, 500, 'internal_error', 'Context missing');
+      return;
+    }
+    const staff = await req.tenant.prisma.staff.findUnique({ where: { id: req.staff.id } });
+    if (!staff || staff.role !== 'owner') {
+      sendError(res, 403, 'forbidden', 'Only owners can change mobile PIN gate');
+      return;
+    }
+    const next = parsed.data.pinMobileEnabled;
+    if (next && !staff.pinHash) {
+      sendError(
+        res,
+        400,
+        'pin_required',
+        'Set an owner PIN in the backoffice before enabling the mobile PIN gate.',
+      );
+      return;
+    }
+    if (!next && staff.pinHash) {
+      if (!parsed.data.currentPin) {
+        sendError(
+          res,
+          400,
+          'current_pin_required',
+          'Send currentPin (4 digits) to disable the mobile PIN gate while a PIN is set.',
+        );
+        return;
+      }
+      const ok = await bcrypt.compare(parsed.data.currentPin, staff.pinHash);
+      if (!ok) {
+        sendError(res, 401, 'invalid_pin', 'Invalid PIN');
+        return;
+      }
+    }
+    const row = await req.tenant.prisma.staff.update({
+      where: { id: staff.id },
+      data: { pinMobileEnabled: next },
+    });
+    res.json({
+      staff: {
+        id: row.id,
+        email: row.email,
+        fullName: row.fullName,
+        role: row.role,
+        ...staffAuthPinFields(row),
+      },
+    });
+  }),
+);
+
+authRouter.post(
+  '/verify-pin',
+  requireStaff,
+  requireRole('owner'),
+  asyncHandler(async (req, res) => {
+    const parsed = verifyPinSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendError(res, 400, 'validation_error', 'Invalid body', parsed.error.flatten());
+      return;
+    }
+    if (!req.tenant || !req.staff) {
+      sendError(res, 500, 'internal_error', 'Context missing');
+      return;
+    }
+    const staff = await req.tenant.prisma.staff.findUnique({ where: { id: req.staff.id } });
+    if (!staff || staff.role !== 'owner') {
+      sendError(res, 403, 'forbidden', 'PIN verification is for owner accounts');
+      return;
+    }
+    if (!staff.pinHash) {
+      sendError(res, 400, 'pin_not_set', 'No PIN is configured for this account');
+      return;
+    }
+    const ok = await bcrypt.compare(parsed.data.pin, staff.pinHash);
+    if (!ok) {
+      sendError(res, 401, 'invalid_pin', 'Invalid PIN');
+      return;
+    }
+    res.json({ verified: true });
   }),
 );

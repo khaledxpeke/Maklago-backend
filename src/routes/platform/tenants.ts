@@ -24,6 +24,7 @@ const bodySchema = z
     ownerEmail: z.string().email().optional(),
     ownerPassword: z.string().min(8).optional(),
     ownerFullName: z.string().min(1).max(200).optional(),
+    ownerPin: z.string().regex(/^\d{4}$/).optional(),
   })
   .refine(
     (d) => {
@@ -32,6 +33,15 @@ const bodySchema = z
       return !!(d.ownerEmail && d.ownerPassword && d.ownerFullName);
     },
     { message: 'ownerEmail, ownerPassword, and ownerFullName must be set together' },
+  )
+  .refine(
+    (d) =>
+      d.ownerPin === undefined ||
+      !!(d.ownerEmail && d.ownerPassword && d.ownerFullName),
+    {
+      message: 'ownerPin requires ownerEmail, ownerPassword, and ownerFullName',
+      path: ['ownerPin'],
+    },
   );
 
 export const platformTenantsRouter = Router();
@@ -46,7 +56,37 @@ const bootstrapOwnerSchema = z.object({
   ownerEmail: z.string().email(),
   ownerPassword: z.string().min(8),
   ownerFullName: z.string().min(1).max(200),
+  ownerPin: z.string().regex(/^\d{4}$/).optional(),
 });
+
+const platformStaffPinBody = z.object({
+  pin: z.string().regex(/^\d{4}$/, 'Must be exactly 4 digits'),
+});
+
+function tenantStaffPinSummary(s: {
+  id: string;
+  email: string;
+  fullName: string;
+  role: StaffRole;
+  isActive: boolean;
+  createdAt: Date;
+  pinHash: string | null;
+  pinMobileEnabled: boolean;
+}) {
+  const owner = s.role === StaffRole.owner;
+  const hasPin = Boolean(s.pinHash);
+  const gateOn = owner ? s.pinMobileEnabled : false;
+  return {
+    id: s.id,
+    email: s.email,
+    fullName: s.fullName,
+    role: s.role,
+    isActive: s.isActive,
+    createdAt: s.createdAt.toISOString(),
+    hasPin,
+    requiresMobilePin: owner && hasPin && gateOn,
+  };
+}
 
 /** Placeholder id so `isStaffLoginEmailTakenElsewhere` treats any directory row as taken for create flows. */
 const NEW_STAFF_SCOPE_ID = '00000000-0000-4000-8000-000000000000';
@@ -174,6 +214,9 @@ platformTenantsRouter.post(
 
     const passwordHash = await bcrypt.hash(parsed.data.ownerPassword, env.bcryptRounds);
     const fullName = parsed.data.ownerFullName.trim();
+    const pinHash = parsed.data.ownerPin
+      ? await bcrypt.hash(parsed.data.ownerPin, env.bcryptRounds)
+      : undefined;
 
     try {
       const createdStaff = await prisma.staff.create({
@@ -182,6 +225,7 @@ platformTenantsRouter.post(
           passwordHash,
           fullName,
           role: StaffRole.owner,
+          ...(pinHash ? { pinHash, pinMobileEnabled: true } : {}),
         },
       });
       await upsertStaffLoginDirectory(registry, tenantRow.id, createdStaff.id, createdStaff.email);
@@ -194,12 +238,7 @@ platformTenantsRouter.post(
         },
       });
       res.status(201).json({
-        staff: {
-          id: createdStaff.id,
-          email: createdStaff.email,
-          fullName: createdStaff.fullName,
-          role: createdStaff.role,
-        },
+        staff: tenantStaffPinSummary(createdStaff),
       });
     } catch (e) {
       const dupTenant =
@@ -211,6 +250,119 @@ platformTenantsRouter.post(
         return;
       }
       throw e;
+    }
+  }),
+);
+
+platformTenantsRouter.get(
+  '/:id/staff',
+  platformAuth,
+  asyncHandler(async (req, res) => {
+    const key = paramId(req);
+    if (!key) {
+      sendError(res, 400, 'validation_error', 'Missing tenant id');
+      return;
+    }
+    const registry = getRegistryClient();
+    const tenantRow = await registry.tenant.findFirst({
+      where: { OR: [{ id: key }, { slug: key }] },
+    });
+    if (!tenantRow) {
+      sendError(res, 404, 'not_found', 'Tenant not found');
+      return;
+    }
+    try {
+      const prisma = getTenantPrisma(tenantRow.id, tenantRow.databaseUrl);
+      const rows = await prisma.staff.findMany({ orderBy: { createdAt: 'asc' } });
+      res.json({ staff: rows.map(tenantStaffPinSummary) });
+    } catch (e) {
+      sendError(res, 503, 'tenant_unreachable', summarizeTenantReachabilityError(e));
+    }
+  }),
+);
+
+platformTenantsRouter.put(
+  '/:id/staff/:staffId/pin',
+  platformAuth,
+  asyncHandler(async (req, res) => {
+    const parsed = platformStaffPinBody.safeParse(req.body);
+    if (!parsed.success) {
+      sendError(res, 400, 'validation_error', 'Invalid body', parsed.error.flatten());
+      return;
+    }
+    const tenantKey = paramId(req);
+    const staffId = paramId(req, 'staffId');
+    if (!tenantKey || !staffId) {
+      sendError(res, 400, 'validation_error', 'Missing tenant id or staff id');
+      return;
+    }
+    const registry = getRegistryClient();
+    const tenantRow = await registry.tenant.findFirst({
+      where: { OR: [{ id: tenantKey }, { slug: tenantKey }] },
+    });
+    if (!tenantRow) {
+      sendError(res, 404, 'not_found', 'Tenant not found');
+      return;
+    }
+    try {
+      const prisma = getTenantPrisma(tenantRow.id, tenantRow.databaseUrl);
+      const existing = await prisma.staff.findUnique({ where: { id: staffId } });
+      if (!existing) {
+        sendError(res, 404, 'not_found', 'Staff not found');
+        return;
+      }
+      if (existing.role !== StaffRole.owner) {
+        sendError(res, 400, 'pin_owner_only', 'PIN can only be set on owner accounts');
+        return;
+      }
+      const pinHash = await bcrypt.hash(parsed.data.pin, env.bcryptRounds);
+      const row = await prisma.staff.update({
+        where: { id: staffId },
+        data: { pinHash, pinMobileEnabled: true },
+      });
+      res.json({ staff: tenantStaffPinSummary(row) });
+    } catch (e) {
+      sendError(res, 503, 'tenant_unreachable', summarizeTenantReachabilityError(e));
+    }
+  }),
+);
+
+platformTenantsRouter.delete(
+  '/:id/staff/:staffId/pin',
+  platformAuth,
+  asyncHandler(async (req, res) => {
+    const tenantKey = paramId(req);
+    const staffId = paramId(req, 'staffId');
+    if (!tenantKey || !staffId) {
+      sendError(res, 400, 'validation_error', 'Missing tenant id or staff id');
+      return;
+    }
+    const registry = getRegistryClient();
+    const tenantRow = await registry.tenant.findFirst({
+      where: { OR: [{ id: tenantKey }, { slug: tenantKey }] },
+    });
+    if (!tenantRow) {
+      sendError(res, 404, 'not_found', 'Tenant not found');
+      return;
+    }
+    try {
+      const prisma = getTenantPrisma(tenantRow.id, tenantRow.databaseUrl);
+      const existing = await prisma.staff.findUnique({ where: { id: staffId } });
+      if (!existing) {
+        sendError(res, 404, 'not_found', 'Staff not found');
+        return;
+      }
+      if (existing.role !== StaffRole.owner) {
+        sendError(res, 400, 'pin_owner_only', 'PIN only applies to owner accounts');
+        return;
+      }
+      const row = await prisma.staff.update({
+        where: { id: staffId },
+        data: { pinHash: null, pinMobileEnabled: true },
+      });
+      res.json({ staff: tenantStaffPinSummary(row) });
+    } catch (e) {
+      sendError(res, 503, 'tenant_unreachable', summarizeTenantReachabilityError(e));
     }
   }),
 );
@@ -296,7 +448,7 @@ platformTenantsRouter.post(
       sendError(res, 400, 'validation_error', 'Invalid body', parsed.error.flatten());
       return;
     }
-    const { slug, name, databaseUrl, ownerEmail, ownerPassword, ownerFullName } = parsed.data;
+    const { slug, name, databaseUrl, ownerEmail, ownerPassword, ownerFullName, ownerPin } = parsed.data;
 
     const registry = getRegistryClient();
     const existing = await registry.tenant.findUnique({ where: { slug } });
@@ -310,6 +462,8 @@ platformTenantsRouter.post(
     const ownerPasswordHash = hasOwner
       ? await bcrypt.hash(ownerPassword!, env.bcryptRounds)
       : null;
+    const ownerPinHash =
+      hasOwner && ownerPin ? await bcrypt.hash(ownerPin, env.bcryptRounds) : undefined;
 
     const tenant = await registry.tenant.create({
       data: {
@@ -339,6 +493,7 @@ platformTenantsRouter.post(
             passwordHash: ownerPasswordHash,
             fullName: ownerFullName!,
             role: StaffRole.owner,
+            ...(ownerPinHash ? { pinHash: ownerPinHash, pinMobileEnabled: true } : {}),
           },
         });
         await upsertStaffLoginDirectory(getRegistryClient(), tenant.id, createdStaff.id, createdStaff.email);

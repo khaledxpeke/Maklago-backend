@@ -43,6 +43,7 @@ const patchBody = z.object({
 
 export const staffRouter = Router();
 staffRouter.use(requireStaff);
+
 staffRouter.use(admin);
 
 function staffPublic(s: {
@@ -52,7 +53,13 @@ function staffPublic(s: {
   role: StaffRole;
   isActive: boolean;
   createdAt: Date;
+  pinHash?: string | null;
+  pinMobileEnabled?: boolean;
 }) {
+  const owner = s.role === 'owner';
+  const hasPin = Boolean(s.pinHash);
+  const gateOn = owner ? Boolean(s.pinMobileEnabled ?? true) : false;
+  const requiresMobilePin = owner && hasPin && gateOn;
   return {
     id: s.id,
     email: s.email,
@@ -60,6 +67,8 @@ function staffPublic(s: {
     role: s.role,
     isActive: s.isActive,
     createdAt: s.createdAt.toISOString(),
+    hasPin,
+    requiresMobilePin,
   };
 }
 
@@ -190,6 +199,8 @@ staffRouter.patch(
       role?: StaffRole;
       isActive?: boolean;
       passwordHash?: string;
+      pinHash?: string | null;
+      pinMobileEnabled?: boolean;
     } = {};
     if (parsed.data.email !== undefined) data.email = parsed.data.email.trim().toLowerCase();
     if (parsed.data.fullName !== undefined) data.fullName = parsed.data.fullName;
@@ -197,6 +208,10 @@ staffRouter.patch(
     if (parsed.data.isActive !== undefined) data.isActive = parsed.data.isActive;
     if (parsed.data.password !== undefined) {
       data.passwordHash = await bcrypt.hash(parsed.data.password, env.bcryptRounds);
+    }
+    if (parsed.data.role !== undefined && parsed.data.role !== 'owner') {
+      data.pinHash = null;
+      data.pinMobileEnabled = true;
     }
 
     if (parsed.data.email !== undefined) {

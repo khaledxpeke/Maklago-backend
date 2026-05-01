@@ -122,39 +122,6 @@ async function replaceProductCompositions(
   }
 }
 
-function fingerprintMobileCatalog(
-  rows: Array<{
-    id: string;
-    name: string;
-    sortOrder: number;
-    image: string | null;
-    isActive: boolean;
-    products: Array<{
-      id: string;
-      categoryId: string;
-      name: string;
-      sortOrder: number;
-      price: number;
-      kind: string;
-      isActive: boolean;
-      description: string | null;
-      compositions: { compositionTypeId: string }[];
-    }>;
-  }>,
-): string {
-  const chunks: string[] = [];
-  for (const c of rows) {
-    chunks.push(`c:${c.id}:${c.name}:${c.sortOrder}:${c.image ?? ''}:${c.isActive}`);
-    for (const p of c.products) {
-      const compIds = p.compositions.map((x) => x.compositionTypeId).join('|');
-      chunks.push(
-        `p:${p.id}:${p.categoryId}:${p.name}:${p.sortOrder}:${p.price}:${p.kind}:${p.isActive}:${p.description ?? ''}:${compIds}`,
-      );
-    }
-  }
-  return createHash('sha256').update(chunks.join('\n')).digest('hex').slice(0, 16);
-}
-
 function mobileMenuIngredient(
   req: Request,
   payment: boolean,
@@ -272,8 +239,6 @@ catalogRouter.get(
       },
     });
 
-    const catalogFingerprint = fingerprintMobileCatalog(rows);
-
     const categories = await Promise.all(
       rows.map(async (c) => {
         const { products: catProducts, ...catRest } = c;
@@ -285,7 +250,6 @@ catalogRouter.get(
     );
 
     res.json({
-      catalogFingerprint,
       categories,
     });
   }),

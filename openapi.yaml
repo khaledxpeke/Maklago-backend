@@ -10,7 +10,7 @@ info:
       normalized email exists in registry `staff_login_directory` (slugless directory login).
     - Authenticated routes use Bearer JWT from login (response includes `tenantId`, `tenantSlug`).
     - Composed products use **extras** (catalog `/api/v1/catalog/extras`) and composition types; order lines use `composition.steps[].extraIds`.
-    - **Mobile bootstrap:** `GET /api/v1/catalog/categories/menu` returns slim `{ catalogFingerprint, categories[] }` with Mongo-style **`_id`** on nested entities, `kind`, and `type[].extras`.
+    - **Mobile bootstrap:** `GET /api/v1/catalog/categories/menu` returns slim `{ categories[] }` with Mongo-style **`_id`** on nested entities, `kind`, and `type[].extras`.
 servers:
   - url: http://localhost:3000
 paths:
@@ -101,6 +101,8 @@ paths:
                       email: { type: string }
                       fullName: { type: string }
                       role: { type: string, enum: [owner, manager, cashier] }
+                      hasPin: { type: boolean }
+                      requiresMobilePin: { type: boolean, description: Owner — PIN exists and mobile gate is on }
         '401': { description: Invalid credentials }
         '403': { description: Tenant disabled (tenant_blocked) }
   /api/v1/auth/me:
@@ -111,6 +113,33 @@ paths:
         - $ref: '#/components/parameters/TenantHeaderOptional'
       responses:
         '200': { description: Staff profile }
+  /api/v1/auth/me/pin-mobile-enabled:
+    patch:
+      summary: Toggle mobile PIN gate (owner)
+      description: |
+        PIN digits are set/cleared only from the backoffice. Owners use this to enable or disable requiring PIN on mobile when a PIN exists.
+        Enabling requires `pinHash` (PIN configured). Disabling while a PIN exists requires `currentPin`.
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pinMobileEnabled]
+              properties:
+                pinMobileEnabled: { type: boolean }
+                currentPin:
+                  type: string
+                  pattern: '^\\d{4}$'
+                  description: Required when turning gate off while a PIN is set.
+      responses:
+        '200': { description: Updated staff PIN flags }
+        '400': { description: pin_required | current_pin_required | validation_error }
+        '401': { description: invalid_pin }
+        '403': { description: Forbidden (non-owner) }
   /api/v1/catalog/categories:
     get:
       security: [{ BearerAuth: [] }]
@@ -136,13 +165,12 @@ paths:
         Each product: `{ _id, category, name, image, description, price, originalPrice, kind, outOfStock, isActive, type }`.
         Nested `type[]` use `_id`; each extra uses `_id`.
         Composed products: `type[]` has `{ _id, name, message, selection, max, min, mode, extras }`; each extra `{ _id, name, image, price, originalPrice, outOfStock }`.
-        Root also includes `catalogFingerprint` for cache invalidation.
       security: [{ BearerAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/TenantHeaderOptional'
       responses:
         '200':
-          description: '{ catalogFingerprint, categories } slim mobile shape; entities use _id (Mongo-style)'
+          description: '{ categories } slim mobile shape; entities use _id (Mongo-style)'
         '401': { description: Unauthorized }
   /api/v1/catalog/extras:
     get:

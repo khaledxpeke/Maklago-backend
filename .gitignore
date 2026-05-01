@@ -9,3 +9,9 @@ uploads/
 /src/db/tenant-client/
 /src/db/registry-client/
 **/query_engine*.tmp*
+
+# Prisma: always commit prisma/*/migrations/**/migration.sql and migration_lock.toml (needed for migrate deploy).
+# Only ignore merge/editor leftovers — ignoring real migrations causes drift between machines.
+**/prisma/migrations/**/*.orig
+**/prisma/migrations/**/*~
+**/prisma/migrations/**/*.bak

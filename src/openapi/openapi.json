@@ -130,6 +130,14 @@
                   "manager",
                   "cashier"
                 ]
+              },
+              "hasPin": {
+                "type": "boolean",
+                "description": "Owner: a PIN is configured (platform)."
+              },
+              "requiresMobilePin": {
+                "type": "boolean",
+                "description": "Owner: true when PIN exists and mobile gate is on — use for gated flows / verify-pin."
               }
             }
           },
@@ -172,8 +180,29 @@
               },
               "role": {
                 "type": "string"
+              },
+              "hasPin": {
+                "type": "boolean"
+              },
+              "requiresMobilePin": {
+                "type": "boolean"
               }
             }
+          }
+        }
+      },
+      "PinMobileEnabledPatchRequest": {
+        "type": "object",
+        "required": ["pinMobileEnabled"],
+        "properties": {
+          "pinMobileEnabled": {
+            "type": "boolean",
+            "description": "When true, mobile clients should require PIN for gated flows if an owner PIN is configured."
+          },
+          "currentPin": {
+            "type": "string",
+            "pattern": "^\\d{4}$",
+            "description": "Required when disabling the gate while a PIN is set."
           }
         }
       },
@@ -386,9 +415,14 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 200
+          },
+          "ownerPin": {
+            "type": "string",
+            "pattern": "^\\d{4}$",
+            "description": "Optional 4-digit PIN for owner (requires owner fields together)."
           }
         },
-        "description": "If any owner field is set, all three owner fields are required."
+        "description": "If any owner field is set, all three owner fields are required. ownerPin requires the owner trio."
       },
       "PatchTenantRequest": {
         "type": "object",
@@ -423,9 +457,24 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 200
+          },
+          "ownerPin": {
+            "type": "string",
+            "pattern": "^\\d{4}$",
+            "description": "Optional 4-digit owner PIN when bootstrapping."
           }
         },
         "description": "Allowed only while the tenant database has no active staff with role owner."
+      },
+      "PlatformStaffPinPutRequest": {
+        "type": "object",
+        "required": ["pin"],
+        "properties": {
+          "pin": {
+            "type": "string",
+            "pattern": "^\\d{4}$"
+          }
+        }
       },
       "StaffCreateBody": {
         "type": "object",
@@ -861,6 +910,136 @@
         }
       }
     },
+    "/platform/v1/tenants/{id}/staff": {
+      "get": {
+        "tags": ["Platform"],
+        "summary": "List staff in tenant DB",
+        "description": "Includes PIN summary flags for owners (hash never exposed).",
+        "security": [{ "PlatformKey": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/TenantKey" }],
+        "responses": {
+          "200": {
+            "description": "{ staff: [...] }"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "503": {
+            "description": "tenant_unreachable",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/platform/v1/tenants/{id}/staff/{staffId}/pin": {
+      "put": {
+        "tags": ["Platform"],
+        "summary": "Set owner PIN (platform admin)",
+        "security": [{ "PlatformKey": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantKey" },
+          {
+            "name": "staffId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PlatformStaffPinPutRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "{ staff } summary" },
+          "400": {
+            "description": "pin_owner_only / validation",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant or staff not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "503": {
+            "description": "tenant_unreachable",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Platform"],
+        "summary": "Remove owner PIN (platform admin)",
+        "security": [{ "PlatformKey": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantKey" },
+          {
+            "name": "staffId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "{ staff } summary" },
+          "400": {
+            "description": "pin_owner_only",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant or staff not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "503": {
+            "description": "tenant_unreachable",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "tags": [
@@ -966,6 +1145,52 @@
             "$ref": "#/components/parameters/TenantHeaderOptional"
           }
         ]
+      }
+    },
+    "/api/v1/auth/me/pin-mobile-enabled": {
+      "patch": {
+        "tags": ["Auth"],
+        "summary": "Toggle mobile PIN gate (owner)",
+        "description": "PIN value is managed in the backoffice. Owners enable/disable whether mobile must verify PIN when one is set.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/TenantHeaderOptional" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PinMobileEnabledPatchRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Returns `{ staff }` with `hasPin` and `requiresMobilePin`."
+          },
+          "400": {
+            "description": "`pin_required`, `current_pin_required`, or validation",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "401": {
+            "description": "`invalid_pin` when disabling gate",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (non-owner)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/staff": {
@@ -1365,7 +1590,7 @@
       "get": {
         "tags": ["Catalog"],
         "summary": "Mobile menu bootstrap",
-        "description": "Active categories with nested active products (mobile-only slim JSON). Uses `_id` instead of `id` on categories, products, composition slots, and extras. Includes `kind` (`simple`|`composed`), category name string field `category`, and `type` with `extras`. Root includes `catalogFingerprint`.",
+        "description": "Active categories with nested active products (mobile-only slim JSON). Uses `_id` instead of `id` on categories, products, composition slots, and extras. Includes `kind` (`simple`|`composed`), category name string field `category`, and `type` with `extras`. ",
         "security": [
           {
             "BearerAuth": []
