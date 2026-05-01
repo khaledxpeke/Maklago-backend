@@ -3,29 +3,48 @@
   "info": {
     "title": "maklaGo API",
     "version": "1.0.0",
-    "description": "Restaurant POS backend. **Tenant routes** require header `x-tenant-id` (tenant slug or UUID). Most routes need `Authorization: Bearer <JWT>` from `POST /api/v1/auth/login`. **Platform** routes use `x-platform-key`. Errors: `{ \"error\": { \"code\", \"message\", \"details?\" } }`."
+    "description": "Restaurant POS backend. **Tenant**: optional header `x-tenant-id` (slug or registry UUID). With `Authorization: Bearer` staff JWT, the tenant is resolved from the token when the header is omitted. **`POST /api/v1/auth/login`** accepts optional `x-tenant-id` for tenant-scoped login; without it, the normalized email must exist in registry **`staff_login_directory`** (slugless directory login). **Platform** routes use `x-platform-key`. Errors: `{ \"error\": { \"code\", \"message\", \"details?\" } }`."
   },
-  "servers": [{ "url": "/", "description": "Same origin as this server (set to http://localhost:3000 in dev)" }],
+  "servers": [
+    {
+      "url": "/",
+      "description": "Same origin as this server (set to http://localhost:3000 in dev)"
+    }
+  ],
   "tags": [
-    { "name": "Health" },
-    { "name": "Platform" },
-    { "name": "Auth" },
-    { "name": "Catalog" },
-    { "name": "Orders" },
-    { "name": "Tables" },
-    { "name": "Sessions" },
-    { "name": "Stats" },
-    { "name": "Settings" },
-    { "name": "Staff" }
+    {
+      "name": "Health"
+    },
+    {
+      "name": "Platform"
+    },
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Catalog"
+    },
+    {
+      "name": "Orders"
+    },
+    {
+      "name": "Tables"
+    },
+    {
+      "name": "Sessions"
+    },
+    {
+      "name": "Stats"
+    },
+    {
+      "name": "Settings"
+    },
+    {
+      "name": "Staff"
+    }
   ],
   "components": {
     "securitySchemes": {
-      "TenantHeader": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "x-tenant-id",
-        "description": "Tenant slug (e.g. `demo`) or tenant UUID from registry."
-      },
       "BearerAuth": {
         "type": "http",
         "scheme": "bearer",
@@ -42,14 +61,23 @@
     "schemas": {
       "ApiError": {
         "type": "object",
-        "required": ["error"],
+        "required": [
+          "error"
+        ],
         "properties": {
           "error": {
             "type": "object",
-            "required": ["code", "message"],
+            "required": [
+              "code",
+              "message"
+            ],
             "properties": {
-              "code": { "type": "string" },
-              "message": { "type": "string" },
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
               "details": {}
             }
           }
@@ -57,62 +85,151 @@
       },
       "LoginRequest": {
         "type": "object",
-        "required": ["email", "password"],
+        "required": [
+          "email",
+          "password"
+        ],
         "properties": {
-          "email": { "type": "string", "format": "email" },
-          "password": { "type": "string", "minLength": 1 }
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       },
       "LoginResponse": {
         "type": "object",
         "properties": {
-          "accessToken": { "type": "string" },
-          "expiresIn": { "type": "string", "example": "7d" },
+          "accessToken": {
+            "type": "string"
+          },
+          "expiresIn": {
+            "type": "string",
+            "example": "7d"
+          },
           "staff": {
             "type": "object",
             "properties": {
-              "id": { "type": "string", "format": "uuid" },
-              "email": { "type": "string" },
-              "fullName": { "type": "string" },
-              "role": { "type": "string", "enum": ["OWNER", "MANAGER", "CASHIER"] }
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "email": {
+                "type": "string"
+              },
+              "fullName": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "OWNER",
+                  "MANAGER",
+                  "CASHIER"
+                ]
+              }
             }
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantSlug": {
+            "type": "string"
           }
-        }
+        },
+        "required": [
+          "accessToken",
+          "tenantId",
+          "tenantSlug",
+          "staff"
+        ]
       },
       "MeResponse": {
         "type": "object",
         "properties": {
-          "tenantId": { "type": "string", "format": "uuid" },
-          "slug": { "type": "string" },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
           "staff": {
             "type": "object",
             "properties": {
-              "id": { "type": "string" },
-              "email": { "type": "string" },
-              "fullName": { "type": "string" },
-              "role": { "type": "string" }
+              "id": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "fullName": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              }
             }
           }
         }
       },
       "CreateOrderRequest": {
         "type": "object",
-        "required": ["lines"],
+        "required": [
+          "lines"
+        ],
         "properties": {
-          "tableId": { "type": "string", "format": "uuid", "nullable": true },
-          "sessionId": { "type": "string", "format": "uuid", "nullable": true },
-          "status": { "type": "string", "enum": ["DRAFT", "ACTIVE"], "default": "ACTIVE" },
+          "tableId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "ACTIVE"
+            ],
+            "default": "ACTIVE"
+          },
           "lines": {
             "type": "array",
             "minItems": 1,
             "items": {
               "type": "object",
-              "required": ["productId", "quantity"],
+              "required": [
+                "productId",
+                "quantity"
+              ],
               "properties": {
-                "productId": { "type": "string", "format": "uuid" },
-                "quantity": { "type": "integer", "minimum": 1, "maximum": 999 },
-                "modifierIds": { "type": "array", "items": { "type": "string" } },
-                "note": { "type": "string", "maxLength": 500 }
+                "productId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 999
+                },
+                "modifierIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "note": {
+                  "type": "string",
+                  "maxLength": 500
+                }
               }
             }
           }
@@ -120,82 +237,188 @@
       },
       "OrderStatus": {
         "type": "string",
-        "enum": ["DRAFT", "ACTIVE", "COMPLETED", "CANCELED"]
+        "enum": [
+          "DRAFT",
+          "ACTIVE",
+          "COMPLETED",
+          "CANCELED"
+        ]
       },
       "PatchOrderStatusRequest": {
         "type": "object",
-        "required": ["status"],
+        "required": [
+          "status"
+        ],
         "properties": {
-          "status": { "$ref": "#/components/schemas/OrderStatus" }
+          "status": {
+            "$ref": "#/components/schemas/OrderStatus"
+          }
         }
       },
       "TableBody": {
         "type": "object",
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "properties": {
-          "name": { "type": "string", "minLength": 1, "maxLength": 100 },
-          "zone": { "type": "string", "maxLength": 100, "nullable": true },
-          "sortOrder": { "type": "integer" }
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "zone": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer"
+          }
         }
       },
       "OpenSessionRequest": {
         "type": "object",
         "properties": {
-          "openingFloatCents": { "type": "integer", "minimum": 0, "default": 0 }
+          "openingFloatCents": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0
+          }
         }
       },
       "CloseSessionRequest": {
         "type": "object",
         "properties": {
-          "closingNote": { "type": "string", "maxLength": 2000 }
+          "closingNote": {
+            "type": "string",
+            "maxLength": 2000
+          }
         }
       },
       "PatchTaxRequest": {
         "type": "object",
-        "required": ["defaultTaxBps"],
+        "required": [
+          "defaultTaxBps"
+        ],
         "properties": {
-          "defaultTaxBps": { "type": "integer", "minimum": 0, "maximum": 100000 }
+          "defaultTaxBps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          }
         }
       },
       "ProvisionTenantRequest": {
         "type": "object",
-        "required": ["slug", "name", "databaseUrl"],
+        "required": [
+          "slug",
+          "name",
+          "databaseUrl"
+        ],
         "properties": {
-          "slug": { "type": "string", "pattern": "^[a-z0-9-]+$", "minLength": 1, "maxLength": 64 },
-          "name": { "type": "string", "minLength": 1, "maxLength": 200 },
-          "databaseUrl": { "type": "string", "minLength": 1 },
-          "ownerEmail": { "type": "string", "format": "email" },
-          "ownerPassword": { "type": "string", "minLength": 8 },
-          "ownerFullName": { "type": "string", "minLength": 1, "maxLength": 200 }
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "databaseUrl": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ownerEmail": {
+            "type": "string",
+            "format": "email"
+          },
+          "ownerPassword": {
+            "type": "string",
+            "minLength": 8
+          },
+          "ownerFullName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
         },
         "description": "If any owner field is set, all three owner fields are required."
       },
       "PatchTenantRequest": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "minLength": 1, "maxLength": 200 },
-          "isActive": { "type": "boolean" },
-          "databaseUrl": { "type": "string", "minLength": 1 }
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "databaseUrl": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       },
       "StaffCreateBody": {
         "type": "object",
-        "required": ["email", "password", "fullName", "role"],
+        "required": [
+          "email",
+          "password",
+          "fullName",
+          "role"
+        ],
         "properties": {
-          "email": { "type": "string", "format": "email" },
-          "password": { "type": "string", "minLength": 8 },
-          "fullName": { "type": "string" },
-          "role": { "type": "string", "enum": ["OWNER", "MANAGER", "CASHIER"] }
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "OWNER",
+              "MANAGER",
+              "CASHIER"
+            ]
+          }
         }
       },
       "StaffPatchBody": {
         "type": "object",
         "properties": {
-          "email": { "type": "string", "format": "email" },
-          "password": { "type": "string", "minLength": 8 },
-          "fullName": { "type": "string" },
-          "role": { "type": "string", "enum": ["OWNER", "MANAGER", "CASHIER"] },
-          "isActive": { "type": "boolean" }
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "OWNER",
+              "MANAGER",
+              "CASHIER"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          }
         }
       }
     },
@@ -204,57 +427,97 @@
         "name": "id",
         "in": "path",
         "required": true,
-        "schema": { "type": "string", "format": "uuid" }
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
       },
       "TableId": {
         "name": "id",
         "in": "path",
         "required": true,
-        "schema": { "type": "string", "format": "uuid" }
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
       },
       "SessionId": {
         "name": "id",
         "in": "path",
         "required": true,
-        "schema": { "type": "string", "format": "uuid" }
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
       },
       "CategoryId": {
         "name": "id",
         "in": "path",
         "required": true,
-        "schema": { "type": "string", "format": "uuid" }
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
       },
       "ProductId": {
         "name": "id",
         "in": "path",
         "required": true,
-        "schema": { "type": "string", "format": "uuid" }
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
       },
       "TenantKey": {
         "name": "id",
         "in": "path",
         "required": true,
-        "schema": { "type": "string", "description": "Tenant UUID or slug" }
+        "schema": {
+          "type": "string",
+          "description": "Tenant UUID or slug"
+        }
       },
       "StaffId": {
         "name": "id",
         "in": "path",
         "required": true,
-        "schema": { "type": "string", "format": "uuid" }
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "TenantHeaderOptional": {
+        "name": "x-tenant-id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Tenant slug (e.g. demo) or registry tenant UUID. Optional when the request includes a valid staff Bearer JWT—the server resolves tenant from the token."
       }
     }
   },
   "paths": {
     "/health": {
       "get": {
-        "tags": ["Health"],
+        "tags": [
+          "Health"
+        ],
         "summary": "Health check",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "type": "object", "properties": { "status": { "type": "string", "example": "ok" } } }
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    }
+                  }
+                }
               }
             }
           }
@@ -263,23 +526,48 @@
     },
     "/platform/v1/tenants": {
       "get": {
-        "tags": ["Platform"],
+        "tags": [
+          "Platform"
+        ],
         "summary": "List tenants",
-        "security": [{ "PlatformKey": [] }],
+        "security": [
+          {
+            "PlatformKey": []
+          }
+        ],
         "responses": {
-          "200": { "description": "OK" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       },
       "post": {
-        "tags": ["Platform"],
+        "tags": [
+          "Platform"
+        ],
         "summary": "Provision tenant",
-        "security": [{ "PlatformKey": [] }],
+        "security": [
+          {
+            "PlatformKey": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/ProvisionTenantRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/ProvisionTenantRequest"
+              }
             }
           }
         },
@@ -294,9 +582,16 @@
                     "tenant": {
                       "type": "object",
                       "properties": {
-                        "id": { "type": "string", "format": "uuid" },
-                        "slug": { "type": "string" },
-                        "name": { "type": "string" }
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
                       }
                     }
                   }
@@ -304,134 +599,416 @@
               }
             }
           },
-          "400": { "description": "Validation", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
-          "401": { "description": "Invalid platform key", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
-          "409": { "description": "Slug taken", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "400": {
+            "description": "Validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid platform key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Slug taken",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/platform/v1/tenants/{id}": {
       "get": {
-        "tags": ["Platform"],
+        "tags": [
+          "Platform"
+        ],
         "summary": "Get tenant by id or slug",
-        "security": [{ "PlatformKey": [] }],
-        "parameters": [{ "$ref": "#/components/parameters/TenantKey" }],
+        "security": [
+          {
+            "PlatformKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantKey"
+          }
+        ],
         "responses": {
-          "200": { "description": "OK" },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       },
       "patch": {
-        "tags": ["Platform"],
+        "tags": [
+          "Platform"
+        ],
         "summary": "Update tenant",
-        "security": [{ "PlatformKey": [] }],
-        "parameters": [{ "$ref": "#/components/parameters/TenantKey" }],
+        "security": [
+          {
+            "PlatformKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantKey"
+          }
+        ],
         "requestBody": {
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PatchTenantRequest" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchTenantRequest"
+              }
+            }
+          }
         },
         "responses": {
-          "200": { "description": "OK" },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       },
       "delete": {
-        "tags": ["Platform"],
+        "tags": [
+          "Platform"
+        ],
         "summary": "Remove tenant from registry",
         "description": "Deletes the registry row (owners cascade). Does not drop the tenant PostgreSQL database.",
-        "security": [{ "PlatformKey": [] }],
-        "parameters": [{ "$ref": "#/components/parameters/TenantKey" }],
+        "security": [
+          {
+            "PlatformKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantKey"
+          }
+        ],
         "responses": {
-          "204": { "description": "Deleted" },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "204": {
+            "description": "Deleted"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/v1/auth/login": {
       "post": {
-        "tags": ["Auth"],
+        "tags": [
+          "Auth"
+        ],
         "summary": "Staff login",
-        "security": [{ "TenantHeader": [] }],
+        "security": [],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
         },
         "responses": {
           "200": {
             "description": "JWT issued",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginResponse" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
           },
-          "400": { "description": "Validation", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
-          "401": { "description": "Invalid credentials", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
-        }
+          "400": {
+            "description": "Validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Issues a staff JWT. Omit `x-tenant-id` when the normalized email exists in `staff_login_directory` (registry); otherwise send `x-tenant-id` to select the tenant database.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          }
+        ]
       }
     },
     "/api/v1/auth/me": {
       "get": {
-        "tags": ["Auth"],
+        "tags": [
+          "Auth"
+        ],
         "summary": "Current staff + tenant",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "responses": {
-          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MeResponse" } } }, "description": "OK" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
-        }
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          }
+        ]
       }
     },
     "/api/v1/staff": {
       "get": {
-        "tags": ["Staff"],
+        "tags": [
+          "Staff"
+        ],
         "summary": "List staff",
         "description": "OWNER or MANAGER only.",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "responses": {
-          "200": { "description": "OK" },
-          "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
-        }
+          "200": {
+            "description": "OK"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          }
+        ]
       },
       "post": {
-        "tags": ["Staff"],
+        "tags": [
+          "Staff"
+        ],
         "summary": "Create staff",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StaffCreateBody" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffCreateBody"
+              }
+            }
+          }
         },
         "responses": {
-          "201": { "description": "Created" },
-          "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
-          "409": { "description": "Email taken", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
-        }
+          "201": {
+            "description": "Created"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email taken",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          }
+        ]
       }
     },
     "/api/v1/staff/{id}": {
       "get": {
-        "tags": ["Staff"],
+        "tags": [
+          "Staff"
+        ],
         "summary": "Get staff member",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
-        "parameters": [{ "$ref": "#/components/parameters/StaffId" }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          },
+          {
+            "$ref": "#/components/parameters/StaffId"
+          }
+        ],
         "responses": {
-          "200": { "description": "OK" },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       },
       "patch": {
-        "tags": ["Staff"],
+        "tags": [
+          "Staff"
+        ],
         "summary": "Update staff",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
-        "parameters": [{ "$ref": "#/components/parameters/StaffId" }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          },
+          {
+            "$ref": "#/components/parameters/StaffId"
+          }
+        ],
         "requestBody": {
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StaffPatchBody" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffPatchBody"
+              }
+            }
+          }
         },
         "responses": {
-          "200": { "description": "OK" },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/v1/catalog/categories": {
       "get": {
-        "tags": ["Catalog"],
+        "tags": [
+          "Catalog"
+        ],
         "summary": "List categories",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -445,13 +1022,28 @@
                       "items": {
                         "type": "object",
                         "properties": {
-                          "id": { "type": "string" },
-                          "name": { "type": "string" },
-                          "sortOrder": { "type": "integer" },
-                          "position": { "type": "integer" },
-                          "productCount": { "type": "integer" },
-                          "image": { "type": "string", "nullable": true },
-                          "isActive": { "type": "boolean" }
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "sortOrder": {
+                            "type": "integer"
+                          },
+                          "position": {
+                            "type": "integer"
+                          },
+                          "productCount": {
+                            "type": "integer"
+                          },
+                          "image": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "isActive": {
+                            "type": "boolean"
+                          }
                         }
                       }
                     }
@@ -460,86 +1052,206 @@
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
-        }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          }
+        ]
       },
       "post": {
-        "tags": ["Catalog"],
+        "tags": [
+          "Catalog"
+        ],
         "summary": "Create category",
         "description": "OWNER or MANAGER only.",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["name"],
+                "required": [
+                  "name"
+                ],
                 "properties": {
-                  "name": { "type": "string" },
-                  "sortOrder": { "type": "integer" },
-                  "position": { "type": "integer" },
-                  "image": { "type": "string", "nullable": true }
+                  "name": {
+                    "type": "string"
+                  },
+                  "sortOrder": {
+                    "type": "integer"
+                  },
+                  "position": {
+                    "type": "integer"
+                  },
+                  "image": {
+                    "type": "string",
+                    "nullable": true
+                  }
                 }
               }
             }
           }
         },
         "responses": {
-          "201": { "description": "Created" },
-          "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
-        }
+          "201": {
+            "description": "Created"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          }
+        ]
       }
     },
     "/api/v1/catalog/categories/{id}": {
       "patch": {
-        "tags": ["Catalog"],
+        "tags": [
+          "Catalog"
+        ],
         "summary": "Update category",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
-        "parameters": [{ "$ref": "#/components/parameters/CategoryId" }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          },
+          {
+            "$ref": "#/components/parameters/CategoryId"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
                 "properties": {
-                  "name": { "type": "string" },
-                  "sortOrder": { "type": "integer" },
-                  "position": { "type": "integer" },
-                  "image": { "type": "string", "nullable": true },
-                  "isActive": { "type": "boolean" }
+                  "name": {
+                    "type": "string"
+                  },
+                  "sortOrder": {
+                    "type": "integer"
+                  },
+                  "position": {
+                    "type": "integer"
+                  },
+                  "image": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
                 }
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "OK" },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       },
       "delete": {
-        "tags": ["Catalog"],
+        "tags": [
+          "Catalog"
+        ],
         "summary": "Soft-delete category and its products",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
-        "parameters": [{ "$ref": "#/components/parameters/CategoryId" }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          },
+          {
+            "$ref": "#/components/parameters/CategoryId"
+          }
+        ],
         "responses": {
-          "204": { "description": "No content" },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "204": {
+            "description": "No content"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/v1/catalog/upload": {
       "post": {
-        "tags": ["Catalog"],
+        "tags": [
+          "Catalog"
+        ],
         "summary": "Upload catalog image",
         "description": "OWNER or MANAGER only. Multipart form field `file` (JPEG, PNG, WebP, GIF).",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "multipart/form-data": {
-              "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "binary" } } }
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
             }
           }
         },
@@ -551,223 +1263,615 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "url": { "type": "string" },
-                    "path": { "type": "string" }
+                    "url": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    }
                   }
                 }
               }
             }
           },
-          "400": { "description": "Bad request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
-          "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
-        }
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          }
+        ]
       }
     },
     "/api/v1/catalog/products": {
       "get": {
-        "tags": ["Catalog"],
+        "tags": [
+          "Catalog"
+        ],
         "summary": "List products",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          },
           {
             "name": "categoryId",
             "in": "query",
-            "schema": { "type": "string", "format": "uuid" }
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
-          "200": { "description": "OK" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       },
       "post": {
-        "tags": ["Catalog"],
+        "tags": [
+          "Catalog"
+        ],
         "summary": "Create product",
         "description": "OWNER or MANAGER only.",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["categoryId", "name", "priceCents"],
+                "required": [
+                  "categoryId",
+                  "name",
+                  "priceCents"
+                ],
                 "properties": {
-                  "categoryId": { "type": "string", "format": "uuid" },
-                  "name": { "type": "string" },
-                  "description": { "type": "string", "nullable": true },
-                  "priceCents": { "type": "integer", "minimum": 0 },
-                  "taxRateBps": { "type": "integer", "nullable": true },
+                  "categoryId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "priceCents": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "taxRateBps": {
+                    "type": "integer",
+                    "nullable": true
+                  },
                   "modifiers": {},
-                  "sortOrder": { "type": "integer" },
-                  "position": { "type": "integer" },
-                  "image": { "type": "string", "nullable": true },
-                  "outOfStock": { "type": "boolean" }
+                  "sortOrder": {
+                    "type": "integer"
+                  },
+                  "position": {
+                    "type": "integer"
+                  },
+                  "image": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "outOfStock": {
+                    "type": "boolean"
+                  }
                 }
               }
             }
           }
         },
         "responses": {
-          "201": { "description": "Created" },
-          "400": { "description": "Category not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
-        }
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Category not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          }
+        ]
       }
     },
     "/api/v1/catalog/products/{id}": {
       "patch": {
-        "tags": ["Catalog"],
+        "tags": [
+          "Catalog"
+        ],
         "summary": "Update product",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
-        "parameters": [{ "$ref": "#/components/parameters/ProductId" }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          },
+          {
+            "$ref": "#/components/parameters/ProductId"
+          }
+        ],
         "requestBody": {
-          "content": { "application/json": { "schema": { "type": "object" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
         },
         "responses": {
-          "200": { "description": "OK" },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       },
       "delete": {
-        "tags": ["Catalog"],
+        "tags": [
+          "Catalog"
+        ],
         "summary": "Soft-delete product",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
-        "parameters": [{ "$ref": "#/components/parameters/ProductId" }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          },
+          {
+            "$ref": "#/components/parameters/ProductId"
+          }
+        ],
         "responses": {
-          "204": { "description": "No content" },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "204": {
+            "description": "No content"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/v1/orders": {
       "post": {
-        "tags": ["Orders"],
+        "tags": [
+          "Orders"
+        ],
         "summary": "Create order",
         "description": "Optional header `Idempotency-Key`: replays same body and returns existing order with `idempotentReplay: true`.",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          },
           {
             "name": "Idempotency-Key",
             "in": "header",
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateOrderRequest" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrderRequest"
+              }
+            }
+          }
         },
         "responses": {
-          "200": { "description": "Idempotent replay" },
-          "201": { "description": "Created" },
-          "400": { "description": "Validation / product not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "200": {
+            "description": "Idempotent replay"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Validation / product not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       },
       "get": {
-        "tags": ["Orders"],
+        "tags": [
+          "Orders"
+        ],
         "summary": "List orders",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          },
           {
             "name": "status",
             "in": "query",
-            "schema": { "$ref": "#/components/schemas/OrderStatus" }
+            "schema": {
+              "$ref": "#/components/schemas/OrderStatus"
+            }
           },
           {
             "name": "limit",
             "in": "query",
-            "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 100 }
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {
-          "200": { "description": "OK" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/v1/orders/{id}": {
       "get": {
-        "tags": ["Orders"],
+        "tags": [
+          "Orders"
+        ],
         "summary": "Get order by id",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
-        "parameters": [{ "$ref": "#/components/parameters/OrderId" }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          },
+          {
+            "$ref": "#/components/parameters/OrderId"
+          }
+        ],
         "responses": {
-          "200": { "description": "OK" },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/v1/orders/{id}/status": {
       "patch": {
-        "tags": ["Orders"],
+        "tags": [
+          "Orders"
+        ],
         "summary": "Update order status",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
-        "parameters": [{ "$ref": "#/components/parameters/OrderId" }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          },
+          {
+            "$ref": "#/components/parameters/OrderId"
+          }
+        ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PatchOrderStatusRequest" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchOrderStatusRequest"
+              }
+            }
+          }
         },
         "responses": {
-          "200": { "description": "OK" },
-          "400": { "description": "Validation", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/v1/tables": {
       "get": {
-        "tags": ["Tables"],
+        "tags": [
+          "Tables"
+        ],
         "summary": "List active tables",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "responses": {
-          "200": { "description": "OK" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
-        }
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          }
+        ]
       },
       "post": {
-        "tags": ["Tables"],
+        "tags": [
+          "Tables"
+        ],
         "summary": "Create table",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TableBody" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TableBody"
+              }
+            }
+          }
         },
         "responses": {
-          "201": { "description": "Created" },
-          "400": { "description": "Validation", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
-        }
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          }
+        ]
       }
     },
     "/api/v1/tables/{id}": {
       "patch": {
-        "tags": ["Tables"],
+        "tags": [
+          "Tables"
+        ],
         "summary": "Update table",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
-        "parameters": [{ "$ref": "#/components/parameters/TableId" }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          },
+          {
+            "$ref": "#/components/parameters/TableId"
+          }
+        ],
         "requestBody": {
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TableBody" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TableBody"
+              }
+            }
+          }
         },
         "responses": {
-          "200": { "description": "OK" },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       },
       "delete": {
-        "tags": ["Tables"],
+        "tags": [
+          "Tables"
+        ],
         "summary": "Soft-delete table (isActive=false)",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
-        "parameters": [{ "$ref": "#/components/parameters/TableId" }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          },
+          {
+            "$ref": "#/components/parameters/TableId"
+          }
+        ],
         "responses": {
-          "204": { "description": "No content" },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "204": {
+            "description": "No content"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/v1/sessions/active": {
       "get": {
-        "tags": ["Sessions"],
+        "tags": [
+          "Sessions"
+        ],
         "summary": "Current staff open session",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK (session may be null)",
@@ -775,7 +1879,103 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": { "session": { "nullable": true } }
+                  "properties": {
+                    "session": {
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          }
+        ]
+      }
+    },
+    "/api/v1/sessions/open": {
+      "post": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "Open cashier session",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenSessionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "409": {
+            "description": "Session already open",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          }
+        ]
+      }
+    },
+    "/api/v1/sessions/{id}/close": {
+      "post": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "Close cashier session",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          },
+          {
+            "$ref": "#/components/parameters/SessionId"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseSessionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Open session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
@@ -783,102 +1983,156 @@
         }
       }
     },
-    "/api/v1/sessions/open": {
-      "post": {
-        "tags": ["Sessions"],
-        "summary": "Open cashier session",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
-        "requestBody": {
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OpenSessionRequest" } } }
-        },
-        "responses": {
-          "201": { "description": "Created" },
-          "409": { "description": "Session already open", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
-        }
-      }
-    },
-    "/api/v1/sessions/{id}/close": {
-      "post": {
-        "tags": ["Sessions"],
-        "summary": "Close cashier session",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
-        "parameters": [{ "$ref": "#/components/parameters/SessionId" }],
-        "requestBody": {
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CloseSessionRequest" } } }
-        },
-        "responses": {
-          "200": { "description": "OK" },
-          "404": { "description": "Open session not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
-        }
-      }
-    },
     "/api/v1/sessions": {
       "get": {
-        "tags": ["Sessions"],
+        "tags": [
+          "Sessions"
+        ],
         "summary": "List recent sessions",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          },
           {
             "name": "limit",
             "in": "query",
-            "schema": { "type": "integer", "default": 30, "minimum": 1, "maximum": 100 }
+            "schema": {
+              "type": "integer",
+              "default": 30,
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {
-          "200": { "description": "OK" }
+          "200": {
+            "description": "OK"
+          }
         }
       }
     },
     "/api/v1/stats/summary": {
       "get": {
-        "tags": ["Stats"],
+        "tags": [
+          "Stats"
+        ],
         "summary": "Order / revenue aggregates",
         "description": "Optional `from` and `to` (ISO 8601) filter `orders.createdAt`.",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          },
           {
             "name": "from",
             "in": "query",
-            "schema": { "type": "string", "format": "date-time" },
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
             "description": "Inclusive lower bound on order createdAt"
           },
           {
             "name": "to",
             "in": "query",
-            "schema": { "type": "string", "format": "date-time" },
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
             "description": "Inclusive upper bound on order createdAt"
           }
         ],
         "responses": {
-          "200": { "description": "OK" },
-          "400": { "description": "Invalid date", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Invalid date",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/v1/settings": {
       "get": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Tenant settings + default tax",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "responses": {
-          "200": { "description": "OK" }
-        }
+          "200": {
+            "description": "OK"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          }
+        ]
       }
     },
     "/api/v1/settings/tax": {
       "patch": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Set default tax (basis points)",
         "description": "Requires role OWNER or MANAGER.",
-        "security": [{ "TenantHeader": [], "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PatchTaxRequest" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchTaxRequest"
+              }
+            }
+          }
         },
         "responses": {
-          "200": { "description": "OK" },
-          "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
-        }
+          "200": {
+            "description": "OK"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantHeaderOptional"
+          }
+        ]
       }
     }
   }

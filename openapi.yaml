@@ -3,10 +3,12 @@ info:
   title: maklaGo API
   version: 1.0.0
   description: |
-    Cashier-focused REST API. All `/api/v1/*` routes require:
-    - Header `x-tenant-id`: tenant **slug** or registry UUID (e.g. `demo`)
-    - Except `POST /api/v1/auth/login` which only needs tenant header
-    - Authenticated routes: `Authorization: Bearer <accessToken>`
+    Cashier-focused REST API for `/api/v1/*`:
+    - Optional header `x-tenant-id` (tenant slug or registry UUID). With `Authorization: Bearer` staff JWT,
+      the tenant is resolved from the token when this header is omitted.
+    - `POST /api/v1/auth/login`: optional `x-tenant-id` for tenant-scoped login; omit it only when the
+      normalized email exists in registry `staff_login_directory` (slugless directory login).
+    - Authenticated routes use Bearer JWT from login (response includes `tenantId`, `tenantSlug`).
 servers:
   - url: http://localhost:3000
 paths:
@@ -39,40 +41,62 @@ paths:
   /api/v1/auth/login:
     post:
       summary: Staff login
+      description: |
+        Omit `x-tenant-id` when email is in `staff_login_directory`; otherwise send slug/UUID to pick tenant DB.
+      security: []
       parameters:
-        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantHeaderOptional'
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               type: object
               required: [email, password]
               properties:
-                email: { type: string }
+                email: { type: string, format: email }
                 password: { type: string }
       responses:
         '200':
-          description: accessToken + staff
+          description: JWT issued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accessToken, tenantId, tenantSlug, staff]
+                properties:
+                  accessToken: { type: string }
+                  expiresIn: { type: string, example: '7d' }
+                  tenantId: { type: string, format: uuid }
+                  tenantSlug: { type: string }
+                  staff:
+                    type: object
+                    properties:
+                      id: { type: string, format: uuid }
+                      email: { type: string }
+                      fullName: { type: string }
+                      role: { type: string, enum: [OWNER, MANAGER, CASHIER] }
+        '401': { description: Invalid credentials }
   /api/v1/auth/me:
     get:
       summary: Current staff
       security: [{ BearerAuth: [] }]
       parameters:
-        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantHeaderOptional'
       responses:
         '200': { description: Staff profile }
   /api/v1/catalog/categories:
     get:
       security: [{ BearerAuth: [] }]
       parameters:
-        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantHeaderOptional'
       responses:
         '200': { description: Category list }
   /api/v1/catalog/products:
     get:
       security: [{ BearerAuth: [] }]
       parameters:
-        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantHeaderOptional'
         - name: categoryId
           in: query
           schema: { type: string, format: uuid }
@@ -83,7 +107,7 @@ paths:
       summary: Create order (optional Idempotency-Key)
       security: [{ BearerAuth: [] }]
       parameters:
-        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantHeaderOptional'
         - name: Idempotency-Key
           in: header
           schema: { type: string }
@@ -112,7 +136,7 @@ paths:
     get:
       security: [{ BearerAuth: [] }]
       parameters:
-        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantHeaderOptional'
         - name: status
           in: query
           schema: { type: string, enum: [DRAFT, ACTIVE, COMPLETED, CANCELED] }
@@ -125,7 +149,7 @@ paths:
     get:
       security: [{ BearerAuth: [] }]
       parameters:
-        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantHeaderOptional'
         - name: id
           in: path
           required: true
@@ -136,7 +160,7 @@ paths:
     patch:
       security: [{ BearerAuth: [] }]
       parameters:
-        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantHeaderOptional'
         - name: id
           in: path
           required: true
@@ -157,65 +181,65 @@ paths:
     get:
       security: [{ BearerAuth: [] }]
       parameters:
-        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantHeaderOptional'
       responses:
         '200': { description: tables }
     post:
       security: [{ BearerAuth: [] }]
       parameters:
-        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantHeaderOptional'
       responses:
         '201': { description: table }
   /api/v1/sessions/open:
     post:
       security: [{ BearerAuth: [] }]
       parameters:
-        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantHeaderOptional'
       responses:
         '201': { description: session }
   /api/v1/sessions/active:
     get:
       security: [{ BearerAuth: [] }]
       parameters:
-        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantHeaderOptional'
       responses:
         '200': { description: open session or null }
   /api/v1/sessions/{id}/close:
     post:
       security: [{ BearerAuth: [] }]
       parameters:
-        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantHeaderOptional'
       responses:
         '200': { description: closed session + summary }
   /api/v1/stats/summary:
     get:
       security: [{ BearerAuth: [] }]
       parameters:
-        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantHeaderOptional'
       responses:
         '200': { description: aggregates }
   /api/v1/settings:
     get:
       security: [{ BearerAuth: [] }]
       parameters:
-        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantHeaderOptional'
       responses:
         '200': { description: settings map + defaultTaxBps }
   /api/v1/settings/tax:
     patch:
       security: [{ BearerAuth: [] }]
       parameters:
-        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/TenantHeaderOptional'
       responses:
         '200': { description: defaultTaxBps }
 components:
   parameters:
-    TenantHeader:
+    TenantHeaderOptional:
       name: x-tenant-id
       in: header
-      required: true
+      required: false
       schema: { type: string }
-      description: Tenant slug (e.g. demo) or registry UUID
+      description: Tenant slug or registry UUID; optional when Bearer staff JWT is sent (tenant from token).
   securitySchemes:
     BearerAuth:
       type: http
