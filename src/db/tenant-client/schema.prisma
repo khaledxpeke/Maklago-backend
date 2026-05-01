@@ -1,0 +1,235 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../src/db/tenant-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("TENANT_DATABASE_URL")
+}
+
+enum StaffRole {
+  OWNER
+  MANAGER
+  CASHIER
+}
+
+enum OrderStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELED
+}
+
+/// Simple = cart line with optional JSON modifiers. Composed = steps per `ProductComposition` + ingredients.
+enum ProductKind {
+  SIMPLE
+  COMPOSED
+}
+
+/// INGREDIENTS = type lists ingredients. PRODUCTS = nested products (future).
+enum CompositionSlotMode {
+  INGREDIENTS
+  PRODUCTS
+}
+
+model Staff {
+  id           String           @id @default(uuid())
+  email        String           @unique
+  passwordHash String           @map("password_hash")
+  fullName     String           @map("full_name")
+  role         StaffRole        @default(CASHIER)
+  isActive     Boolean          @default(true) @map("is_active")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  sessions     CashierSession[]
+  orders       Order[]
+
+  @@map("staff")
+}
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String
+  image     String?
+  sortOrder Int       @default(0) @map("sort_order")
+  isActive  Boolean   @default(true) @map("is_active")
+  products  Product[]
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("categories")
+}
+
+/// Ingredient add-on (Mongo `Ingrediant`). Linked to composition types via join table.
+model Ingredient {
+  id         String                      @id @default(uuid())
+  name       String
+  image      String?
+  /// Paid add-on cents when parent type has `payment: true` (Mongo `price`).
+  price      Int                         @default(0) @map("price_cents")
+  /// Supplement cents when `payment: false` (Mongo `suppPrice`).
+  suppPrice  Int                         @default(0) @map("supp_price_cents")
+  outOfStock Boolean                     @default(false) @map("out_of_stock")
+  visible    Boolean                     @default(true)
+  sortOrder  Int                         @default(0) @map("sort_order")
+  typeLinks  CompositionTypeIngredient[]
+  createdAt  DateTime                    @default(now()) @map("created_at")
+
+  @@map("ingredients")
+}
+
+/// Composition step (Mongo `Type`): e.g. "Sauce", min/max, payment vs supp price behavior.
+model CompositionType {
+  id           String                      @id @default(uuid())
+  name         String
+  label        String
+  message      String?
+  min          Int                         @default(0)
+  max          Int                         @default(1)
+  /// When true, ingredient `price` applies; when false, `suppPrice` applies.
+  payment      Boolean                     @default(false)
+  selection    Boolean                     @default(false)
+  mode         CompositionSlotMode         @default(INGREDIENTS)
+  isActive     Boolean                     @default(true) @map("is_active")
+  sortOrder    Int                         @default(0) @map("sort_order")
+  ingredients  CompositionTypeIngredient[]
+  productSteps ProductComposition[]
+  createdAt    DateTime                    @default(now()) @map("created_at")
+
+  @@map("composition_types")
+}
+
+model CompositionTypeIngredient {
+  compositionTypeId String          @map("composition_type_id")
+  ingredientId      String          @map("ingredient_id")
+  position          Int             @default(0)
+  compositionType   CompositionType @relation(fields: [compositionTypeId], references: [id], onDelete: Cascade)
+  ingredient        Ingredient      @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@id([compositionTypeId, ingredientId])
+  @@map("composition_type_ingredients")
+}
+
+model ProductComposition {
+  productId         String          @map("product_id")
+  compositionTypeId String          @map("composition_type_id")
+  sortOrder         Int             @default(0) @map("sort_order")
+  product           Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  compositionType   CompositionType @relation(fields: [compositionTypeId], references: [id], onDelete: Restrict)
+
+  @@id([productId, compositionTypeId])
+  @@unique([productId, sortOrder])
+  @@map("product_compositions")
+}
+
+/// Sellable product (Mongo `Product`). Money stored as integer **cents** in DB; Prisma field `price` maps to `price_cents`.
+model Product {
+  id                String               @id @default(uuid())
+  categoryId        String               @map("category_id")
+  category          Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  name              String
+  description       String?
+  image             String?
+  /// SIMPLE = sold as one item with optional `modifiers` JSON. COMPOSED = built from composition steps (`ProductComposition` → ingredient picks per step).
+  kind              ProductKind          @default(SIMPLE)
+  /// Base unit price in cents (Mongo field name `price`; DB column `price_cents`).
+  price             Int                  @map("price_cents")
+  /// Mongo `formulePrice` — stored as cents; business meaning is yours (combo / formula surcharge).
+  formulePrice      Int                  @default(0) @map("formule_price")
+  taxRateBps        Int?                 @map("tax_rate_bps")
+  /// Simple extras JSON (Mongo-style modifiers); DB column remains `modifiers_json`.
+  modifiers         Json?                @map("modifiers_json")
+  isActive          Boolean              @default(true) @map("is_active")
+  outOfStock        Boolean              @default(false) @map("out_of_stock")
+  sortOrder         Int                  @default(0) @map("sort_order")
+  discountValue     Int                  @default(0) @map("discount_value")
+  originalPrice     Int?                 @map("original_price")
+  discountStartDate DateTime?            @map("discount_start_date")
+  discountEndDate   DateTime?            @map("discount_end_date")
+  compositions      ProductComposition[]
+  orderLines        OrderLine[]
+  createdAt         DateTime             @default(now()) @map("created_at")
+
+  @@map("products")
+}
+
+model RestaurantTable {
+  id        String   @id @default(uuid())
+  name      String
+  zone      String?
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  orders    Order[]
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("restaurant_tables")
+}
+
+model CashierSession {
+  id                String    @id @default(uuid())
+  staffId           String    @map("staff_id")
+  staff             Staff     @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  openedAt          DateTime  @default(now()) @map("opened_at")
+  closedAt          DateTime? @map("closed_at")
+  openingFloatCents Int       @default(0) @map("opening_float_cents")
+  closingNote       String?   @map("closing_note")
+  orders            Order[]
+
+  @@map("cashier_sessions")
+}
+
+/// Order / command (replaces Mongo `History` conceptually — use table `orders`).
+model Order {
+  id                 String           @id @default(uuid())
+  status             OrderStatus      @default(DRAFT)
+  tableId            String?          @map("table_id")
+  table              RestaurantTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  staffId            String?          @map("staff_id")
+  staff              Staff?           @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  sessionId          String?          @map("session_id")
+  session            CashierSession?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  subtotalCents      Int              @default(0) @map("subtotal_cents")
+  taxCents           Int              @default(0) @map("tax_cents")
+  totalCents         Int              @default(0) @map("total_cents")
+  idempotencyKey     String?          @unique @map("idempotency_key")
+  /// Mongo History-style metadata (optional for cashier flow).
+  customerName       String?          @map("customer_name")
+  customerEmail      String?          @map("customer_email")
+  commandNumber      Int?             @map("command_number")
+  currency           String?
+  pack               Json?
+  paymentMethod      Json?            @map("payment_method")
+  orderDiscountValue Int              @default(0) @map("order_discount_value")
+  logoPath           String?          @map("logo_path")
+  lines              OrderLine[]
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @default(now()) @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([sessionId])
+  @@map("orders")
+}
+
+model OrderLine {
+  id                  String  @id @default(uuid())
+  orderId             String  @map("order_id")
+  order               Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId           String  @map("product_id")
+  product             Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity            Int
+  unitPriceCents      Int     @map("unit_price_cents")
+  lineTotalCents      Int     @map("line_total_cents")
+  taxCents            Int     @default(0) @map("tax_cents")
+  modifiersSnapshot   Json?   @map("modifiers_snapshot")
+  compositionSnapshot Json?   @map("composition_snapshot")
+  note                String?
+
+  @@map("order_lines")
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("settings")
+}

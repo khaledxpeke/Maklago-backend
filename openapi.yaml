@@ -1,0 +1,226 @@
+openapi: 3.0.3
+info:
+  title: maklaGo API
+  version: 1.0.0
+  description: |
+    Cashier-focused REST API. All `/api/v1/*` routes require:
+    - Header `x-tenant-id`: tenant **slug** or registry UUID (e.g. `demo`)
+    - Except `POST /api/v1/auth/login` which only needs tenant header
+    - Authenticated routes: `Authorization: Bearer <accessToken>`
+servers:
+  - url: http://localhost:3000
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+  /platform/v1/tenants:
+    post:
+      summary: Provision tenant (platform key)
+      security: [{ PlatformKey: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slug, name, databaseUrl]
+              properties:
+                slug: { type: string, pattern: '^[a-z0-9-]+$' }
+                name: { type: string }
+                databaseUrl: { type: string }
+                ownerEmail: { type: string, format: email }
+                ownerPassword: { type: string, minLength: 8 }
+                ownerFullName: { type: string }
+      responses:
+        '201': { description: Created }
+  /api/v1/auth/login:
+    post:
+      summary: Staff login
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: accessToken + staff
+  /api/v1/auth/me:
+    get:
+      summary: Current staff
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      responses:
+        '200': { description: Staff profile }
+  /api/v1/catalog/categories:
+    get:
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      responses:
+        '200': { description: Category list }
+  /api/v1/catalog/products:
+    get:
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - name: categoryId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Product list }
+  /api/v1/orders:
+    post:
+      summary: Create order (optional Idempotency-Key)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - name: Idempotency-Key
+          in: header
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [DRAFT, ACTIVE] }
+                tableId: { type: string, format: uuid, nullable: true }
+                sessionId: { type: string, format: uuid, nullable: true }
+                lines:
+                  type: array
+                  items:
+                    type: object
+                    required: [productId, quantity]
+                    properties:
+                      productId: { type: string, format: uuid }
+                      quantity: { type: integer }
+                      modifierIds: { type: array, items: { type: string } }
+                      note: { type: string }
+      responses:
+        '201':
+          description: order + printJobs (customer_receipt, kitchen_ticket)
+    get:
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - name: status
+          in: query
+          schema: { type: string, enum: [DRAFT, ACTIVE, COMPLETED, CANCELED] }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+      responses:
+        '200': { description: orders }
+  /api/v1/orders/{id}:
+    get:
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: order }
+  /api/v1/orders/{id}/status:
+    patch:
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [DRAFT, ACTIVE, COMPLETED, CANCELED]
+      responses:
+        '200': { description: updated order }
+  /api/v1/tables:
+    get:
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      responses:
+        '200': { description: tables }
+    post:
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      responses:
+        '201': { description: table }
+  /api/v1/sessions/open:
+    post:
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      responses:
+        '201': { description: session }
+  /api/v1/sessions/active:
+    get:
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      responses:
+        '200': { description: open session or null }
+  /api/v1/sessions/{id}/close:
+    post:
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      responses:
+        '200': { description: closed session + summary }
+  /api/v1/stats/summary:
+    get:
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      responses:
+        '200': { description: aggregates }
+  /api/v1/settings:
+    get:
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      responses:
+        '200': { description: settings map + defaultTaxBps }
+  /api/v1/settings/tax:
+    patch:
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      responses:
+        '200': { description: defaultTaxBps }
+components:
+  parameters:
+    TenantHeader:
+      name: x-tenant-id
+      in: header
+      required: true
+      schema: { type: string }
+      description: Tenant slug (e.g. demo) or registry UUID
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+    PlatformKey:
+      type: apiKey
+      in: header
+      name: x-platform-key

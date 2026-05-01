@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: maklago
+      POSTGRES_PASSWORD: maklago
+      POSTGRES_DB: maklago_registry
+    ports:
+      - "5432:5432"
+    volumes:
+      - maklago_pg:/var/lib/postgresql/data
+      - ./docker/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+
+volumes:
+  maklago_pg:
