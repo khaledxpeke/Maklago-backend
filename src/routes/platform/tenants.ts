@@ -210,7 +210,7 @@ platformTenantsRouter.post(
             email: ownerEmail!.trim().toLowerCase(),
             passwordHash: ownerPasswordHash,
             fullName: ownerFullName!,
-            role: StaffRole.OWNER,
+            role: StaffRole.owner,
           },
         });
         await upsertStaffLoginDirectory(getRegistryClient(), tenant.id, createdStaff.id, createdStaff.email);

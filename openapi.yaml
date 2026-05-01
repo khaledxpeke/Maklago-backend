@@ -76,7 +76,7 @@ paths:
                       id: { type: string, format: uuid }
                       email: { type: string }
                       fullName: { type: string }
-                      role: { type: string, enum: [OWNER, MANAGER, CASHIER] }
+                      role: { type: string, enum: [owner, manager, cashier] }
         '401': { description: Invalid credentials }
   /api/v1/auth/me:
     get:
@@ -112,7 +112,7 @@ paths:
       responses:
         '200': { description: extras array }
     post:
-      summary: Create extra (OWNER/MANAGER)
+      summary: Create extra (owner/manager)
       security: [{ BearerAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/TenantHeaderOptional'
@@ -149,9 +149,9 @@ paths:
           in: query
           schema: { type: string }
       responses:
-        '200': { description: compositionTypes — extraIds, extras, mode EXTRAS or PRODUCTS }
+        '200': { description: compositionTypes — extraIds, extras, mode extras or products }
     post:
-      summary: Create composition type (OWNER/MANAGER)
+      summary: Create composition type (owner/manager)
       security: [{ BearerAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/TenantHeaderOptional'
@@ -216,7 +216,7 @@ paths:
             schema:
               type: object
               properties:
-                status: { type: string, enum: [DRAFT, ACTIVE] }
+                status: { type: string, enum: [draft, active] }
                 tableId: { type: string, format: uuid, nullable: true }
                 sessionId: { type: string, format: uuid, nullable: true }
                 lines:
@@ -230,7 +230,7 @@ paths:
                       modifierIds: { type: array, items: { type: string } }
                       composition:
                         type: object
-                        description: Required for COMPOSED products — steps parallel to product composition
+                        description: Required for composed products — steps parallel to product composition
                         properties:
                           steps:
                             type: array
@@ -252,7 +252,7 @@ paths:
         - $ref: '#/components/parameters/TenantHeaderOptional'
         - name: status
           in: query
-          schema: { type: string, enum: [DRAFT, ACTIVE, COMPLETED, CANCELED] }
+          schema: { type: string, enum: [draft, active, completed, canceled] }
         - name: limit
           in: query
           schema: { type: integer, default: 50 }
@@ -287,7 +287,7 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: [DRAFT, ACTIVE, COMPLETED, CANCELED]
+                  enum: [draft, active, completed, canceled]
       responses:
         '200': { description: updated order }
   /api/v1/tables:

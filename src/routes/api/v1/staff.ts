@@ -16,13 +16,13 @@ import {
   upsertStaffLoginDirectory,
 } from '../../../services/staffLoginDirectory';
 
-const admin = requireRole('OWNER', 'MANAGER');
+const admin = requireRole('owner', 'manager');
 
-const roleEnum = z.enum(['OWNER', 'MANAGER', 'CASHIER']);
+const roleEnum = z.enum(['owner', 'manager', 'cashier']);
 
 function canSetRole(actor: StaffRole, targetRole: StaffRole): boolean {
-  if (actor === 'OWNER') return true;
-  if (actor === 'MANAGER') return targetRole === 'MANAGER' || targetRole === 'CASHIER';
+  if (actor === 'owner') return true;
+  if (actor === 'manager') return targetRole === 'manager' || targetRole === 'cashier';
   return false;
 }
 
@@ -163,14 +163,14 @@ staffRouter.patch(
       return;
     }
 
-    if (existing.role === 'OWNER') {
+    if (existing.role === 'owner') {
       const newRole = parsed.data.role ?? existing.role;
       const newActive = parsed.data.isActive ?? existing.isActive;
       const removesOwner =
-        newRole !== 'OWNER' || newActive === false;
+        newRole !== 'owner' || newActive === false;
       if (removesOwner) {
         const otherActiveOwners = await req.tenant.prisma.staff.count({
-          where: { role: 'OWNER', isActive: true, id: { not: id } },
+          where: { role: 'owner', isActive: true, id: { not: id } },
         });
         if (otherActiveOwners === 0) {
           sendError(res, 400, 'last_owner', 'Cannot remove or demote the last active owner');

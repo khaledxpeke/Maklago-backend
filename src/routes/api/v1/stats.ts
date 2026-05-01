@@ -42,12 +42,12 @@ statsRouter.get(
         _count: true,
       }),
       prisma.order.aggregate({
-        where: { status: 'COMPLETED', ...dateFilter },
+        where: { status: 'completed', ...dateFilter },
         _sum: { totalCents: true },
         _count: true,
       }),
       prisma.order.count({
-        where: { status: { in: ['DRAFT', 'ACTIVE'] }, ...dateFilter },
+        where: { status: { in: ['draft', 'active'] }, ...dateFilter },
       }),
     ]);
 

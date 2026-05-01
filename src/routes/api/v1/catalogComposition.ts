@@ -7,7 +7,7 @@ import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
 import { requireRole } from '../../../middleware/requireRole';
 
-const admin = requireRole('OWNER', 'MANAGER');
+const admin = requireRole('owner', 'manager');
 
 /** Mongo-like extra JSON: `price` / `suppPrice` in main currency units; `_id` alias. */
 export function extraToMongoShape(i: Extra): Record<string, unknown> {

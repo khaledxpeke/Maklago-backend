@@ -126,9 +126,9 @@
               "role": {
                 "type": "string",
                 "enum": [
-                  "OWNER",
-                  "MANAGER",
-                  "CASHIER"
+                  "owner",
+                  "manager",
+                  "cashier"
                 ]
               }
             }
@@ -196,10 +196,10 @@
           "status": {
             "type": "string",
             "enum": [
-              "DRAFT",
-              "ACTIVE"
+              "draft",
+              "active"
             ],
-            "default": "ACTIVE"
+            "default": "active"
           },
           "lines": {
             "type": "array",
@@ -228,7 +228,7 @@
                 },
                 "composition": {
                   "type": "object",
-                  "description": "Required when product kind is COMPOSED: one step per product composition slot, same order as GET /catalog/products/:id.",
+                  "description": "Required when product kind is composed: one step per product composition slot, same order as GET /catalog/products/:id.",
                   "properties": {
                     "steps": {
                       "type": "array",
@@ -264,10 +264,10 @@
       "OrderStatus": {
         "type": "string",
         "enum": [
-          "DRAFT",
-          "ACTIVE",
-          "COMPLETED",
-          "CANCELED"
+          "draft",
+          "active",
+          "completed",
+          "canceled"
         ]
       },
       "PatchOrderStatusRequest": {
@@ -413,9 +413,9 @@
           "role": {
             "type": "string",
             "enum": [
-              "OWNER",
-              "MANAGER",
-              "CASHIER"
+              "owner",
+              "manager",
+              "cashier"
             ]
           }
         }
@@ -437,9 +437,9 @@
           "role": {
             "type": "string",
             "enum": [
-              "OWNER",
-              "MANAGER",
-              "CASHIER"
+              "owner",
+              "manager",
+              "cashier"
             ]
           },
           "isActive": {
@@ -866,7 +866,7 @@
           "Staff"
         ],
         "summary": "List staff",
-        "description": "OWNER or MANAGER only.",
+        "description": "owner or manager only.",
         "security": [
           {
             "BearerAuth": []
@@ -1100,7 +1100,7 @@
           "Catalog"
         ],
         "summary": "Create category",
-        "description": "OWNER or MANAGER only.",
+        "description": "owner or manager only.",
         "security": [
           {
             "BearerAuth": []
@@ -1259,7 +1259,7 @@
           "Catalog"
         ],
         "summary": "Upload catalog image",
-        "description": "OWNER or MANAGER only. Multipart form field `file` (JPEG, PNG, WebP, GIF).",
+        "description": "owner or manager only. Multipart form field `file` (JPEG, PNG, WebP, GIF).",
         "security": [
           {
             "BearerAuth": []
@@ -1373,7 +1373,7 @@
           "Catalog"
         ],
         "summary": "Create product",
-        "description": "OWNER or MANAGER only.",
+        "description": "owner or manager only.",
         "security": [
           {
             "BearerAuth": []
@@ -1550,7 +1550,7 @@
       "post": {
         "tags": ["Catalog"],
         "summary": "Create extra",
-        "description": "OWNER or MANAGER only.",
+        "description": "owner or manager only.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [{ "$ref": "#/components/parameters/TenantHeaderOptional" }],
         "requestBody": {
@@ -1646,7 +1646,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK — `compositionTypes` / `types`; each row has `extraIds`, `extras`, `mode` (EXTRAS | PRODUCTS)"
+            "description": "OK — `compositionTypes` / `types`; each row has `extraIds`, `extras`, `mode` (extras | products)"
           },
           "401": {
             "description": "Unauthorized",
@@ -1657,7 +1657,7 @@
       "post": {
         "tags": ["Catalog"],
         "summary": "Create composition type",
-        "description": "OWNER or MANAGER only.",
+        "description": "owner or manager only.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [{ "$ref": "#/components/parameters/TenantHeaderOptional" }],
         "requestBody": {
@@ -1744,7 +1744,7 @@
       "put": {
         "tags": ["Catalog"],
         "summary": "Replace extras on composition type",
-        "description": "OWNER or MANAGER only. Sets ordered junction rows for which extras belong to this step.",
+        "description": "owner or manager only. Sets ordered junction rows for which extras belong to this step.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           { "$ref": "#/components/parameters/TenantHeaderOptional" },
@@ -1790,7 +1790,7 @@
           "Orders"
         ],
         "summary": "Create order",
-        "description": "Optional header `Idempotency-Key`: replays same body and returns existing order with `idempotentReplay: true`. For **COMPOSED** products, each line must include `composition.steps` with `compositionTypeId` and `extraIds` per step (see schema).",
+        "description": "Optional header `Idempotency-Key`: replays same body and returns existing order with `idempotentReplay: true`. For **composed** products, each line must include `composition.steps` with `compositionTypeId` and `extraIds` per step (see schema).",
         "security": [
           {
             "BearerAuth": []
@@ -2377,7 +2377,7 @@
           "Settings"
         ],
         "summary": "Set default tax (basis points)",
-        "description": "Requires role OWNER or MANAGER.",
+        "description": "Requires role owner or manager.",
         "security": [
           {
             "BearerAuth": []

@@ -290,26 +290,26 @@ exports.Prisma.JsonNullValueFilter = {
   AnyNull: Prisma.AnyNull
 };
 exports.StaffRole = exports.$Enums.StaffRole = {
-  OWNER: 'OWNER',
-  MANAGER: 'MANAGER',
-  CASHIER: 'CASHIER'
+  owner: 'owner',
+  manager: 'manager',
+  cashier: 'cashier'
 };
 
 exports.CompositionSlotMode = exports.$Enums.CompositionSlotMode = {
-  EXTRAS: 'EXTRAS',
-  PRODUCTS: 'PRODUCTS'
+  extras: 'extras',
+  products: 'products'
 };
 
 exports.ProductKind = exports.$Enums.ProductKind = {
-  SIMPLE: 'SIMPLE',
-  COMPOSED: 'COMPOSED'
+  simple: 'simple',
+  composed: 'composed'
 };
 
 exports.OrderStatus = exports.$Enums.OrderStatus = {
-  DRAFT: 'DRAFT',
-  ACTIVE: 'ACTIVE',
-  COMPLETED: 'COMPLETED',
-  CANCELED: 'CANCELED'
+  draft: 'draft',
+  active: 'active',
+  completed: 'completed',
+  canceled: 'canceled'
 };
 
 exports.Prisma.ModelName = {

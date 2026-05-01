@@ -23,7 +23,7 @@ settingsRouter.get(
 
 settingsRouter.patch(
   '/tax',
-  requireRole('OWNER', 'MANAGER'),
+  requireRole('owner', 'manager'),
   asyncHandler(async (req, res) => {
     const schema = z.object({
       defaultTaxBps: z.number().int().min(0).max(100_000),

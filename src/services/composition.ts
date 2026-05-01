@@ -119,8 +119,8 @@ export function resolveCompositionSelection(
         'Composition steps must be sent in the same order as on the product (check compositionTypeId per step).',
       );
     }
-    if (slot.mode === 'PRODUCTS') {
-      throw new CompositionValidationError('composition_mode', 'PRODUCTS composition slots are not supported yet.');
+    if (slot.mode === 'products') {
+      throw new CompositionValidationError('composition_mode', 'products composition slots are not supported yet.');
     }
 
     const selected = stepIn.extraIds;

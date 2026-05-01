@@ -9,28 +9,28 @@ datasource db {
 }
 
 enum StaffRole {
-  OWNER
-  MANAGER
-  CASHIER
+  owner
+  manager
+  cashier
 }
 
 enum OrderStatus {
-  DRAFT
-  ACTIVE
-  COMPLETED
-  CANCELED
+  draft
+  active
+  completed
+  canceled
 }
 
-/// Simple = cart line with optional JSON modifiers. Composed = steps per `ProductComposition` + extras.
+/// simple = cart line with optional JSON modifiers. composed = steps per `ProductComposition` + extras.
 enum ProductKind {
-  SIMPLE
-  COMPOSED
+  simple
+  composed
 }
 
-/// EXTRAS = type lists selectable extras. PRODUCTS = nested products (future).
+/// extras = type lists selectable extras. products = nested products (future).
 enum CompositionSlotMode {
-  EXTRAS
-  PRODUCTS
+  extras
+  products
 }
 
 model Staff {
@@ -38,7 +38,7 @@ model Staff {
   email        String           @unique
   passwordHash String           @map("password_hash")
   fullName     String           @map("full_name")
-  role         StaffRole        @default(CASHIER)
+  role         StaffRole        @default(cashier)
   isActive     Boolean          @default(true) @map("is_active")
   createdAt    DateTime         @default(now()) @map("created_at")
   sessions     CashierSession[]
@@ -88,7 +88,7 @@ model CompositionType {
   /// When true, extra `price` applies; when false, `suppPrice` applies.
   payment      Boolean                @default(false)
   selection    Boolean                @default(false)
-  mode         CompositionSlotMode    @default(EXTRAS)
+  mode         CompositionSlotMode    @default(extras)
   isActive     Boolean                @default(true) @map("is_active")
   sortOrder    Int                    @default(0) @map("sort_order")
   extras       CompositionTypeExtra[]
@@ -129,8 +129,8 @@ model Product {
   name              String
   description       String?
   image             String?
-  /// SIMPLE = sold as one item with optional `modifiers` JSON. COMPOSED = built from composition steps (`ProductComposition` → extra picks per step).
-  kind              ProductKind          @default(SIMPLE)
+  /// simple = sold as one item with optional `modifiers` JSON. composed = built from composition steps (`ProductComposition` → extra picks per step).
+  kind              ProductKind          @default(simple)
   /// Base unit price in cents (Mongo field name `price`; DB column `price_cents`).
   price             Int                  @map("price_cents")
   /// Mongo `formulePrice` — stored as cents; business meaning is yours (combo / formula surcharge).
@@ -180,7 +180,7 @@ model CashierSession {
 /// Order / command (replaces Mongo `History` conceptually — use table `orders`).
 model Order {
   id                 String           @id @default(uuid())
-  status             OrderStatus      @default(DRAFT)
+  status             OrderStatus      @default(draft)
   tableId            String?          @map("table_id")
   table              RestaurantTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
   staffId            String?          @map("staff_id")

@@ -64,7 +64,7 @@ describe.skipIf(!integration)('integration (set INTEGRATION_TEST=1 and DB URLs)'
       .post('/api/v1/orders')
       .set({ Authorization: `Bearer ${token}` })
       .send({
-        status: 'ACTIVE',
+        status: 'active',
         lines: [{ productId, quantity: 1 }],
       });
 

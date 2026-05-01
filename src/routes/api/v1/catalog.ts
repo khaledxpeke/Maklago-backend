@@ -180,7 +180,7 @@ catalogRouter.get(
       return;
     }
     const steps = await loadComposedProductSteps(req.tenant.prisma, p.id);
-    const types = p.kind === 'COMPOSED' ? expandProductCompositionForClient(req, steps) : [];
+    const types = p.kind === 'composed' ? expandProductCompositionForClient(req, steps) : [];
     res.json({
       product: productToJson(req, p),
       types,
@@ -188,7 +188,7 @@ catalogRouter.get(
   }),
 );
 
-const admin = requireRole('OWNER', 'MANAGER');
+const admin = requireRole('owner', 'manager');
 
 const imageField = z.union([z.string().max(2048), z.null()]).optional();
 
@@ -319,14 +319,14 @@ catalogRouter.delete(
   }),
 );
 
-/** Resolve catalog kind on create: explicit `kind`, or infer COMPOSED when `compositionTypeIds` is non-empty. */
+/** Resolve catalog kind on create: explicit `kind`, or infer composed when `compositionTypeIds` is non-empty. */
 function resolveProductKindOnCreate(
-  kind: 'SIMPLE' | 'COMPOSED' | undefined,
+  kind: 'simple' | 'composed' | undefined,
   compositionTypeIds: string[] | undefined,
-): 'SIMPLE' | 'COMPOSED' {
+): 'simple' | 'composed' {
   if (kind !== undefined) return kind;
-  if (compositionTypeIds && compositionTypeIds.length > 0) return 'COMPOSED';
-  return 'SIMPLE';
+  if (compositionTypeIds && compositionTypeIds.length > 0) return 'composed';
+  return 'simple';
 }
 
 const productCreate = z
@@ -351,7 +351,7 @@ const productCreate = z
     position: z.number().int().optional(),
     image: imageField,
     outOfStock: z.boolean().optional(),
-    kind: z.enum(['SIMPLE', 'COMPOSED']).optional(),
+    kind: z.enum(['simple', 'composed']).optional(),
     compositionTypeIds: z.array(z.string().uuid()).optional(),
   })
   .superRefine((data, ctx) => {
@@ -385,7 +385,7 @@ const productPatch = z.object({
   image: imageField,
   isActive: z.boolean().optional(),
   outOfStock: z.boolean().optional(),
-  kind: z.enum(['SIMPLE', 'COMPOSED']).optional(),
+  kind: z.enum(['simple', 'composed']).optional(),
   compositionTypeIds: z.array(z.string().uuid()).optional(),
 });
 
@@ -409,15 +409,15 @@ catalogRouter.post(
     const img = normalizeImageForStorage(parsed.data.image);
     const kind = resolveProductKindOnCreate(parsed.data.kind, parsed.data.compositionTypeIds);
     const compIds = parsed.data.compositionTypeIds;
-    if (kind === 'COMPOSED' && (!compIds || compIds.length === 0)) {
-      sendError(res, 400, 'validation_error', 'COMPOSED products require compositionTypeIds (ordered steps).');
+    if (kind === 'composed' && (!compIds || compIds.length === 0)) {
+      sendError(res, 400, 'validation_error', 'composed products require compositionTypeIds (ordered steps).');
       return;
     }
-    if (kind === 'SIMPLE' && compIds && compIds.length > 0) {
-      sendError(res, 400, 'validation_error', 'SIMPLE products cannot have compositionTypeIds.');
+    if (kind === 'simple' && compIds && compIds.length > 0) {
+      sendError(res, 400, 'validation_error', 'simple products cannot have compositionTypeIds.');
       return;
     }
-    if (kind === 'COMPOSED' && compIds) {
+    if (kind === 'composed' && compIds) {
       const types = await req.tenant.prisma.compositionType.findMany({
         where: { id: { in: compIds }, isActive: true },
       });
@@ -465,7 +465,7 @@ catalogRouter.post(
           ...(img !== undefined ? { image: img } : {}),
         },
       });
-      if (kind === 'COMPOSED' && compIds?.length) {
+      if (kind === 'composed' && compIds?.length) {
         await replaceProductCompositions(tx, created.id, compIds);
       }
       return tx.product.findFirstOrThrow({
@@ -522,13 +522,13 @@ catalogRouter.patch(
 
         let nextKind = kindExplicit !== undefined ? kindExplicit : existing.kind;
 
-        if (nextKind === 'COMPOSED' && compIds !== undefined && compIds.length === 0) {
+        if (nextKind === 'composed' && compIds !== undefined && compIds.length === 0) {
           throw new Error('composed_needs_steps');
         }
-        if (nextKind === 'SIMPLE' && compIds !== undefined && compIds.length > 0) {
+        if (nextKind === 'simple' && compIds !== undefined && compIds.length > 0) {
           throw new Error('simple_no_composition');
         }
-        if (nextKind === 'COMPOSED' && existing.kind === 'SIMPLE' && (compIds === undefined || compIds.length === 0)) {
+        if (nextKind === 'composed' && existing.kind === 'simple' && (compIds === undefined || compIds.length === 0)) {
           throw new Error('composed_needs_steps');
         }
 
@@ -589,12 +589,12 @@ catalogRouter.patch(
 
         const finalKind = updated.kind;
         if (compIds !== undefined) {
-          if (finalKind === 'COMPOSED') {
+          if (finalKind === 'composed') {
             await replaceProductCompositions(tx, id, compIds);
           } else {
             await tx.productComposition.deleteMany({ where: { productId: id } });
           }
-        } else if (finalKind === 'SIMPLE') {
+        } else if (finalKind === 'simple') {
           await tx.productComposition.deleteMany({ where: { productId: id } });
         }
 
@@ -615,11 +615,11 @@ catalogRouter.patch(
     } catch (e) {
       const msg = e instanceof Error ? e.message : '';
       if (msg === 'composed_needs_steps') {
-        sendError(res, 400, 'validation_error', 'COMPOSED products need at least one compositionTypeId.');
+        sendError(res, 400, 'validation_error', 'composed products need at least one compositionTypeId.');
         return;
       }
       if (msg === 'simple_no_composition') {
-        sendError(res, 400, 'validation_error', 'SIMPLE products cannot have composition steps.');
+        sendError(res, 400, 'validation_error', 'simple products cannot have composition steps.');
         return;
       }
       if (msg === 'invalid_composition_types') {

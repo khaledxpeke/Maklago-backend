@@ -79,7 +79,7 @@ async function main(): Promise<void> {
       email,
       passwordHash: hash,
       fullName: 'Demo Cashier',
-      role: 'MANAGER',
+      role: 'manager',
     },
     update: { passwordHash: hash },
   });
@@ -114,7 +114,7 @@ async function main(): Promise<void> {
       id: '00000000-0000-4000-8000-000000000101',
       categoryId: catDrinks.id,
       name: 'Coffee',
-      kind: 'SIMPLE',
+      kind: 'simple',
       description: 'House blend. Hot or iced.',
       image: DEMO_IMAGES.productCoffee,
       price: 250,
@@ -127,7 +127,7 @@ async function main(): Promise<void> {
       ],
     },
     update: {
-      kind: 'SIMPLE',
+      kind: 'simple',
       description: 'House blend. Hot or iced.',
       image: DEMO_IMAGES.productCoffee,
       price: 250,
@@ -146,7 +146,7 @@ async function main(): Promise<void> {
       id: '00000000-0000-4000-8000-000000000102',
       categoryId: catFood.id,
       name: 'Sandwich',
-      kind: 'SIMPLE',
+      kind: 'simple',
       description: 'Ham, cheese, and greens on a toasted baguette.',
       image: DEMO_IMAGES.productSandwich,
       price: 899,
@@ -155,7 +155,7 @@ async function main(): Promise<void> {
       outOfStock: false,
     },
     update: {
-      kind: 'SIMPLE',
+      kind: 'simple',
       description: 'Ham, cheese, and greens on a toasted baguette.',
       image: DEMO_IMAGES.productSandwich,
       price: 899,
@@ -170,7 +170,7 @@ async function main(): Promise<void> {
       id: '00000000-0000-4000-8000-000000000103',
       categoryId: catDrinks.id,
       name: 'Fresh orange juice',
-      kind: 'SIMPLE',
+      kind: 'simple',
       description: 'Pressed daily. Currently unavailable (demo out-of-stock).',
       image: DEMO_IMAGES.productJuice,
       price: 450,
@@ -178,7 +178,7 @@ async function main(): Promise<void> {
       outOfStock: true,
     },
     update: {
-      kind: 'SIMPLE',
+      kind: 'simple',
       description: 'Pressed daily. Currently unavailable (demo out-of-stock).',
       image: DEMO_IMAGES.productJuice,
       price: 450,
@@ -294,7 +294,7 @@ async function main(): Promise<void> {
       id: composedProductId,
       categoryId: catFood.id,
       name: 'Tacos composé (démo)',
-      kind: 'COMPOSED',
+      kind: 'composed',
       description: 'Produit composé: choix sauce puis garnitures (comme Tacos Korner).',
       image: DEMO_IMAGES.productComposed,
       price: 799,
@@ -304,7 +304,7 @@ async function main(): Promise<void> {
       modifiers: [],
     },
     update: {
-      kind: 'COMPOSED',
+      kind: 'composed',
       description: 'Produit composé: choix sauce puis garnitures (comme Tacos Korner).',
       image: DEMO_IMAGES.productComposed,
       price: 799,
@@ -362,7 +362,7 @@ async function main(): Promise<void> {
   await prisma.order.create({
     data: {
       id: demoOrderIds[0],
-      status: 'ACTIVE',
+      status: 'active',
       tableId: table1Id,
       staffId: staffRow.id,
       subtotalCents: coffeeMilkLine,
@@ -393,7 +393,7 @@ async function main(): Promise<void> {
   await prisma.order.create({
     data: {
       id: demoOrderIds[1],
-      status: 'COMPLETED',
+      status: 'completed',
       tableId: table1Id,
       staffId: staffRow.id,
       subtotalCents: sub2,
@@ -428,7 +428,7 @@ async function main(): Promise<void> {
   await prisma.order.create({
     data: {
       id: demoOrderIds[2],
-      status: 'ACTIVE',
+      status: 'active',
       staffId: staffRow.id,
       subtotalCents: composedLineSub,
       taxCents: composedTax,

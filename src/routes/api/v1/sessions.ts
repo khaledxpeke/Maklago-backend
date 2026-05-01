@@ -103,7 +103,7 @@ sessionsRouter.post(
       openingFloatCents: closed.openingFloatCents,
       orderCount: orders.length,
       completedTotalCents: orders
-        .filter((o) => o.status === 'COMPLETED')
+        .filter((o) => o.status === 'completed')
         .reduce((s, o) => s + o.totalCents, 0),
       orders,
     };

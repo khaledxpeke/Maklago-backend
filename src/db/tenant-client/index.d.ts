@@ -79,35 +79,35 @@ export type Setting = $Result.DefaultSelection<Prisma.$SettingPayload>
  */
 export namespace $Enums {
   export const StaffRole: {
-  OWNER: 'OWNER',
-  MANAGER: 'MANAGER',
-  CASHIER: 'CASHIER'
+  owner: 'owner',
+  manager: 'manager',
+  cashier: 'cashier'
 };
 
 export type StaffRole = (typeof StaffRole)[keyof typeof StaffRole]
 
 
 export const CompositionSlotMode: {
-  EXTRAS: 'EXTRAS',
-  PRODUCTS: 'PRODUCTS'
+  extras: 'extras',
+  products: 'products'
 };
 
 export type CompositionSlotMode = (typeof CompositionSlotMode)[keyof typeof CompositionSlotMode]
 
 
 export const ProductKind: {
-  SIMPLE: 'SIMPLE',
-  COMPOSED: 'COMPOSED'
+  simple: 'simple',
+  composed: 'composed'
 };
 
 export type ProductKind = (typeof ProductKind)[keyof typeof ProductKind]
 
 
 export const OrderStatus: {
-  DRAFT: 'DRAFT',
-  ACTIVE: 'ACTIVE',
-  COMPLETED: 'COMPLETED',
-  CANCELED: 'CANCELED'
+  draft: 'draft',
+  active: 'active',
+  completed: 'completed',
+  canceled: 'canceled'
 };
 
 export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus]
@@ -8543,7 +8543,7 @@ export namespace Prisma {
       description: string | null
       image: string | null
       /**
-       * SIMPLE = sold as one item with optional `modifiers` JSON. COMPOSED = built from composition steps (`ProductComposition` → extra picks per step).
+       * simple = sold as one item with optional `modifiers` JSON. composed = built from composition steps (`ProductComposition` → extra picks per step).
        */
       kind: $Enums.ProductKind
       /**

@@ -25,7 +25,7 @@ const lineSchema = z.object({
   productId: z.string().uuid(),
   quantity: z.number().int().min(1).max(999),
   modifierIds: z.array(z.string()).optional(),
-  /// Required for `COMPOSED` products: one entry per composition step, same order as `GET /catalog/products/:id`.
+  /// Required for `composed` products: one entry per composition step, same order as `GET /catalog/products/:id`.
   composition: z
     .object({
       steps: z.array(
@@ -42,7 +42,7 @@ const lineSchema = z.object({
 const createOrderSchema = z.object({
   tableId: z.string().uuid().nullable().optional(),
   sessionId: z.string().uuid().nullable().optional(),
-  status: z.enum(['DRAFT', 'ACTIVE']).default('ACTIVE'),
+  status: z.enum(['draft', 'active']).default('active'),
   /// Mongo History-like metadata for receipts / exports (optional).
   customerName: z.string().max(200).optional(),
   customerEmail: z.string().email().optional(),
@@ -126,7 +126,7 @@ ordersRouter.post(
           let modifiersSnapshot: unknown;
           let compositionSnapshot: unknown | null = null;
 
-          if (product.kind === 'COMPOSED') {
+          if (product.kind === 'composed') {
             if (!line.composition?.steps?.length) {
               throw new OrderLineCompositionError(
                 'composition_required',
@@ -281,7 +281,7 @@ class OrderLineCompositionError extends Error {
   }
 }
 
-const orderStatuses = ['DRAFT', 'ACTIVE', 'COMPLETED', 'CANCELED'] as const;
+const orderStatuses = ['draft', 'active', 'completed', 'canceled'] as const;
 
 ordersRouter.get(
   '/',
@@ -335,7 +335,7 @@ ordersRouter.patch(
   asyncHandler(async (req, res) => {
     if (!req.tenant) return;
     const schema = z.object({
-      status: z.enum(['DRAFT', 'ACTIVE', 'COMPLETED', 'CANCELED']),
+      status: z.enum(['draft', 'active', 'completed', 'canceled']),
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) {
