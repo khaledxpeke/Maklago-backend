@@ -3,7 +3,7 @@
   "info": {
     "title": "maklaGo API",
     "version": "1.0.0",
-    "description": "Restaurant POS backend. **Tenant**: optional header `x-tenant-id` (slug or registry UUID). With `Authorization: Bearer` staff JWT, the tenant is resolved from the token when the header is omitted. **`POST /api/v1/auth/login`** accepts optional `x-tenant-id` for tenant-scoped login; without it, the normalized email must exist in registry **`staff_login_directory`** (slugless directory login). **`POST /api/v1/orders`** accepts **`products`** snapshots (`categoryId`, `id`, `count`, **`price`** in cents, **`extras`**) for analytics; new orders start as **`waiting`**. **Platform** routes use `x-platform-key`. Errors: `{ \"error\": { \"code\", \"message\", \"details?\" } }`."
+    "description": "Restaurant POS backend. **Tenant**: optional header `x-tenant-id` (slug or registry UUID). With `Authorization: Bearer` staff JWT, the tenant is resolved from the token when the header is omitted. **`POST /api/v1/auth/login`** accepts optional `x-tenant-id` for tenant-scoped login; without it, the normalized email must exist in registry **`staff_login_directory`** (slugless directory login). **`GET /api/v1/orders`** returns enriched catalog labels on lines (dashboard); **`GET /api/v1/mobile/orders`** returns slim orders matching realtime. **`POST /api/v1/orders`** accepts **`products`** snapshots (`categoryId`, `id`, `count`, **`price`**, **`extras`**) for analytics; **`subtotal`**, **`tva`**, **`total`** use the same integer unit as storage (must match server); new orders start as **`waiting`**. **Platform** routes use `x-platform-key`. Errors: `{ \"error\": { \"code\", \"message\", \"details?\" } }`."
   },
   "servers": [
     {
@@ -211,7 +211,7 @@
         "required": [
           "products",
           "subtotal",
-          "tax",
+          "tva",
           "total"
         ],
         "properties": {
@@ -253,22 +253,22 @@
           "subtotal": {
             "type": "integer",
             "minimum": 0,
-            "description": "Sum of line net totals in cents (before order discount); must match server."
+            "description": "Sum of line net totals (before order discount); must match server."
           },
-          "tax": {
+          "tva": {
             "type": "integer",
             "minimum": 0,
-            "description": "Sum of line taxes in cents; must match server."
+            "description": "Sum of line TVA amounts; must match server."
           },
           "total": {
             "type": "integer",
             "minimum": 0,
-            "description": "Final total cents after discount; must match server."
+            "description": "Final total after discount; must match server."
           },
           "products": {
             "type": "array",
             "minItems": 1,
-            "description": "Saved line snapshots for statistics. Money fields are integer cents. Line total = count × price + Σ(extra.price × extra.count). Order status is always `waiting` from the server.",
+            "description": "Saved line snapshots for statistics. Money fields use the same integer unit as storage. Line total = count × price + Σ(extra.price × extra.count). Order status is always `waiting` from the server.",
             "items": {
               "type": "object",
               "required": ["categoryId", "id", "count", "price"],
@@ -293,7 +293,7 @@
                 "price": {
                   "type": "integer",
                   "minimum": 0,
-                  "description": "Base unit price in cents (before extras)."
+                  "description": "Base unit price (before extras)."
                 },
                 "extras": {
                   "type": "array",
@@ -303,14 +303,9 @@
                     "properties": {
                       "id": { "type": "string", "minLength": 1 },
                       "count": { "type": "integer", "minimum": 0, "maximum": 999 },
-                      "price": { "type": "integer", "minimum": 0, "description": "Extra unit cents" }
+                      "price": { "type": "integer", "minimum": 0, "description": "Extra unit price (same unit as line)" }
                     }
                   }
-                },
-                "note": {
-                  "type": "string",
-                  "maxLength": 500,
-                  "description": "Optional note for this line only (e.g. preparation)."
                 }
               }
             }
@@ -361,31 +356,57 @@
       },
       "OrderProductSerialized": {
         "type": "object",
-        "description": "Saved order line row: `{ id, orderId, categoryId, count, price, extras }` plus line totals/tax and nested catalog product (product id only under `product.id`).",
+        "description": "Slim order line (**`POST`**, realtime **`order.*`**, **`GET /api/v1/mobile/orders`**): ids + amounts; resolve labels via catalog.",
         "properties": {
-          "id": { "type": "string", "minLength": 12, "maxLength": 36, "description": "Persisted order line row id." },
-          "orderId": { "type": "string", "minLength": 12, "maxLength": 36 },
           "categoryId": { "type": "string", "minLength": 12, "maxLength": 36 },
+          "id": { "type": "string", "minLength": 12, "maxLength": 36, "description": "Product id." },
           "count": { "type": "integer" },
-          "priceCents": { "type": "integer", "description": "Base unit price in cents (derived from stored line)." },
-          "price": { "type": "number" },
+          "price": { "type": "integer", "description": "Saved base unit price for this line." },
           "extras": {
             "type": "array",
-            "items": { "type": "object", "additionalProperties": true }
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "count": { "type": "integer" },
+                "price": { "type": "integer" }
+              }
+            }
           },
-          "lineTotalCents": { "type": "integer" },
-          "lineTotal": { "type": "number" },
-          "taxCents": { "type": "integer" },
-          "tax": { "type": "number" },
-          "note": { "type": "string", "nullable": true },
-          "product": {
-            "$ref": "#/components/schemas/OrderProductSummary"
-          }
+          "compositionSnapshot": { "type": "object", "additionalProperties": true, "nullable": true }
+        }
+      },
+      "OrderProductEnriched": {
+        "type": "object",
+        "description": "Backoffice order line: product/category labels and resolved extra names joined from catalog.",
+        "properties": {
+          "categoryId": { "type": "string", "minLength": 12, "maxLength": 36 },
+          "id": { "type": "string", "minLength": 12, "maxLength": 36 },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "kind": { "type": "string", "enum": ["simple", "composed"] },
+          "categoryName": { "type": "string" },
+          "image": { "type": "string", "nullable": true },
+          "count": { "type": "integer" },
+          "price": { "type": "integer", "description": "Saved base unit price for this line." },
+          "extras": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "count": { "type": "integer" },
+                "price": { "type": "integer" },
+                "name": { "type": "string", "description": "Present when catalog extra exists." }
+              }
+            }
+          },
+          "compositionSnapshot": { "type": "object", "additionalProperties": true, "nullable": true }
         }
       },
       "OrderSerialized": {
         "type": "object",
-        "description": "Full order with daily commandNumber, paymentMethod, discount fields, serialized `products`; table and staff include `id`.",
+        "description": "Slim order (**`POST /orders`** response body `order`, realtime payloads). Same shape as **`GET /api/v1/mobile/orders`**. **`tableId`** / **`table`** omitted for takeaway or null table.",
         "properties": {
           "id": { "type": "string", "minLength": 12, "maxLength": 36 },
           "reference": {
@@ -397,20 +418,21 @@
           "commandDate": { "type": "string", "format": "date" },
           "status": { "$ref": "#/components/schemas/OrderStatus" },
           "orderType": { "type": "string", "enum": ["dine_in", "takeaway"] },
-          "tableId": { "type": "string", "minLength": 12, "maxLength": 36, "nullable": true },
+          "tableId": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 36,
+            "description": "Present only for dine-in orders with an assigned table."
+          },
           "staffId": { "type": "string", "minLength": 12, "maxLength": 36 },
           "note": { "type": "string", "nullable": true },
           "customerName": { "type": "string", "nullable": true },
           "discount": { "type": "integer", "description": "Order-level discount percent (0–100)." },
-          "discountPriceCents": { "type": "integer" },
-          "discountPrice": { "type": "number" },
-          "subtotalCents": { "type": "integer" },
-          "subtotal": { "type": "number" },
-          "taxCents": { "type": "integer" },
-          "tax": { "type": "number" },
-          "totalCents": { "type": "integer" },
-          "total": { "type": "number" },
+          "discountPrice": { "type": "integer" },
           "paymentMethod": { "type": "string", "enum": ["cash", "card", "unpaid"] },
+          "subtotal": { "type": "integer", "description": "Sum of line net totals." },
+          "tva": { "type": "integer", "description": "Sum of line TVA amounts." },
+          "total": { "type": "integer", "description": "Final total after discount." },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" },
           "products": {
@@ -419,7 +441,54 @@
           },
           "table": {
             "type": "object",
+            "description": "Present only with `tableId` on dine-in orders when table row was loaded.",
+            "additionalProperties": true
+          },
+          "staff": {
+            "type": "object",
             "nullable": true,
+            "additionalProperties": true
+          }
+        }
+      },
+      "OrderSerializedEnriched": {
+        "type": "object",
+        "description": "Backoffice order (`GET /orders`, `GET /orders/{id}`, `PATCH …/status` HTTP body): enriched **`products`** (`OrderProductEnriched`). Shell matches **`OrderSerialized`** (table rules, `staff`, etc.).",
+        "properties": {
+          "id": { "type": "string", "minLength": 12, "maxLength": 36 },
+          "reference": {
+            "type": "string",
+            "description": "Unique ticket reference: **8** lowercase hexadecimal characters for newly created orders.",
+            "example": "a3f9c21d"
+          },
+          "commandNumber": { "type": "integer" },
+          "commandDate": { "type": "string", "format": "date" },
+          "status": { "$ref": "#/components/schemas/OrderStatus" },
+          "orderType": { "type": "string", "enum": ["dine_in", "takeaway"] },
+          "tableId": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 36,
+            "description": "Present only for dine-in orders with an assigned table."
+          },
+          "staffId": { "type": "string", "minLength": 12, "maxLength": 36 },
+          "note": { "type": "string", "nullable": true },
+          "customerName": { "type": "string", "nullable": true },
+          "discount": { "type": "integer", "description": "Order-level discount percent (0–100)." },
+          "discountPrice": { "type": "integer" },
+          "paymentMethod": { "type": "string", "enum": ["cash", "card", "unpaid"] },
+          "subtotal": { "type": "integer", "description": "Sum of line net totals." },
+          "tva": { "type": "integer", "description": "Sum of line TVA amounts." },
+          "total": { "type": "integer", "description": "Final total after discount." },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "products": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OrderProductEnriched" }
+          },
+          "table": {
+            "type": "object",
+            "description": "Present only with `tableId` on dine-in orders when table row was loaded.",
             "additionalProperties": true
           },
           "staff": {
@@ -654,7 +723,9 @@
         "required": true,
         "schema": {
           "type": "string",
-          "format": "uuid"
+          "minLength": 12,
+          "maxLength": 36,
+          "description": "Order public id (lowercase hex or legacy UUID)."
         }
       },
       "TableId": {
@@ -2270,7 +2341,7 @@
           "Orders"
         ],
         "summary": "Create order",
-        "description": "Assigns `reference`, `commandNumber`, and `commandDate` (UTC day). Status is always **`waiting`**. Body uses **`products`** (see schema): cents for `price` and extras; line total = count×price + Σ(extra.price×extra.count). For **composed** products send the resolved extras client-side.",
+        "description": "Assigns `reference`, `commandNumber`, and `commandDate` (UTC day). Status is always **`waiting`**. Body **`products`**: line net = count×price + Σ(extra.price×extra.count); **`subtotal`**, **`tva`**, **`total`** must match server (same integer unit as storage). For composed products send resolved **`extras`** client-side.",
         "security": [
           {
             "BearerAuth": []
@@ -2333,6 +2404,7 @@
           "Orders"
         ],
         "summary": "List orders",
+        "description": "Returns **`orders[]`** with **`OrderSerializedEnriched`** — catalog labels on lines for dashboard/backoffice. Mobile apps use **`GET /api/v1/mobile/orders`** for slim payloads.",
         "security": [
           {
             "BearerAuth": []
@@ -2362,7 +2434,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Wrapper `{ orders }`; each item **`OrderSerializedEnriched`**.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2370,7 +2442,7 @@
                   "properties": {
                     "orders": {
                       "type": "array",
-                      "items": { "$ref": "#/components/schemas/OrderSerialized" }
+                      "items": { "$ref": "#/components/schemas/OrderSerializedEnriched" }
                     }
                   }
                 }
@@ -2396,6 +2468,7 @@
           "Orders"
         ],
         "summary": "Get order by id",
+        "description": "Returns **`order`** as **`OrderSerializedEnriched`** (display-ready lines).",
         "security": [
           {
             "BearerAuth": []
@@ -2417,7 +2490,7 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "order": { "$ref": "#/components/schemas/OrderSerialized" }
+                    "order": { "$ref": "#/components/schemas/OrderSerializedEnriched" }
                   }
                 }
               }
@@ -2473,7 +2546,7 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "order": { "$ref": "#/components/schemas/OrderSerialized" }
+                    "order": { "$ref": "#/components/schemas/OrderSerializedEnriched" }
                   }
                 }
               }
@@ -2496,6 +2569,93 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mobile/orders": {
+      "get": {
+        "tags": ["Orders"],
+        "summary": "List orders (mobile slim)",
+        "description": "Slim **`OrderSerialized`** payloads (matches realtime `order.*`). Prefer over **`GET /orders`** on handset/tablet.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/OrderStatus" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`{ orders: OrderSerialized[] }`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "orders": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/OrderSerialized" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mobile/orders/{id}": {
+      "get": {
+        "tags": ["Orders"],
+        "summary": "Get order by id (mobile slim)",
+        "description": "**`OrderSerialized`** — same inner shape as websocket payloads.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/OrderId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": { "$ref": "#/components/schemas/OrderSerialized" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
               }
             }
           }

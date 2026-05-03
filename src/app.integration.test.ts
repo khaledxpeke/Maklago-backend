@@ -66,7 +66,7 @@ describe.skipIf(!integration)('integration (set INTEGRATION_TEST=1 and DB URLs)'
       .set({ Authorization: `Bearer ${token}` })
       .send({
         subtotal: 250,
-        tax: 25,
+        tva: 25,
         total: 275,
         products: [{ categoryId: categoryDrinks, id: productId, count: 1, price: 250 }],
       });
@@ -91,7 +91,7 @@ describe.skipIf(!integration)('integration (set INTEGRATION_TEST=1 and DB URLs)'
       .send({
         orderType: 'dine_in',
         subtotal: 250,
-        tax: 25,
+        tva: 25,
         total: 275,
         products: [{ categoryId: categoryDrinks, id: productId, count: 1, price: 250 }],
       });
@@ -113,7 +113,7 @@ describe.skipIf(!integration)('integration (set INTEGRATION_TEST=1 and DB URLs)'
       .send({
         orderType: 'takeaway',
         subtotal: 250,
-        tax: 25,
+        tva: 25,
         total: 275,
         tableId,
         products: [{ categoryId: categoryDrinks, id: productId, count: 1, price: 250 }],

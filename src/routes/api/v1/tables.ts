@@ -7,6 +7,7 @@ import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
 import { requireStaff } from '../../../middleware/requireStaff';
 import { generatePublicId } from '../../../services/publicId';
+import { broadcastStaffRealtime } from '../../../realtime/broadcastStaffRealtime';
 
 export const tablesRouter = Router();
 tablesRouter.use(requireStaff);
@@ -101,6 +102,15 @@ tablesRouter.patch(
         },
       });
       res.json({ table: tableJson(table) });
+      if ('status' in parsed.data && parsed.data.status !== undefined && req.tenant) {
+        broadcastStaffRealtime(req.tenant.id, {
+          v: 1,
+          type: 'table.updated',
+          tableId: id,
+          status: table.status,
+          ts: new Date().toISOString(),
+        });
+      }
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
         sendError(res, 409, 'table_number_taken', 'Another table already uses this table number');

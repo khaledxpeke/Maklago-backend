@@ -11,10 +11,19 @@ import { buildCustomerReceiptJobs, buildKitchenTicketJobs } from '../../../servi
 import { refreshTableOccupancyFromOrders } from '../../../services/tableOccupancy';
 import { nextCommandNumber, utcCommandDate } from '../../../services/orderCommandSeq';
 import { allocateUniqueOrderReference } from '../../../services/orderReference';
-import { orderDetailInclude, orderListInclude, serializeOrder } from '../../../services/orderJson';
+import type { SerializableOrder } from '../../../services/orderJson';
+import {
+  orderDetailInclude,
+  orderEnrichedInclude,
+  serializeOrderEnriched,
+  serializeOrderSlim,
+  serializeOrdersEnriched,
+  serializeOrdersSlim,
+} from '../../../services/orderJson';
 import { generatePublicId, tenantEntityIdSchema } from '../../../services/publicId';
+import { broadcastStaffRealtime } from '../../../realtime/broadcastStaffRealtime';
 
-/** Money amounts (`price`) are integer cents. Line net = `count * price + Σ(extra.price * extra.count)`. */
+/** Money amounts (`price`, `subtotal`, `tva`, `total`) use the same integer unit as storage (JSON uses plain names, no `*_cents`). Line net = `count * price + Σ(extra.price * extra.count)`. */
 const orderExtraSchema = z.object({
   /** Catalog extra id (12 hex) or modifier key (e.g. milk). */
   id: z.string().min(1).max(64),
@@ -28,7 +37,6 @@ const orderProductSchema = z.object({
   count: z.number().int().min(1).max(999),
   price: z.number().int().min(0),
   extras: z.array(orderExtraSchema).optional().default([]),
-  note: z.string().max(500).optional(),
 });
 
 const createOrderSchema = z
@@ -39,11 +47,11 @@ const createOrderSchema = z
     customerName: z.string().max(200).optional(),
     discount: z.number().int().min(0).max(100).optional().default(0),
     paymentMethod: z.enum(['cash', 'card', 'unpaid']).optional().default('unpaid'),
-    /** Line net subtotal in cents (before order-level discount). Must match server recomputation. */
+    /** Line net subtotal (before order-level discount). Must match server recomputation. */
     subtotal: z.number().int().min(0),
-    /** Sum of line taxes in cents. Must match server. */
-    tax: z.number().int().min(0),
-    /** Final total in cents after discount. Must match server. */
+    /** Sum of line TVA amounts. Must match server. */
+    tva: z.number().int().min(0),
+    /** Final total after discount. Must match server. */
     total: z.number().int().min(0),
     products: z.array(orderProductSchema).min(1),
   })
@@ -112,7 +120,7 @@ ordersRouter.post(
     const defaultTax = await getDefaultTaxBps(prisma);
 
     try {
-      const order = await prisma.$transaction(async (tx) => {
+      const { order, tableBroadcast } = await prisma.$transaction(async (tx) => {
         let subtotal = 0;
         let taxTotal = 0;
         const lineRows: {
@@ -125,7 +133,6 @@ ordersRouter.post(
           modifiersSnapshot: unknown | null;
           compositionSnapshot: unknown | null;
           extrasSnapshot: unknown;
-          note: string | null;
         }[] = [];
 
         for (const row of inputProducts) {
@@ -158,7 +165,6 @@ ordersRouter.post(
             modifiersSnapshot: null,
             compositionSnapshot: null,
             extrasSnapshot: extras.map((e) => ({ id: e.id, count: e.count, price: e.price })),
-            note: row.note ?? null,
           });
         }
 
@@ -168,14 +174,14 @@ ordersRouter.post(
 
         if (
           parsed.data.subtotal !== subtotal ||
-          parsed.data.tax !== taxTotal ||
+          parsed.data.tva !== taxTotal ||
           parsed.data.total !== totalCents
         ) {
           throw new TotalsMismatchError(
-            { subtotal, tax: taxTotal, total: totalCents },
+            { subtotal, tva: taxTotal, total: totalCents },
             {
               subtotal: parsed.data.subtotal,
-              tax: parsed.data.tax,
+              tva: parsed.data.tva,
               total: parsed.data.total,
             },
           );
@@ -215,19 +221,39 @@ ordersRouter.post(
                 modifiersSnapshot: r.modifiersSnapshot ?? undefined,
                 compositionSnapshot: r.compositionSnapshot ?? undefined,
                 extrasSnapshot: r.extrasSnapshot as object,
-                note: r.note ?? undefined,
               })),
             },
           },
           include: orderDetailInclude,
         });
 
+        let tableBroadcast: { tableId: string; status: 'free' | 'occupied' } | undefined;
         if (orderType === 'dine_in' && tableId) {
-          await refreshTableOccupancyFromOrders(tx, tableId);
+          const status = await refreshTableOccupancyFromOrders(tx, tableId);
+          tableBroadcast = { tableId, status };
         }
 
-        return created;
+        return { order: created, tableBroadcast };
       });
+
+      const orderJson = serializeOrderSlim(order);
+      const ts = new Date().toISOString();
+      broadcastStaffRealtime(req.tenant.id, {
+        v: 1,
+        type: 'order.created',
+        orderId: order.id,
+        order: orderJson,
+        ts,
+      });
+      if (tableBroadcast) {
+        broadcastStaffRealtime(req.tenant.id, {
+          v: 1,
+          type: 'table.updated',
+          tableId: tableBroadcast.tableId,
+          status: tableBroadcast.status,
+          ts,
+        });
+      }
 
       const printJobs = [
         ...buildCustomerReceiptJobs({
@@ -241,7 +267,7 @@ ordersRouter.post(
         }),
       ];
 
-      res.status(201).json({ order: serializeOrder(req, order), printJobs });
+      res.status(201).json({ order: orderJson, printJobs });
     } catch (e) {
       if (e instanceof ProductNotFoundError) {
         sendError(res, 400, 'product_not_found', 'Product not found or inactive', {
@@ -258,7 +284,7 @@ ordersRouter.post(
         return;
       }
       if (e instanceof TotalsMismatchError) {
-        sendError(res, 400, 'totals_mismatch', 'subtotal, tax, and total must match server totals (integer cents)', {
+        sendError(res, 400, 'totals_mismatch', 'subtotal, tva, and total must match server totals', {
           expected: e.expected,
           received: e.received,
         });
@@ -289,8 +315,8 @@ class CategoryMismatchError extends Error {
 
 class TotalsMismatchError extends Error {
   constructor(
-    public expected: { subtotal: number; tax: number; total: number },
-    public received: { subtotal: number; tax: number; total: number },
+    public expected: { subtotal: number; tva: number; total: number },
+    public received: { subtotal: number; tva: number; total: number },
   ) {
     super('totals_mismatch');
     this.name = 'TotalsMismatchError';
@@ -322,9 +348,10 @@ ordersRouter.get(
       where,
       orderBy: { createdAt: 'desc' },
       take,
-      include: orderListInclude,
+      include: orderDetailInclude,
     });
-    res.json({ orders: rows.map((o) => serializeOrder(req, o)) });
+    const ordersJson = serializeOrdersSlim(rows);
+    res.json({ orders: ordersJson });
   }),
 );
 
@@ -339,13 +366,13 @@ ordersRouter.get(
     }
     const row = await req.tenant.prisma.order.findUnique({
       where: { id },
-      include: orderDetailInclude,
+      include: orderEnrichedInclude,
     });
     if (!row) {
       sendError(res, 404, 'not_found', 'Order not found');
       return;
     }
-    res.json({ order: serializeOrder(req, row) });
+    res.json({ order: await serializeOrderEnriched(req, req.tenant.prisma, row) });
   }),
 );
 
@@ -369,15 +396,39 @@ ordersRouter.patch(
         return;
       }
       const prisma = req.tenant.prisma;
+      let tableBroadcast: { tableId: string; status: 'free' | 'occupied' } | undefined;
       const order = await prisma.order.update({
         where: { id: orderId },
         data: { status: parsed.data.status as OrderStatus },
-        include: orderDetailInclude,
+        include: orderEnrichedInclude,
       });
       if (order.tableId && order.orderType === 'dine_in') {
-        await refreshTableOccupancyFromOrders(prisma, order.tableId);
+        const status = await refreshTableOccupancyFromOrders(prisma, order.tableId);
+        tableBroadcast = { tableId: order.tableId, status };
       }
-      res.json({ order: serializeOrder(req, order) });
+
+      const ts = new Date().toISOString();
+      const orderRealtime = serializeOrderSlim(order as SerializableOrder);
+      broadcastStaffRealtime(req.tenant.id, {
+        v: 1,
+        type: 'order.updated',
+        orderId: order.id,
+        status: order.status,
+        order: orderRealtime,
+        ts,
+      });
+      if (tableBroadcast) {
+        broadcastStaffRealtime(req.tenant.id, {
+          v: 1,
+          type: 'table.updated',
+          tableId: tableBroadcast.tableId,
+          status: tableBroadcast.status,
+          ts,
+        });
+      }
+
+      const orderJson = await serializeOrderEnriched(req, prisma, order);
+      res.json({ order: orderJson });
     } catch {
       sendError(res, 404, 'not_found', 'Order not found');
     }

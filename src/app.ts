@@ -39,6 +39,8 @@ export function createApp(): express.Express {
       docs: '/docs',
       openapiJson: '/openapi.json',
       tenantHeader: 'x-tenant-id',
+      staffRealtime:
+        'WebSocket GET /api/v1/realtime?token=<staff JWT> — order/table push events for cashier & kitchen',
     });
   });
 

@@ -3,6 +3,7 @@ import { attachTenantFromStaffJwt } from '../../../middleware/attachTenantFromSt
 import { tenantResolve } from '../../../middleware/tenantResolve';
 import { authRouter } from './auth';
 import { catalogRouter } from './catalog';
+import { mobileOrdersRouter } from './mobileOrders';
 import { ordersRouter } from './orders';
 import { sessionsRouter } from './sessions';
 import { settingsRouter } from './settings';
@@ -19,6 +20,7 @@ apiV1Router.use('/auth', authRouter);
 apiV1Router.use('/staff', staffRouter);
 apiV1Router.use('/catalog', catalogRouter);
 apiV1Router.use('/orders', ordersRouter);
+apiV1Router.use('/mobile/orders', mobileOrdersRouter);
 apiV1Router.use('/tables', tablesRouter);
 apiV1Router.use('/sessions', sessionsRouter);
 apiV1Router.use('/stats', statsRouter);
