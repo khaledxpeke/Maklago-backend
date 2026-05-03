@@ -1,0 +1,2 @@
+-- Tenant primary keys are assigned by the app (`generatePublicId`: 12 lowercase hex chars).
+-- Existing UUID strings remain valid; Prisma no longer uses a database default for these ids.

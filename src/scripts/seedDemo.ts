@@ -28,6 +28,32 @@ const SEED_IMAGE_SOURCES = {
     'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800&q=80&auto=format&fit=crop',
 } as const;
 
+/** Stable 12-char lowercase hex ids for demo data (integration tests expect these when seed runs). */
+const S = {
+  CAT_DRINKS: '010000000001',
+  CAT_FOOD: '010000000002',
+  PROD_COFFEE: '020000000101',
+  PROD_SANDWICH: '020000000102',
+  PROD_JUICE: '020000000103',
+  PROD_COMPOSED: '020000000106',
+  EX_HARISSA: '030000000301',
+  EX_MAYO: '030000000302',
+  EX_SALAD: '030000000303',
+  EX_ONION: '030000000304',
+  TYPE_SAUCE: '040000000401',
+  TYPE_GARNISH: '040000000402',
+  TABLE_1: '050000000201',
+  ORDER_1: '060000000501',
+  ORDER_2: '060000000502',
+  ORDER_3: '060000000503',
+  STAFF_MGR: '070000000601',
+  STAFF_OWNER: '070000000602',
+  LINE_O1: '080000050101',
+  LINE_O2A: '080000050201',
+  LINE_O2B: '080000050202',
+  LINE_O3: '080000050301',
+} as const;
+
 async function ensureSeedImage(tenantId: string, filename: string, sourceUrl: string): Promise<string> {
   const dir = path.join(process.cwd(), 'uploads', tenantId);
   fs.mkdirSync(dir, { recursive: true });
@@ -112,6 +138,7 @@ async function main(): Promise<void> {
   const demoStaff = await prisma.staff.upsert({
     where: { email },
     create: {
+      id: S.STAFF_MGR,
       email,
       passwordHash: hash,
       fullName: 'Demo Manager',
@@ -127,6 +154,7 @@ async function main(): Promise<void> {
   const demoOwner = await prisma.staff.upsert({
     where: { email: ownerEmailAddr },
     create: {
+      id: S.STAFF_OWNER,
       email: ownerEmailAddr,
       passwordHash: ownerHash,
       fullName: 'Demo Owner',
@@ -148,9 +176,9 @@ async function main(): Promise<void> {
   console.log('Staff (owner):', ownerEmailAddr, '/', password);
 
   const catDrinks = await prisma.category.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000001' },
+    where: { id: S.CAT_DRINKS },
     create: {
-      id: '00000000-0000-4000-8000-000000000001',
+      id: S.CAT_DRINKS,
       name: 'Drinks',
       sortOrder: 0,
       image: demoImages.categoryDrinks,
@@ -159,9 +187,9 @@ async function main(): Promise<void> {
   });
 
   const catFood = await prisma.category.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000002' },
+    where: { id: S.CAT_FOOD },
     create: {
-      id: '00000000-0000-4000-8000-000000000002',
+      id: S.CAT_FOOD,
       name: 'Food',
       sortOrder: 1,
       image: demoImages.categoryFood,
@@ -170,9 +198,9 @@ async function main(): Promise<void> {
   });
 
   await prisma.product.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000101' },
+    where: { id: S.PROD_COFFEE },
     create: {
-      id: '00000000-0000-4000-8000-000000000101',
+      id: S.PROD_COFFEE,
       categoryId: catDrinks.id,
       name: 'Coffee',
       kind: 'simple',
@@ -202,9 +230,9 @@ async function main(): Promise<void> {
   });
 
   await prisma.product.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000102' },
+    where: { id: S.PROD_SANDWICH },
     create: {
-      id: '00000000-0000-4000-8000-000000000102',
+      id: S.PROD_SANDWICH,
       categoryId: catFood.id,
       name: 'Sandwich',
       kind: 'simple',
@@ -226,9 +254,9 @@ async function main(): Promise<void> {
   });
 
   await prisma.product.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000103' },
+    where: { id: S.PROD_JUICE },
     create: {
-      id: '00000000-0000-4000-8000-000000000103',
+      id: S.PROD_JUICE,
       categoryId: catDrinks.id,
       name: 'Fresh orange juice',
       kind: 'simple',
@@ -249,9 +277,9 @@ async function main(): Promise<void> {
   });
 
   const exHarissa = await prisma.extra.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000301' },
+    where: { id: S.EX_HARISSA },
     create: {
-      id: '00000000-0000-4000-8000-000000000301',
+      id: S.EX_HARISSA,
       name: 'Harissa',
       suppPrice: 0,
       price: 0,
@@ -260,9 +288,9 @@ async function main(): Promise<void> {
     update: { name: 'Harissa', suppPrice: 0 },
   });
   const exMayo = await prisma.extra.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000302' },
+    where: { id: S.EX_MAYO },
     create: {
-      id: '00000000-0000-4000-8000-000000000302',
+      id: S.EX_MAYO,
       name: 'Mayonnaise',
       suppPrice: 50,
       price: 0,
@@ -271,9 +299,9 @@ async function main(): Promise<void> {
     update: { name: 'Mayonnaise', suppPrice: 50 },
   });
   const exSalad = await prisma.extra.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000303' },
+    where: { id: S.EX_SALAD },
     create: {
-      id: '00000000-0000-4000-8000-000000000303',
+      id: S.EX_SALAD,
       name: 'Salade',
       suppPrice: 0,
       price: 0,
@@ -282,9 +310,9 @@ async function main(): Promise<void> {
     update: { name: 'Salade' },
   });
   const exOnion = await prisma.extra.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000304' },
+    where: { id: S.EX_ONION },
     create: {
-      id: '00000000-0000-4000-8000-000000000304',
+      id: S.EX_ONION,
       name: 'Oignons',
       suppPrice: 25,
       price: 0,
@@ -294,9 +322,9 @@ async function main(): Promise<void> {
   });
 
   const typeSauce = await prisma.compositionType.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000401' },
+    where: { id: S.TYPE_SAUCE },
     create: {
-      id: '00000000-0000-4000-8000-000000000401',
+      id: S.TYPE_SAUCE,
       name: 'sauce',
       label: 'Sauce',
       message: 'Choisissez une sauce',
@@ -315,9 +343,9 @@ async function main(): Promise<void> {
     },
   });
   const typeGarnish = await prisma.compositionType.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000402' },
+    where: { id: S.TYPE_GARNISH },
     create: {
-      id: '00000000-0000-4000-8000-000000000402',
+      id: S.TYPE_GARNISH,
       name: 'garniture',
       label: 'Garniture',
       message: 'Jusqu’à deux options',
@@ -348,7 +376,7 @@ async function main(): Promise<void> {
     ],
   });
 
-  const composedProductId = '00000000-0000-4000-8000-000000000106';
+  const composedProductId = S.PROD_COMPOSED;
   await prisma.product.upsert({
     where: { id: composedProductId },
     create: {
@@ -387,7 +415,7 @@ async function main(): Promise<void> {
     update: { value: 1000 },
   });
 
-  const table1Id = '00000000-0000-4000-8000-000000000201';
+  const table1Id = S.TABLE_1;
   await prisma.restaurantTable.upsert({
     where: { id: table1Id },
     create: {
@@ -401,11 +429,7 @@ async function main(): Promise<void> {
     update: { name: 'Table 1', zone: 'Main', tableNumber: 1 },
   });
 
-  const demoOrderIds = [
-    '00000000-0000-4000-8000-000000000501',
-    '00000000-0000-4000-8000-000000000502',
-    '00000000-0000-4000-8000-000000000503',
-  ];
+  const demoOrderIds = [S.ORDER_1, S.ORDER_2, S.ORDER_3];
   await prisma.order.deleteMany({ where: { id: { in: demoOrderIds } } });
 
   const staffRow = await prisma.staff.findFirst({ where: { email } });
@@ -413,11 +437,13 @@ async function main(): Promise<void> {
     throw new Error('Seed staff not found');
   }
 
-  const pidCoffee = '00000000-0000-4000-8000-000000000101';
-  const pidSandwich = '00000000-0000-4000-8000-000000000102';
+  const pidCoffee = S.PROD_COFFEE;
+  const pidSandwich = S.PROD_SANDWICH;
 
   /** Tax 10% (1000 bps), matches default_tax_bps and product taxRateBps. */
   const taxOn = (subtotalCents: number) => Math.round((subtotalCents * 1000) / 10000);
+
+  const demoCommandDate = new Date(Date.UTC(2026, 4, 2));
 
   const coffeeMilkUnit = 250 + 50;
   const coffeeMilkLine = coffeeMilkUnit * 2;
@@ -425,17 +451,23 @@ async function main(): Promise<void> {
   await prisma.order.create({
     data: {
       id: demoOrderIds[0],
-      status: 'active',
-      fulfillment: 'dine_in',
+      reference: 'de000501',
+      commandDate: demoCommandDate,
+      commandNumber: 1,
+      status: 'confirmed',
+      orderType: 'dine_in',
       tableId: table1Id,
       staffId: staffRow.id,
+      paymentMethod: 'cash',
       subtotalCents: coffeeMilkLine,
       taxCents: coffeeMilkTax,
       totalCents: coffeeMilkLine + coffeeMilkTax,
       lines: {
         create: [
           {
+            id: S.LINE_O1,
             productId: pidCoffee,
+            categoryId: catDrinks.id,
             quantity: 2,
             unitPriceCents: coffeeMilkUnit,
             lineTotalCents: coffeeMilkLine,
@@ -444,6 +476,7 @@ async function main(): Promise<void> {
               selectedIds: ['milk'],
               defs: [{ id: 'milk', name: 'Extra milk', priceCents: 50 }],
             },
+            extrasSnapshot: [{ id: 'milk', count: 2, price: 50 }],
           },
         ],
       },
@@ -457,30 +490,40 @@ async function main(): Promise<void> {
   await prisma.order.create({
     data: {
       id: demoOrderIds[1],
+      reference: 'de000502',
+      commandDate: demoCommandDate,
+      commandNumber: 2,
       status: 'completed',
-      fulfillment: 'dine_in',
+      orderType: 'dine_in',
       tableId: table1Id,
       staffId: staffRow.id,
+      paymentMethod: 'card',
       subtotalCents: sub2,
       taxCents: tax2,
       totalCents: sub2 + tax2,
       lines: {
         create: [
           {
+            id: S.LINE_O2A,
             productId: pidCoffee,
+            categoryId: catDrinks.id,
             quantity: 1,
             unitPriceCents: 250,
             lineTotalCents: sub2a,
             taxCents: taxOn(sub2a),
             modifiersSnapshot: { selectedIds: [], defs: [] },
+            extrasSnapshot: [],
           },
           {
+            id: S.LINE_O2B,
             productId: pidSandwich,
+            categoryId: catFood.id,
             quantity: 1,
             unitPriceCents: 899,
             lineTotalCents: sub2b,
             taxCents: taxOn(sub2b),
             modifiersSnapshot: { selectedIds: [], defs: [] },
+            extrasSnapshot: [],
             note: 'Sans oignon',
           },
         ],
@@ -493,16 +536,22 @@ async function main(): Promise<void> {
   await prisma.order.create({
     data: {
       id: demoOrderIds[2],
-      status: 'active',
-      fulfillment: 'takeaway',
+      reference: 'de000503',
+      commandDate: demoCommandDate,
+      commandNumber: 3,
+      status: 'confirmed',
+      orderType: 'takeaway',
       staffId: staffRow.id,
+      paymentMethod: 'unpaid',
       subtotalCents: composedLineSub,
       taxCents: composedTax,
       totalCents: composedLineSub + composedTax,
       lines: {
         create: [
           {
+            id: S.LINE_O3,
             productId: composedProductId,
+            categoryId: catFood.id,
             quantity: 1,
             unitPriceCents: 799 + 25,
             lineTotalCents: composedLineSub,
@@ -526,6 +575,10 @@ async function main(): Promise<void> {
                 },
               ],
             },
+            extrasSnapshot: [
+              { id: exHarissa.id, count: 1, price: 0 },
+              { id: exOnion.id, count: 1, price: 25 },
+            ],
           },
         ],
       },

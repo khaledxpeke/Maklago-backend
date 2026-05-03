@@ -15,15 +15,23 @@ enum StaffRole {
 }
 
 enum OrderStatus {
-  draft
-  active
+  waiting
+  confirmed
+  preparing
   completed
   canceled
 }
 
-enum OrderFulfillment {
+/// dine-in vs takeaway from cashier (replaces legacy OrderFulfillment naming).
+enum OrderType {
   dine_in
   takeaway
+}
+
+enum PaymentMethod {
+  cash
+  card
+  unpaid
 }
 
 enum TableStatus {
@@ -44,7 +52,7 @@ enum CompositionSlotMode {
 }
 
 model Staff {
-  id           String    @id @default(uuid())
+  id           String    @id
   email        String    @unique
   passwordHash String    @map("password_hash")
   /// bcrypt hash of optional 4-digit PIN for owners (sensitive actions after login).
@@ -62,7 +70,7 @@ model Staff {
 }
 
 model Category {
-  id        String    @id @default(uuid())
+  id        String    @id
   name      String
   image     String?
   sortOrder Int       @default(0) @map("sort_order")
@@ -75,7 +83,7 @@ model Category {
 
 /// Extra add-on (legacy Mongo name `Ingrediant`). Linked to composition types via join table.
 model Extra {
-  id         String                  @id @default(uuid())
+  id         String                  @id
   name       String
   image      String?
   /// Paid add-on cents when parent type has `payment: true` (Mongo `price`).
@@ -93,7 +101,7 @@ model Extra {
 
 /// Composition step (Mongo `Type`): e.g. "Sauce", min/max, payment vs supp price behavior.
 model CompositionType {
-  id           String                 @id @default(uuid())
+  id           String                 @id
   name         String
   label        String
   message      String?
@@ -137,7 +145,7 @@ model ProductComposition {
 
 /// Sellable product (Mongo `Product`). Money stored as integer **cents** in DB; Prisma field `price` maps to `price_cents`.
 model Product {
-  id           String       @id @default(uuid())
+  id           String       @id
   categoryId   String       @map("category_id")
   category     Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   name         String
@@ -167,7 +175,7 @@ model Product {
 }
 
 model RestaurantTable {
-  id          String      @id @default(uuid())
+  id          String      @id
   /// Display / floor label (e.g. "Window booth").
   name        String
   /// Numeric label for quick selection (unique per tenant DB).
@@ -184,64 +192,65 @@ model RestaurantTable {
 }
 
 model CashierSession {
-  id                String    @id @default(uuid())
+  id                String    @id
   staffId           String    @map("staff_id")
   staff             Staff     @relation(fields: [staffId], references: [id], onDelete: Restrict)
   openedAt          DateTime  @default(now()) @map("opened_at")
   closedAt          DateTime? @map("closed_at")
   openingFloatCents Int       @default(0) @map("opening_float_cents")
   closingNote       String?   @map("closing_note")
-  orders            Order[]
 
   @@map("cashier_sessions")
 }
 
-/// Order / command (replaces Mongo `History` conceptually — use table `orders`).
+/// Order / command — totals in cents; `discount` is order-level percent 0–100 (whole units).
 model Order {
-  id              String           @id @default(uuid())
-  status          OrderStatus      @default(draft)
-  fulfillment     OrderFulfillment @default(takeaway)
-  tableId         String?          @map("table_id")
-  table           RestaurantTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
-  staffId         String?       @map("staff_id")
-  staff           Staff?        @relation(fields: [staffId], references: [id], onDelete: SetNull)
-  sessionId       String?       @map("session_id")
-  session         CashierSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  subtotalCents   Int           @default(0) @map("subtotal_cents")
-  taxCents        Int           @default(0) @map("tax_cents")
-  totalCents      Int           @default(0) @map("total_cents")
-  idempotencyKey  String?       @unique @map("idempotency_key")
-  /// Mongo History-style metadata (optional for cashier flow).
-  customerName    String?       @map("customer_name")
-  customerEmail   String?       @map("customer_email")
-  commandNumber   Int?          @map("command_number")
-  currency        String?
-  pack            Json?
-  paymentMethod   Json?         @map("payment_method")
-  orderDiscountValue Int        @default(0) @map("order_discount_value")
-  logoPath        String?       @map("logo_path")
-  lines           OrderLine[]
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @default(now()) @updatedAt @map("updated_at")
+  id                 String           @id
+  /// Stable external reference (unique): 8 lowercase hex chars.
+  reference          String           @unique
+  /// Business calendar date for `commandNumber` (UTC midnight anchor stored as date-only).
+  commandDate        DateTime         @map("command_date") @db.Date
+  /// Per-restaurant daily ticket sequence (unique together with commandDate).
+  commandNumber      Int              @map("command_number")
+  status             OrderStatus      @default(waiting)
+  orderType          OrderType        @default(takeaway) @map("order_type")
+  tableId            String?          @map("table_id")
+  table              RestaurantTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  staffId            String           @map("staff_id")
+  staff              Staff            @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  note               String?
+  customerName       String?          @map("customer_name")
+  discount           Int              @default(0) @map("discount_percent")
+  discountPriceCents Int              @default(0) @map("discount_price_cents")
+  subtotalCents      Int              @default(0) @map("subtotal_cents")
+  taxCents           Int              @default(0) @map("tax_cents")
+  totalCents         Int              @default(0) @map("total_cents")
+  paymentMethod      PaymentMethod    @default(unpaid) @map("payment_method")
+  lines              OrderLine[]
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @default(now()) @updatedAt @map("updated_at")
 
+  @@unique([commandDate, commandNumber])
   @@map("orders")
   @@index([status, createdAt])
-  @@index([sessionId])
 }
 
 model OrderLine {
-  id             String  @id @default(uuid())
-  orderId        String  @map("order_id")
-  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId      String  @map("product_id")
-  product        Product @relation(fields: [productId], references: [id], onDelete: Restrict)
-  quantity       Int
-  unitPriceCents Int     @map("unit_price_cents")
-  lineTotalCents Int     @map("line_total_cents")
-  taxCents       Int     @default(0) @map("tax_cents")
-  modifiersSnapshot Json? @map("modifiers_snapshot")
-  compositionSnapshot Json? @map("composition_snapshot")
-  note           String?
+  id                  String  @id
+  orderId             String  @map("order_id")
+  order               Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId           String  @map("product_id")
+  product             Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  categoryId          String  @map("category_id")
+  quantity            Int
+  unitPriceCents      Int     @map("unit_price_cents")
+  lineTotalCents      Int     @map("line_total_cents")
+  taxCents            Int     @default(0) @map("tax_cents")
+  modifiersSnapshot   Json?   @map("modifiers_snapshot")
+  compositionSnapshot Json?   @map("composition_snapshot")
+  /// Snapshot [{ "id", "count", "price" }] with `price` in cents per unit for that extra line.
+  extrasSnapshot      Json?   @map("extras_snapshot")
+  note                String?
 
   @@map("order_lines")
 }

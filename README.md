@@ -189,7 +189,7 @@ The spec file in the repo is `src/openapi/openapi.json`. Update it when you chan
 
 **Tenant admin (owner/manager):** Products expose **`price`** (main units in JSON; cents in DB), **`modifiers`**, and **`kind`** (`simple` vs `composed`). Omit **`kind`** on create only when inferring composed products from non-empty **`compositionTypeIds`**. **Extras** (add-ons for composed-product steps) use **`price`** / **`suppPrice`** in catalog JSON (same semantics as the former “ingredients” model). **`CompositionSlotMode`** in the DB is **`extras`** or **`products`** (only **`extras`** is used today).
 
-**Composed orders:** each line for a **`composed`** product may include **`composition.steps`**: an array parallel to the product’s composition steps, each with **`compositionTypeId`** and **`extraIds`** (UUIDs of chosen extras). See **`CreateOrderRequest`** in OpenAPI.
+**Orders:** `POST /api/v1/orders` sends **`products`**: `{ categoryId, _id, count, price (cents), extras?, note? }` per row (validated against catalog). Root **`note`** is ticket-wide; each row's **`note`** is line-only (e.g. prep). **`discount`** is order-level percent **0–100**. New orders are **`waiting`** until patched. See **`CreateOrderRequest`** in OpenAPI.
 
 **Tenant admin routes:** `POST/PATCH/DELETE /api/v1/catalog/categories`, `POST/PATCH/DELETE /api/v1/catalog/products`, **`GET/POST /api/v1/catalog/extras`**, **`PATCH/DELETE /api/v1/catalog/extras/{id}`**, **`GET/POST /api/v1/catalog/composition-types`**, **`PATCH/DELETE /api/v1/catalog/composition-types/{id}`**, **`PUT /api/v1/catalog/composition-types/{id}/extras`** (body **`{ "extraIds": ["uuid", ...] }`**), and `GET/POST/PATCH /api/v1/staff` for menu and staff management.
 

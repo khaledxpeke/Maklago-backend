@@ -52,7 +52,6 @@ export type SerializableOrder = Order & {
 
 function orderProductSummary(req: Request, p: OrderLineProductRow): Record<string, unknown> {
   return {
-    _id: p.id,
     id: p.id,
     categoryId: p.categoryId,
     categoryName: p.category.name,
@@ -68,93 +67,59 @@ function orderProductSummary(req: Request, p: OrderLineProductRow): Record<strin
   };
 }
 
-function enrichModifiersSnapshot(raw: unknown): unknown {
-  if (!raw || typeof raw !== 'object') return raw;
-  const o = raw as Record<string, unknown>;
-  const defs = o.defs;
-  if (!Array.isArray(defs)) return raw;
-  const newDefs = defs.map((d) => {
-    if (typeof d !== 'object' || d === null) return d;
-    const x = d as Record<string, unknown>;
-    const id = typeof x.id === 'string' ? x.id : '';
-    const cents =
-      typeof x.priceCents === 'number' && Number.isFinite(x.priceCents)
-        ? Math.round(x.priceCents)
-        : typeof x.price === 'number' && Number.isFinite(x.price)
-          ? Math.round(x.price * 100)
-          : 0;
-    return {
-      ...x,
-      _id: id,
-      id,
-      priceCents: cents,
-      price: cents / 100,
-    };
-  });
-  return { ...o, defs: newDefs };
+/** Σ(extra.price × extra.count) from stored snapshot (cents). */
+function extrasChargeFromSnapshot(raw: unknown): number {
+  if (!Array.isArray(raw)) return 0;
+  let s = 0;
+  for (const item of raw) {
+    if (typeof item !== 'object' || item === null) continue;
+    const o = item as Record<string, unknown>;
+    const price = typeof o.price === 'number' && Number.isFinite(o.price) ? Math.round(o.price) : 0;
+    const count = typeof o.count === 'number' && Number.isFinite(o.count) ? Math.round(o.count) : 0;
+    s += price * count;
+  }
+  return s;
 }
 
-function enrichCompositionSnapshot(raw: unknown): unknown {
-  if (!raw || typeof raw !== 'object') return raw;
-  const steps = (raw as { steps?: unknown }).steps;
-  if (!Array.isArray(steps)) return raw;
-  const nextSteps = steps.map((s) => {
-    if (typeof s !== 'object' || s === null) return s;
-    const step = s as Record<string, unknown>;
-    const tid = step.compositionTypeId;
-    const typeId = typeof tid === 'string' ? tid : '';
-    const extras = step.extras;
-    let newExtras = extras;
-    if (Array.isArray(extras)) {
-      newExtras = extras.map((e) => {
-        if (typeof e !== 'object' || e === null) return e;
-        const ex = e as Record<string, unknown>;
-        const id = typeof ex.id === 'string' ? ex.id : '';
-        const cents =
-          typeof ex.extraCents === 'number' && Number.isFinite(ex.extraCents)
-            ? Math.round(ex.extraCents)
-            : typeof ex.priceCents === 'number' && Number.isFinite(ex.priceCents)
-              ? Math.round(ex.priceCents)
-              : 0;
-        return {
-          ...ex,
-          _id: id,
-          id,
-          extraCents: cents,
-          priceCents: cents,
-          price: cents / 100,
-        };
-      });
-    }
+function serializeExtrasSnapshot(raw: unknown): unknown {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item) => {
+    if (typeof item !== 'object' || item === null) return item;
+    const o = item as Record<string, unknown>;
+    const exId = typeof o.id === 'string' ? o.id : typeof o._id === 'string' ? o._id : '';
+    const count = typeof o.count === 'number' && Number.isFinite(o.count) ? Math.round(o.count) : 1;
+    const priceCents =
+      typeof o.price === 'number' && Number.isFinite(o.price) ? Math.round(o.price) : 0;
     return {
-      ...step,
-      _id: typeId,
-      id: typeId,
-      extras: newExtras,
+      id: exId,
+      count,
+      priceCents,
+      price: priceCents / 100,
     };
   });
-  return { ...(raw as object), steps: nextSteps };
 }
 
-export function serializeOrderLine(req: Request, line: OrderLine & { product: OrderLineProductRow }) {
-  const unit = line.unitPriceCents;
+/** One saved product row plus tax/line totals and catalog `product`. */
+export function serializeOrderProduct(req: Request, line: OrderLine & { product: OrderLineProductRow }) {
+  const qty = Math.max(1, line.quantity);
+  const extrasCharge = extrasChargeFromSnapshot(line.extrasSnapshot);
+  const baseUnitPriceCents = Math.round((line.lineTotalCents - extrasCharge) / qty);
   const lineTot = line.lineTotalCents;
   const tax = line.taxCents;
+
   return {
-    _id: line.id,
     id: line.id,
     orderId: line.orderId,
-    productId: line.productId,
-    quantity: line.quantity,
-    unitPriceCents: unit,
-    unitPrice: unit / 100,
+    categoryId: line.categoryId,
+    count: line.quantity,
+    priceCents: baseUnitPriceCents,
+    price: baseUnitPriceCents / 100,
+    extras: serializeExtrasSnapshot(line.extrasSnapshot),
     lineTotalCents: lineTot,
     lineTotal: lineTot / 100,
     taxCents: tax,
     tax: tax / 100,
     note: line.note,
-    modifiersSnapshot: enrichModifiersSnapshot(line.modifiersSnapshot),
-    compositionSnapshot: enrichCompositionSnapshot(line.compositionSnapshot),
     product: orderProductSummary(req, line.product),
   };
 }
@@ -164,37 +129,34 @@ export function serializeOrder(req: Request, order: SerializableOrder) {
   const tax = order.taxCents;
   const tot = order.totalCents;
   const base: Record<string, unknown> = {
-    _id: order.id,
     id: order.id,
+    reference: order.reference,
+    commandNumber: order.commandNumber,
+    commandDate: order.commandDate,
     status: order.status,
-    fulfillment: order.fulfillment,
+    orderType: order.orderType,
     tableId: order.tableId,
     staffId: order.staffId,
-    sessionId: order.sessionId,
+    note: order.note,
+    customerName: order.customerName,
+    discount: order.discount,
+    discountPriceCents: order.discountPriceCents,
+    discountPrice: order.discountPriceCents / 100,
     subtotalCents: sub,
     subtotal: sub / 100,
     taxCents: tax,
     tax: tax / 100,
     totalCents: tot,
     total: tot / 100,
-    customerName: order.customerName,
-    customerEmail: order.customerEmail,
-    commandNumber: order.commandNumber,
-    currency: order.currency,
-    pack: order.pack,
     paymentMethod: order.paymentMethod,
-    orderDiscountValue: order.orderDiscountValue,
-    logoPath: order.logoPath,
-    idempotencyKey: order.idempotencyKey,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
-    lines: order.lines.map((l) => serializeOrderLine(req, l)),
+    products: order.lines.map((l) => serializeOrderProduct(req, l)),
   };
 
   base.table =
     order.table != null
       ? {
-          _id: order.table.id,
           id: order.table.id,
           name: order.table.name,
           tableNumber: order.table.tableNumber,
@@ -209,7 +171,6 @@ export function serializeOrder(req: Request, order: SerializableOrder) {
   if (order.staff !== undefined) {
     base.staff = order.staff
       ? {
-          _id: order.staff.id,
           id: order.staff.id,
           fullName: order.staff.fullName,
           email: order.staff.email,

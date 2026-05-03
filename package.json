@@ -12,6 +12,7 @@
     "prisma:studio:tenant": "prisma studio --schema prisma/tenant/schema.prisma --port 5556",
     "seed": "ts-node src/scripts/seedDemo.ts",
     "backfill:staff-directory": "ts-node src/scripts/backfillStaffLoginDirectory.ts",
+    "registry:sync-staff-ids": "ts-node src/scripts/syncRegistryStaffIdsAfterTenantMigration.ts",
     "build": "npm run prisma:generate && tsc",
     "start": "node dist/index.js",
     "dev": "nodemon",

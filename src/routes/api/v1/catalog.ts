@@ -14,6 +14,7 @@ import { requireStaff } from '../../../middleware/requireStaff';
 import { expandProductCompositionForClient, extraAddonCents, loadComposedProductSteps, type LoadedExtra } from '../../../services/composition';
 import { majorToCents, resolvePriceCents } from '../../../http/money';
 import { attachCompositionCatalogRoutes } from './catalogComposition';
+import { generatePublicId, tenantEntityIdSchema } from '../../../services/publicId';
 
 export const catalogRouter = Router();
 
@@ -75,7 +76,6 @@ type ProductListRow = Product & {
 function productToJson(req: Request, p: ProductListRow): Record<string, unknown> {
   const comp = p.compositions ?? [];
   return {
-    _id: p.id,
     id: p.id,
     categoryId: p.categoryId,
     categoryName: p.category.name,
@@ -132,7 +132,7 @@ function mobileMenuIngredient(
   const effectiveMajor = ec / 100;
   const originalMajor = payment ? e.price / 100 : e.suppPrice / 100;
   return {
-    _id: e.id,
+    id: e.id,
     name: e.name,
     image: resolveImageForClient(req, e.image) ?? '',
     price: effectiveMajor,
@@ -152,7 +152,7 @@ function mobileMenuTypes(
       .sort((a, b) => a.position - b.position)
       .map((r) => mobileMenuIngredient(req, t.payment, r));
     return {
-      _id: t.id,
+      id: t.id,
       name: t.name,
       message: t.message ?? '',
       selection: t.selection,
@@ -177,7 +177,7 @@ async function mobileMenuProduct(
     type = mobileMenuTypes(req, steps);
   }
   return {
-    _id: p.id,
+    id: p.id,
     category: p.category.name,
     name: p.name,
     image: resolveImageForClient(req, p.image) ?? '',
@@ -197,7 +197,7 @@ function mobileMenuCategory(
   products: Record<string, unknown>[],
 ): Record<string, unknown> {
   return {
-    _id: cat.id,
+    id: cat.id,
     name: cat.name,
     image: resolveImageForClient(req, cat.image) ?? '',
     products,
@@ -366,6 +366,7 @@ catalogRouter.post(
     const img = normalizeImageForStorage(parsed.data.image);
     const c = await req.tenant.prisma.category.create({
       data: {
+        id: generatePublicId(),
         name: parsed.data.name,
         sortOrder: sortOrderFromBody(parsed.data),
         ...(img !== undefined ? { image: img } : {}),
@@ -449,7 +450,7 @@ function resolveProductKindOnCreate(
 
 const productCreate = z
   .object({
-    categoryId: z.string().uuid(),
+    categoryId: tenantEntityIdSchema,
     name: z.string().min(1).max(300),
     description: z.string().max(5000).nullable().optional(),
     /** Main currency units (Mongo-style); alternative to `priceCents`. */
@@ -470,7 +471,7 @@ const productCreate = z
     image: imageField,
     outOfStock: z.boolean().optional(),
     kind: z.enum(['simple', 'composed']).optional(),
-    compositionTypeIds: z.array(z.string().uuid()).optional(),
+    compositionTypeIds: z.array(tenantEntityIdSchema).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.price === undefined && data.priceCents === undefined) {
@@ -483,7 +484,7 @@ const productCreate = z
   });
 
 const productPatch = z.object({
-  categoryId: z.string().uuid().optional(),
+  categoryId: tenantEntityIdSchema.optional(),
   name: z.string().min(1).max(300).optional(),
   description: z.string().max(5000).nullable().optional(),
   price: z.number().nonnegative().optional(),
@@ -504,7 +505,7 @@ const productPatch = z.object({
   isActive: z.boolean().optional(),
   outOfStock: z.boolean().optional(),
   kind: z.enum(['simple', 'composed']).optional(),
-  compositionTypeIds: z.array(z.string().uuid()).optional(),
+  compositionTypeIds: z.array(tenantEntityIdSchema).optional(),
 });
 
 catalogRouter.post(
@@ -566,6 +567,7 @@ catalogRouter.post(
     const p = await req.tenant.prisma.$transaction(async (tx) => {
       const created = await tx.product.create({
         data: {
+          id: generatePublicId(),
           categoryId: parsed.data.categoryId,
           name: parsed.data.name,
           description: parsed.data.description ?? null,

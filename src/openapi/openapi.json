@@ -3,7 +3,7 @@
   "info": {
     "title": "maklaGo API",
     "version": "1.0.0",
-    "description": "Restaurant POS backend. **Tenant**: optional header `x-tenant-id` (slug or registry UUID). With `Authorization: Bearer` staff JWT, the tenant is resolved from the token when the header is omitted. **`POST /api/v1/auth/login`** accepts optional `x-tenant-id` for tenant-scoped login; without it, the normalized email must exist in registry **`staff_login_directory`** (slugless directory login). **Composed products** use catalog **extras** (`/api/v1/catalog/extras`) and **composition types**; order lines include **`composition.steps[].extraIds`**. **Platform** routes use `x-platform-key`. Errors: `{ \"error\": { \"code\", \"message\", \"details?\" } }`."
+    "description": "Restaurant POS backend. **Tenant**: optional header `x-tenant-id` (slug or registry UUID). With `Authorization: Bearer` staff JWT, the tenant is resolved from the token when the header is omitted. **`POST /api/v1/auth/login`** accepts optional `x-tenant-id` for tenant-scoped login; without it, the normalized email must exist in registry **`staff_login_directory`** (slugless directory login). **`POST /api/v1/orders`** accepts **`products`** snapshots (`categoryId`, `id`, `count`, **`price`** in cents, **`extras`**) for analytics; new orders start as **`waiting`**. **Platform** routes use `x-platform-key`. Errors: `{ \"error\": { \"code\", \"message\", \"details?\" } }`."
   },
   "servers": [
     {
@@ -209,10 +209,13 @@
       "CreateOrderRequest": {
         "type": "object",
         "required": [
-          "lines"
+          "products",
+          "subtotal",
+          "tax",
+          "total"
         ],
         "properties": {
-          "fulfillment": {
+          "orderType": {
             "type": "string",
             "enum": ["dine_in", "takeaway"],
             "default": "takeaway",
@@ -220,76 +223,94 @@
           },
           "tableId": {
             "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "nullable": true,
+            "minLength": 12,
+            "maxLength": 36,
+            "description": "Restaurant table id (12 lowercase hex, or legacy UUID)."
           },
-          "sessionId": {
+          "note": {
             "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "maxLength": 2000,
+            "description": "Optional note for the whole order / ticket."
           },
-          "status": {
+          "customerName": {
             "type": "string",
-            "enum": [
-              "draft",
-              "active"
-            ],
-            "default": "active"
+            "maxLength": 200,
+            "description": "Optional customer display name."
           },
-          "lines": {
+          "discount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "default": 0,
+            "description": "Order-level discount as whole percent (0–100)."
+          },
+          "paymentMethod": {
+            "type": "string",
+            "enum": ["cash", "card", "unpaid"],
+            "default": "unpaid"
+          },
+          "subtotal": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Sum of line net totals in cents (before order discount); must match server."
+          },
+          "tax": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Sum of line taxes in cents; must match server."
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Final total cents after discount; must match server."
+          },
+          "products": {
             "type": "array",
             "minItems": 1,
+            "description": "Saved line snapshots for statistics. Money fields are integer cents. Line total = count × price + Σ(extra.price × extra.count). Order status is always `waiting` from the server.",
             "items": {
               "type": "object",
-              "required": [
-                "productId",
-                "quantity"
-              ],
+              "required": ["categoryId", "id", "count", "price"],
               "properties": {
-                "productId": {
+                "categoryId": {
                   "type": "string",
-                  "format": "uuid"
+                  "minLength": 12,
+                  "maxLength": 36,
+                  "description": "Must match the product's category in catalog."
                 },
-                "quantity": {
+                "id": {
+                  "type": "string",
+                  "minLength": 12,
+                  "maxLength": 36,
+                  "description": "Product id."
+                },
+                "count": {
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 999
                 },
-                "modifierIds": {
+                "price": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Base unit price in cents (before extras)."
+                },
+                "extras": {
                   "type": "array",
                   "items": {
-                    "type": "string"
-                  }
-                },
-                "composition": {
-                  "type": "object",
-                  "description": "Required when product kind is composed: one step per product composition slot, same order as GET /catalog/products/:id.",
-                  "properties": {
-                    "steps": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "required": ["compositionTypeId", "extraIds"],
-                        "properties": {
-                          "compositionTypeId": {
-                            "type": "string",
-                            "format": "uuid"
-                          },
-                          "extraIds": {
-                            "type": "array",
-                            "items": {
-                              "type": "string",
-                              "format": "uuid"
-                            }
-                          }
-                        }
-                      }
+                    "type": "object",
+                    "required": ["id", "count", "price"],
+                    "properties": {
+                      "id": { "type": "string", "minLength": 1 },
+                      "count": { "type": "integer", "minimum": 0, "maximum": 999 },
+                      "price": { "type": "integer", "minimum": 0, "description": "Extra unit cents" }
                     }
                   }
                 },
                 "note": {
                   "type": "string",
-                  "maxLength": 500
+                  "maxLength": 500,
+                  "description": "Optional note for this line only (e.g. preparation)."
                 }
               }
             }
@@ -299,8 +320,9 @@
       "OrderStatus": {
         "type": "string",
         "enum": [
-          "draft",
-          "active",
+          "waiting",
+          "confirmed",
+          "preparing",
           "completed",
           "canceled"
         ]
@@ -318,15 +340,14 @@
       },
       "OrderProductSummary": {
         "type": "object",
-        "description": "Product on an order line — aligned with catalog product JSON (_id, categoryName, price + priceCents, resolved image URL).",
+        "description": "Product on an order line — aligned with catalog product JSON (id, categoryName, price + priceCents, resolved image URL).",
         "properties": {
-          "_id": { "type": "string", "format": "uuid" },
-          "id": { "type": "string", "format": "uuid" },
-          "categoryId": { "type": "string", "format": "uuid" },
+          "id": { "type": "string", "minLength": 12, "maxLength": 36 },
+          "categoryId": { "type": "string", "minLength": 12, "maxLength": 36 },
           "categoryName": { "type": "string" },
           "categories": {
             "type": "array",
-            "items": { "type": "string", "format": "uuid" }
+            "items": { "type": "string", "minLength": 12, "maxLength": 36 }
           },
           "name": { "type": "string" },
           "description": { "type": "string", "nullable": true },
@@ -338,24 +359,25 @@
           "image": { "type": "string", "nullable": true }
         }
       },
-      "OrderLineSerialized": {
+      "OrderProductSerialized": {
         "type": "object",
-        "description": "Order line with Mongo-style _id, major-unit money fields, enriched snapshots, and catalog-aligned product.",
+        "description": "Saved order line row: `{ id, orderId, categoryId, count, price, extras }` plus line totals/tax and nested catalog product (product id only under `product.id`).",
         "properties": {
-          "_id": { "type": "string", "format": "uuid" },
-          "id": { "type": "string", "format": "uuid" },
-          "orderId": { "type": "string", "format": "uuid" },
-          "productId": { "type": "string", "format": "uuid" },
-          "quantity": { "type": "integer" },
-          "unitPriceCents": { "type": "integer" },
-          "unitPrice": { "type": "number" },
+          "id": { "type": "string", "minLength": 12, "maxLength": 36, "description": "Persisted order line row id." },
+          "orderId": { "type": "string", "minLength": 12, "maxLength": 36 },
+          "categoryId": { "type": "string", "minLength": 12, "maxLength": 36 },
+          "count": { "type": "integer" },
+          "priceCents": { "type": "integer", "description": "Base unit price in cents (derived from stored line)." },
+          "price": { "type": "number" },
+          "extras": {
+            "type": "array",
+            "items": { "type": "object", "additionalProperties": true }
+          },
           "lineTotalCents": { "type": "integer" },
           "lineTotal": { "type": "number" },
           "taxCents": { "type": "integer" },
           "tax": { "type": "number" },
           "note": { "type": "string", "nullable": true },
-          "modifiersSnapshot": { "type": "object", "additionalProperties": true },
-          "compositionSnapshot": { "type": "object", "additionalProperties": true },
           "product": {
             "$ref": "#/components/schemas/OrderProductSummary"
           }
@@ -363,26 +385,37 @@
       },
       "OrderSerialized": {
         "type": "object",
-        "description": "Full order response with _id, major-unit totals, serialized lines; table and staff use _id aliases where present.",
+        "description": "Full order with daily commandNumber, paymentMethod, discount fields, serialized `products`; table and staff include `id`.",
         "properties": {
-          "_id": { "type": "string", "format": "uuid" },
-          "id": { "type": "string", "format": "uuid" },
+          "id": { "type": "string", "minLength": 12, "maxLength": 36 },
+          "reference": {
+            "type": "string",
+            "description": "Unique ticket reference: **8** lowercase hexadecimal characters for newly created orders.",
+            "example": "a3f9c21d"
+          },
+          "commandNumber": { "type": "integer" },
+          "commandDate": { "type": "string", "format": "date" },
           "status": { "$ref": "#/components/schemas/OrderStatus" },
-          "fulfillment": { "type": "string", "enum": ["dine_in", "takeaway"] },
-          "tableId": { "type": "string", "format": "uuid", "nullable": true },
-          "staffId": { "type": "string", "format": "uuid", "nullable": true },
-          "sessionId": { "type": "string", "format": "uuid", "nullable": true },
+          "orderType": { "type": "string", "enum": ["dine_in", "takeaway"] },
+          "tableId": { "type": "string", "minLength": 12, "maxLength": 36, "nullable": true },
+          "staffId": { "type": "string", "minLength": 12, "maxLength": 36 },
+          "note": { "type": "string", "nullable": true },
+          "customerName": { "type": "string", "nullable": true },
+          "discount": { "type": "integer", "description": "Order-level discount percent (0–100)." },
+          "discountPriceCents": { "type": "integer" },
+          "discountPrice": { "type": "number" },
           "subtotalCents": { "type": "integer" },
           "subtotal": { "type": "number" },
           "taxCents": { "type": "integer" },
           "tax": { "type": "number" },
           "totalCents": { "type": "integer" },
           "total": { "type": "number" },
+          "paymentMethod": { "type": "string", "enum": ["cash", "card", "unpaid"] },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" },
-          "lines": {
+          "products": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/OrderLineSerialized" }
+            "items": { "$ref": "#/components/schemas/OrderProductSerialized" }
           },
           "table": {
             "type": "object",
@@ -1670,7 +1703,7 @@
       "get": {
         "tags": ["Catalog"],
         "summary": "Mobile menu bootstrap",
-        "description": "Active categories with nested active products (mobile-only slim JSON). Uses `_id` instead of `id` on categories, products, composition slots, and extras. Includes `kind` (`simple`|`composed`), category name string field `category`, and `type` with `extras`. ",
+        "description": "Active categories with nested active products (mobile-only slim JSON). Categories, products, composition slots, and extras use `id`. Includes `kind` (`simple`|`composed`), category name string field `category`, and `type` with `extras`. ",
         "security": [
           {
             "BearerAuth": []
@@ -2237,7 +2270,7 @@
           "Orders"
         ],
         "summary": "Create order",
-        "description": "Optional header `Idempotency-Key`: replays same body and returns existing order with `idempotentReplay: true`. For **composed** products, each line must include `composition.steps` with `compositionTypeId` and `extraIds` per step (see schema).",
+        "description": "Assigns `reference`, `commandNumber`, and `commandDate` (UTC day). Status is always **`waiting`**. Body uses **`products`** (see schema): cents for `price` and extras; line total = count×price + Σ(extra.price×extra.count). For **composed** products send the resolved extras client-side.",
         "security": [
           {
             "BearerAuth": []
@@ -2246,13 +2279,6 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/TenantHeaderOptional"
-          },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "requestBody": {
@@ -2266,21 +2292,6 @@
           }
         },
         "responses": {
-          "200": {
-            "description": "Idempotent replay — same body as create; `order` matches catalog-aligned serialization.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "order": { "$ref": "#/components/schemas/OrderSerialized" },
-                    "printJobs": { "type": "array", "items": { "type": "object" } },
-                    "idempotentReplay": { "type": "boolean", "enum": [true] }
-                  }
-                }
-              }
-            }
-          },
           "201": {
             "description": "Created",
             "content": {

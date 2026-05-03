@@ -59,19 +59,23 @@ describe.skipIf(!integration)('integration (set INTEGRATION_TEST=1 and DB URLs)'
     expect(login.status).toBe(200);
     const token = login.body.accessToken as string;
 
-    const productId = '00000000-0000-4000-8000-000000000101';
+    const categoryDrinks = '010000000001';
+    const productId = '020000000101';
     const order = await request(app)
       .post('/api/v1/orders')
       .set({ Authorization: `Bearer ${token}` })
       .send({
-        status: 'active',
-        lines: [{ productId, quantity: 1 }],
+        subtotal: 250,
+        tax: 25,
+        total: 275,
+        products: [{ categoryId: categoryDrinks, id: productId, count: 1, price: 250 }],
       });
 
     expect(order.status).toBe(201);
     expect(order.body.order).toBeDefined();
-    expect(order.body.order.lines?.length).toBeGreaterThan(0);
-    expect(order.body.order.fulfillment).toBe('takeaway');
+    expect(order.body.order.status).toBe('waiting');
+    expect(order.body.order.products?.length).toBeGreaterThan(0);
+    expect(order.body.order.orderType).toBe('takeaway');
   });
 
   it('rejects dine_in order without tableId', async () => {
@@ -79,14 +83,17 @@ describe.skipIf(!integration)('integration (set INTEGRATION_TEST=1 and DB URLs)'
     expect(login.status).toBe(200);
     const token = login.body.accessToken as string;
 
-    const productId = '00000000-0000-4000-8000-000000000101';
+    const categoryDrinks = '010000000001';
+    const productId = '020000000101';
     const res = await request(app)
       .post('/api/v1/orders')
       .set({ Authorization: `Bearer ${token}` })
       .send({
-        fulfillment: 'dine_in',
-        status: 'active',
-        lines: [{ productId, quantity: 1 }],
+        orderType: 'dine_in',
+        subtotal: 250,
+        tax: 25,
+        total: 275,
+        products: [{ categoryId: categoryDrinks, id: productId, count: 1, price: 250 }],
       });
 
     expect(res.status).toBe(400);
@@ -97,16 +104,19 @@ describe.skipIf(!integration)('integration (set INTEGRATION_TEST=1 and DB URLs)'
     expect(login.status).toBe(200);
     const token = login.body.accessToken as string;
 
-    const productId = '00000000-0000-4000-8000-000000000101';
-    const tableId = '00000000-0000-4000-8000-000000000201';
+    const categoryDrinks = '010000000001';
+    const productId = '020000000101';
+    const tableId = '050000000201';
     const res = await request(app)
       .post('/api/v1/orders')
       .set({ Authorization: `Bearer ${token}` })
       .send({
-        fulfillment: 'takeaway',
+        orderType: 'takeaway',
+        subtotal: 250,
+        tax: 25,
+        total: 275,
         tableId,
-        status: 'active',
-        lines: [{ productId, quantity: 1 }],
+        products: [{ categoryId: categoryDrinks, id: productId, count: 1, price: 250 }],
       });
 
     expect(res.status).toBe(400);

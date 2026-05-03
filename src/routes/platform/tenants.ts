@@ -15,6 +15,7 @@ import {
   upsertStaffLoginDirectory,
 } from '../../services/staffLoginDirectory';
 import { Prisma as RegistryPrismaNs } from '../../db/registry-client';
+import { generatePublicId } from '../../services/publicId';
 
 const bodySchema = z
   .object({
@@ -221,6 +222,7 @@ platformTenantsRouter.post(
     try {
       const createdStaff = await prisma.staff.create({
         data: {
+          id: generatePublicId(),
           email: emailTrim,
           passwordHash,
           fullName,
@@ -489,6 +491,7 @@ platformTenantsRouter.post(
         const prisma = getTenantPrisma(tenant.id, databaseUrl);
         const createdStaff = await prisma.staff.create({
           data: {
+            id: generatePublicId(),
             email: ownerEmail!.trim().toLowerCase(),
             passwordHash: ownerPasswordHash,
             fullName: ownerFullName!,

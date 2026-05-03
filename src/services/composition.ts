@@ -134,7 +134,6 @@ export function resolveCompositionSelection(
     const allowed = new Map(slot.rows.map((row) => [row.extra.id, row.extra]));
     const seen = new Set<string>();
     const picked: {
-      _id: string;
       id: string;
       name: string;
       extraCents: number;
@@ -157,7 +156,6 @@ export function resolveCompositionSelection(
       const add = extraAddonCents(slot.payment, row);
       extraCents += add;
       picked.push({
-        _id: row.id,
         id: row.id,
         name: row.name,
         extraCents: add,
@@ -188,7 +186,6 @@ export function expandProductCompositionForClient(req: Request, steps: LoadedCom
         const row = r.extra;
         const ec = extraAddonCents(t.payment, row);
         return {
-          _id: row.id,
           id: row.id,
           name: row.name,
           image: resolveImageForClient(req, row.image),
@@ -203,7 +200,6 @@ export function expandProductCompositionForClient(req: Request, steps: LoadedCom
       .sort((a, b) => a.position - b.position);
 
     return {
-      _id: t.id,
       id: t.id,
       name: t.name,
       label: t.label,

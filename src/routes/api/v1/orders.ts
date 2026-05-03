@@ -1,67 +1,54 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import type { OrderStatus } from '../../../db/tenant-client';
+import type { OrderStatus, PaymentMethod } from '../../../db/tenant-client';
 import { asyncHandler } from '../../../http/asyncHandler';
 import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
 import { requireStaff } from '../../../middleware/requireStaff';
-import { majorToCents } from '../../../http/money';
-import {
-  CompositionValidationError,
-  loadComposedProductSteps,
-  resolveCompositionSelection,
-} from '../../../services/composition';
-import {
-  effectiveTaxBps,
-  lineSubtotalCents,
-  modifierDeltaCents,
-  parseModifiersJson,
-  taxCentsFromSubtotal,
-} from '../../../services/pricing';
+import { effectiveTaxBps, taxCentsFromSubtotal } from '../../../services/pricing';
 import { getDefaultTaxBps } from '../../../services/settings';
 import { buildCustomerReceiptJobs, buildKitchenTicketJobs } from '../../../services/printJob';
 import { refreshTableOccupancyFromOrders } from '../../../services/tableOccupancy';
+import { nextCommandNumber, utcCommandDate } from '../../../services/orderCommandSeq';
+import { allocateUniqueOrderReference } from '../../../services/orderReference';
 import { orderDetailInclude, orderListInclude, serializeOrder } from '../../../services/orderJson';
+import { generatePublicId, tenantEntityIdSchema } from '../../../services/publicId';
 
-const lineSchema = z.object({
-  productId: z.string().uuid(),
-  quantity: z.number().int().min(1).max(999),
-  modifierIds: z.array(z.string()).optional(),
-  /// Required for `composed` products: one entry per composition step, same order as `GET /catalog/products/:id`.
-  composition: z
-    .object({
-      steps: z.array(
-        z.object({
-          compositionTypeId: z.string().uuid(),
-          extraIds: z.array(z.string().uuid()),
-        }),
-      ),
-    })
-    .optional(),
+/** Money amounts (`price`) are integer cents. Line net = `count * price + Σ(extra.price * extra.count)`. */
+const orderExtraSchema = z.object({
+  /** Catalog extra id (12 hex) or modifier key (e.g. milk). */
+  id: z.string().min(1).max(64),
+  count: z.number().int().min(0).max(999),
+  price: z.number().int().min(0),
+});
+
+const orderProductSchema = z.object({
+  categoryId: tenantEntityIdSchema,
+  id: tenantEntityIdSchema,
+  count: z.number().int().min(1).max(999),
+  price: z.number().int().min(0),
+  extras: z.array(orderExtraSchema).optional().default([]),
   note: z.string().max(500).optional(),
 });
 
 const createOrderSchema = z
   .object({
-    fulfillment: z.enum(['dine_in', 'takeaway']).default('takeaway'),
-    tableId: z.string().uuid().nullable().optional(),
-    sessionId: z.string().uuid().nullable().optional(),
-    status: z.enum(['draft', 'active']).default('active'),
-    /// Mongo History-like metadata for receipts / exports (optional).
+    orderType: z.enum(['dine_in', 'takeaway']).default('takeaway'),
+    tableId: tenantEntityIdSchema.nullable().optional(),
+    note: z.string().max(2000).optional(),
     customerName: z.string().max(200).optional(),
-    customerEmail: z.string().email().optional(),
-    commandNumber: z.number().int().optional(),
-    currency: z.string().max(16).optional(),
-    pack: z.unknown().optional(),
-    paymentMethod: z.unknown().optional(),
-    /** Order-level discount in main currency units or cents */
-    orderDiscountValue: z.number().nonnegative().optional(),
-    orderDiscountValueCents: z.number().int().min(0).optional(),
-    logoPath: z.string().max(2048).optional(),
-    lines: z.array(lineSchema).min(1),
+    discount: z.number().int().min(0).max(100).optional().default(0),
+    paymentMethod: z.enum(['cash', 'card', 'unpaid']).optional().default('unpaid'),
+    /** Line net subtotal in cents (before order-level discount). Must match server recomputation. */
+    subtotal: z.number().int().min(0),
+    /** Sum of line taxes in cents. Must match server. */
+    tax: z.number().int().min(0),
+    /** Final total in cents after discount. Must match server. */
+    total: z.number().int().min(0),
+    products: z.array(orderProductSchema).min(1),
   })
   .superRefine((data, ctx) => {
-    if (data.fulfillment === 'dine_in') {
+    if (data.orderType === 'dine_in') {
       if (!data.tableId) {
         ctx.addIssue({
           code: 'custom',
@@ -81,6 +68,16 @@ const createOrderSchema = z
 export const ordersRouter = Router();
 ordersRouter.use(requireStaff);
 
+function extrasChargeCents(
+  extras: { id: string; count: number; price: number }[],
+): number {
+  let s = 0;
+  for (const e of extras) {
+    s += Math.round(e.price) * Math.round(e.count);
+  }
+  return s;
+}
+
 ordersRouter.post(
   '/',
   asyncHandler(async (req, res) => {
@@ -91,46 +88,18 @@ ordersRouter.post(
     }
     if (!req.tenant || !req.staff) return;
 
-    const idemHeader = req.headers['idempotency-key'];
-    const idemKey = Array.isArray(idemHeader) ? idemHeader[0] : idemHeader;
     const prisma = req.tenant.prisma;
 
-    if (idemKey) {
-      const existing = await prisma.order.findUnique({
-        where: { idempotencyKey: idemKey },
-        include: orderDetailInclude,
-      });
-      if (existing) {
-        const printJobs = [
-          ...buildCustomerReceiptJobs({
-            order: existing,
-            lines: existing.lines.map((l) => ({ ...l, product: l.product })),
-            venueName: req.tenant.slug,
-          }),
-          ...buildKitchenTicketJobs({
-            order: existing,
-            lines: existing.lines.map((l) => ({ ...l, product: l.product })),
-          }),
-        ];
-        res.status(200).json({
-          order: serializeOrder(req, existing),
-          printJobs,
-          idempotentReplay: true,
-        });
-        return;
-      }
-    }
-
     const {
-      fulfillment,
+      orderType,
       tableId: bodyTableId,
-      sessionId,
-      status,
-      lines: inputLines,
+      products: inputProducts,
+      discount,
+      paymentMethod,
     } = parsed.data;
-    const tableId = fulfillment === 'takeaway' ? undefined : bodyTableId!;
+    const tableId = orderType === 'takeaway' ? undefined : bodyTableId!;
 
-    if (fulfillment === 'dine_in') {
+    if (orderType === 'dine_in') {
       const tableRow = await prisma.restaurantTable.findFirst({
         where: { id: tableId!, isActive: true },
       });
@@ -148,124 +117,104 @@ ordersRouter.post(
         let taxTotal = 0;
         const lineRows: {
           productId: string;
+          categoryId: string;
           quantity: number;
           unitPriceCents: number;
           lineTotalCents: number;
           taxCents: number;
-          modifiersSnapshot: unknown;
+          modifiersSnapshot: unknown | null;
           compositionSnapshot: unknown | null;
+          extrasSnapshot: unknown;
           note: string | null;
         }[] = [];
 
-        for (const line of inputLines) {
+        for (const row of inputProducts) {
           const product = await tx.product.findFirst({
-            where: { id: line.productId, isActive: true },
+            where: { id: row.id, isActive: true },
           });
           if (!product) {
-            throw new ProductNotFoundError(line.productId);
+            throw new ProductNotFoundError(row.id);
+          }
+          if (product.categoryId !== row.categoryId) {
+            throw new CategoryMismatchError(row.id, row.categoryId, product.categoryId);
           }
 
-          let extra = 0;
-          let modifiersSnapshot: unknown;
-          let compositionSnapshot: unknown | null = null;
-
-          if (product.kind === 'composed') {
-            if (!line.composition?.steps?.length) {
-              throw new OrderLineCompositionError(
-                'composition_required',
-                'Composed products require composition.steps (one object per step, same order as the product).',
-                line.productId,
-              );
-            }
-            const steps = await loadComposedProductSteps(tx, product.id);
-            if (!steps.length) {
-              throw new OrderLineCompositionError(
-                'product_misconfigured',
-                'This product is marked composed but has no composition steps configured.',
-                line.productId,
-              );
-            }
-            const resolved = resolveCompositionSelection(steps, line.composition.steps);
-            extra = resolved.extraCents;
-            compositionSnapshot = resolved.snapshot;
-            modifiersSnapshot = { selectedIds: [], defs: [] };
-          } else {
-            if (line.composition?.steps?.length) {
-              throw new OrderLineCompositionError(
-                'composition_not_allowed',
-                'Simple products cannot include composition.steps; use modifierIds instead.',
-                line.productId,
-              );
-            }
-            const defs = parseModifiersJson(product.modifiers);
-            const selected = line.modifierIds ?? [];
-            extra = modifierDeltaCents(defs, selected);
-            modifiersSnapshot = { selectedIds: selected, defs };
-          }
-
-          const unitBase = product.price + extra;
+          const extras = row.extras ?? [];
+          const extraSum = extrasChargeCents(extras);
+          const lineTotalCents = row.count * row.price + extraSum;
+          const unitPriceCents = Math.round(lineTotalCents / row.count);
           const taxBps = effectiveTaxBps(product.taxRateBps, defaultTax);
-          const lineSub = lineSubtotalCents(product.price, line.quantity, extra);
-          const lineTax = taxCentsFromSubtotal(lineSub, taxBps);
-          subtotal += lineSub;
+          const lineTax = taxCentsFromSubtotal(lineTotalCents, taxBps);
+          subtotal += lineTotalCents;
           taxTotal += lineTax;
 
           lineRows.push({
             productId: product.id,
-            quantity: line.quantity,
-            unitPriceCents: unitBase,
-            lineTotalCents: lineSub,
+            categoryId: row.categoryId,
+            quantity: row.count,
+            unitPriceCents,
+            lineTotalCents,
             taxCents: lineTax,
-            modifiersSnapshot,
-            compositionSnapshot,
-            note: line.note ?? null,
+            modifiersSnapshot: null,
+            compositionSnapshot: null,
+            extrasSnapshot: extras.map((e) => ({ id: e.id, count: e.count, price: e.price })),
+            note: row.note ?? null,
           });
         }
 
-        const total = subtotal + taxTotal;
-        const {
-          customerName,
-          customerEmail,
-          commandNumber,
-          currency,
-          pack,
-          paymentMethod,
-          orderDiscountValue,
-          orderDiscountValueCents,
-          logoPath,
-        } = parsed.data;
-        const orderDisc =
-          orderDiscountValueCents ??
-          (orderDiscountValue !== undefined ? majorToCents(orderDiscountValue) : 0);
+        const grossTotal = subtotal + taxTotal;
+        const discountPriceCents = Math.round((grossTotal * discount) / 100);
+        const totalCents = grossTotal - discountPriceCents;
+
+        if (
+          parsed.data.subtotal !== subtotal ||
+          parsed.data.tax !== taxTotal ||
+          parsed.data.total !== totalCents
+        ) {
+          throw new TotalsMismatchError(
+            { subtotal, tax: taxTotal, total: totalCents },
+            {
+              subtotal: parsed.data.subtotal,
+              tax: parsed.data.tax,
+              total: parsed.data.total,
+            },
+          );
+        }
+
+        const commandDate = utcCommandDate(new Date());
+        const commandNumber = await nextCommandNumber(tx, commandDate);
+        const reference = await allocateUniqueOrderReference(tx);
 
         const created = await tx.order.create({
           data: {
-            status: status as OrderStatus,
-            fulfillment,
+            id: generatePublicId(),
+            reference,
+            status: 'waiting',
+            orderType,
             tableId: tableId ?? undefined,
-            sessionId: sessionId ?? undefined,
             staffId: req.staff!.id,
+            note: parsed.data.note ?? undefined,
+            customerName: parsed.data.customerName ?? undefined,
+            discount,
+            discountPriceCents,
+            commandDate,
+            commandNumber,
             subtotalCents: subtotal,
             taxCents: taxTotal,
-            totalCents: total,
-            idempotencyKey: idemKey ?? null,
-            customerName: customerName ?? undefined,
-            customerEmail: customerEmail ?? undefined,
-            commandNumber: commandNumber ?? undefined,
-            currency: currency ?? undefined,
-            pack: pack !== undefined ? (pack as object) : undefined,
-            paymentMethod: paymentMethod !== undefined ? (paymentMethod as object) : undefined,
-            orderDiscountValue: orderDisc,
-            logoPath: logoPath ?? undefined,
+            totalCents,
+            paymentMethod: paymentMethod as PaymentMethod,
             lines: {
               create: lineRows.map((r) => ({
+                id: generatePublicId(),
                 productId: r.productId,
+                categoryId: r.categoryId,
                 quantity: r.quantity,
                 unitPriceCents: r.unitPriceCents,
                 lineTotalCents: r.lineTotalCents,
                 taxCents: r.taxCents,
-                modifiersSnapshot: r.modifiersSnapshot as object,
-                compositionSnapshot: r.compositionSnapshot as object | undefined,
+                modifiersSnapshot: r.modifiersSnapshot ?? undefined,
+                compositionSnapshot: r.compositionSnapshot ?? undefined,
+                extrasSnapshot: r.extrasSnapshot as object,
                 note: r.note ?? undefined,
               })),
             },
@@ -273,7 +222,7 @@ ordersRouter.post(
           include: orderDetailInclude,
         });
 
-        if (fulfillment === 'dine_in' && tableId && ['draft', 'active'].includes(status)) {
+        if (orderType === 'dine_in' && tableId) {
           await refreshTableOccupancyFromOrders(tx, tableId);
         }
 
@@ -300,12 +249,19 @@ ordersRouter.post(
         });
         return;
       }
-      if (e instanceof CompositionValidationError) {
-        sendError(res, 400, e.code, e.message);
+      if (e instanceof CategoryMismatchError) {
+        sendError(res, 400, 'category_mismatch', 'categoryId does not match product category', {
+          productId: e.productId,
+          categoryId: e.sentCategoryId,
+          expectedCategoryId: e.actualCategoryId,
+        });
         return;
       }
-      if (e instanceof OrderLineCompositionError) {
-        sendError(res, 400, e.code, e.message, { productId: e.productId });
+      if (e instanceof TotalsMismatchError) {
+        sendError(res, 400, 'totals_mismatch', 'subtotal, tax, and total must match server totals (integer cents)', {
+          expected: e.expected,
+          received: e.received,
+        });
         return;
       }
       throw e;
@@ -320,18 +276,34 @@ class ProductNotFoundError extends Error {
   }
 }
 
-class OrderLineCompositionError extends Error {
+class CategoryMismatchError extends Error {
   constructor(
-    public code: string,
-    message: string,
     public productId: string,
+    public sentCategoryId: string,
+    public actualCategoryId: string,
   ) {
-    super(message);
-    this.name = 'OrderLineCompositionError';
+    super('category_mismatch');
+    this.name = 'CategoryMismatchError';
   }
 }
 
-const orderStatuses = ['draft', 'active', 'completed', 'canceled'] as const;
+class TotalsMismatchError extends Error {
+  constructor(
+    public expected: { subtotal: number; tax: number; total: number },
+    public received: { subtotal: number; tax: number; total: number },
+  ) {
+    super('totals_mismatch');
+    this.name = 'TotalsMismatchError';
+  }
+}
+
+const orderStatuses = [
+  'waiting',
+  'confirmed',
+  'preparing',
+  'completed',
+  'canceled',
+] as const;
 
 ordersRouter.get(
   '/',
@@ -382,7 +354,7 @@ ordersRouter.patch(
   asyncHandler(async (req, res) => {
     if (!req.tenant) return;
     const schema = z.object({
-      status: z.enum(['draft', 'active', 'completed', 'canceled']),
+      status: z.enum(orderStatuses),
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) {
@@ -402,7 +374,7 @@ ordersRouter.patch(
         data: { status: parsed.data.status as OrderStatus },
         include: orderDetailInclude,
       });
-      if (order.tableId && order.fulfillment === 'dine_in') {
+      if (order.tableId && order.orderType === 'dine_in') {
         await refreshTableOccupancyFromOrders(prisma, order.tableId);
       }
       res.json({ order: serializeOrder(req, order) });

@@ -1,12 +1,27 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import type { CashierSession, Staff } from '../../../db/tenant-client';
 import { asyncHandler } from '../../../http/asyncHandler';
 import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
 import { requireStaff } from '../../../middleware/requireStaff';
+import { generatePublicId } from '../../../services/publicId';
 
 export const sessionsRouter = Router();
 sessionsRouter.use(requireStaff);
+
+type SessionWithStaff = CashierSession & {
+  staff?: Pick<Staff, 'id' | 'fullName' | 'email'> | null;
+};
+
+function sessionJson(s: SessionWithStaff): Record<string, unknown> {
+  const { id, staff, ...rest } = s;
+  const base: Record<string, unknown> = { id, ...rest };
+  if (staff != null) {
+    base.staff = { id: staff.id, fullName: staff.fullName, email: staff.email };
+  }
+  return base;
+}
 
 sessionsRouter.get(
   '/active',
@@ -16,7 +31,7 @@ sessionsRouter.get(
       where: { staffId: req.staff.id, closedAt: null },
       orderBy: { openedAt: 'desc' },
     });
-    res.json({ session: open });
+    res.json({ session: open ? sessionJson(open) : null });
   }),
 );
 
@@ -38,18 +53,19 @@ sessionsRouter.post(
     });
     if (existing) {
       sendError(res, 409, 'session_open', 'Close the current session before opening a new one', {
-        sessionId: existing.id,
+        id: existing.id,
       });
       return;
     }
 
     const session = await req.tenant.prisma.cashierSession.create({
       data: {
+        id: generatePublicId(),
         staffId: req.staff.id,
         openingFloatCents: parsed.data.openingFloatCents,
       },
     });
-    res.status(201).json({ session });
+    res.status(201).json({ session: sessionJson(session) });
   }),
 );
 
@@ -79,8 +95,12 @@ sessionsRouter.post(
       return;
     }
 
+    const closedAt = new Date();
     const orders = await req.tenant.prisma.order.findMany({
-      where: { sessionId: session.id },
+      where: {
+        staffId: session.staffId,
+        createdAt: { gte: session.openedAt, lte: closedAt },
+      },
       select: {
         id: true,
         totalCents: true,
@@ -91,13 +111,13 @@ sessionsRouter.post(
     const closed = await req.tenant.prisma.cashierSession.update({
       where: { id: session.id },
       data: {
-        closedAt: new Date(),
+        closedAt,
         closingNote: parsed.data.closingNote ?? null,
       },
     });
 
     const summary = {
-      sessionId: closed.id,
+      id: closed.id,
       openedAt: closed.openedAt,
       closedAt: closed.closedAt,
       openingFloatCents: closed.openingFloatCents,
@@ -105,10 +125,14 @@ sessionsRouter.post(
       completedTotalCents: orders
         .filter((o) => o.status === 'completed')
         .reduce((s, o) => s + o.totalCents, 0),
-      orders,
+      orders: orders.map((o) => ({
+        id: o.id,
+        totalCents: o.totalCents,
+        status: o.status,
+      })),
     };
 
-    res.json({ session: closed, summary });
+    res.json({ session: sessionJson(closed), summary });
   }),
 );
 
@@ -124,6 +148,6 @@ sessionsRouter.get(
         staff: { select: { id: true, fullName: true, email: true } },
       },
     });
-    res.json({ sessions: rows });
+    res.json({ sessions: rows.map((r) => sessionJson(r)) });
   }),
 );

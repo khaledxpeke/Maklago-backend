@@ -47,7 +47,10 @@ statsRouter.get(
         _count: true,
       }),
       prisma.order.count({
-        where: { status: { in: ['draft', 'active'] }, ...dateFilter },
+        where: {
+          status: { in: ['waiting', 'confirmed', 'preparing'] },
+          ...dateFilter,
+        },
       }),
     ]);
 

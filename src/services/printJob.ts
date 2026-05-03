@@ -38,7 +38,7 @@ export function buildCustomerReceiptJobs(args: {
 }): PrintJob[] {
   const textLines: ReceiptLine[] = [
     { text: args.venueName, bold: true, size: 'large' },
-    { text: `Order ${args.order.id.slice(0, 8)}` },
+    { text: `Ref ${args.order.reference}` },
     { text: `Status: ${args.order.status}` },
     { text: '---' },
   ];
@@ -74,7 +74,7 @@ export function buildKitchenTicketJobs(args: {
   lines: (OrderLine & { product: Pick<Product, 'name'> })[];
 }): PrintJob[] {
   const textLines: ReceiptLine[] = [
-    { text: `KITCHEN  ${args.order.id.slice(0, 8)}`, bold: true },
+    { text: `KITCHEN  ${args.order.reference}`, bold: true },
     { text: '---' },
   ];
   for (const l of args.lines) {

@@ -1,20 +1,20 @@
 import { Router } from 'express';
 import type { Request } from 'express';
 import { z } from 'zod';
-import type { Extra } from '../../../db/tenant-client';
+import type { CompositionType, Extra } from '../../../db/tenant-client';
 import { asyncHandler } from '../../../http/asyncHandler';
 import { normalizeImageForStorage, resolveImageForClient } from '../../../http/imageUrl';
 import { majorToCents } from '../../../http/money';
 import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
 import { requireRole } from '../../../middleware/requireRole';
+import { generatePublicId, tenantEntityIdSchema } from '../../../services/publicId';
 
 const admin = requireRole('owner', 'manager');
 
-/** Mongo-like extra JSON: `price` / `suppPrice` in main currency units; `_id` alias. */
+/** Extra JSON for catalog admin: `price` / `suppPrice` in main currency units. */
 export function extraToMongoShape(req: Request, i: Extra): Record<string, unknown> {
   return {
-    _id: i.id,
     id: i.id,
     name: i.name,
     image: resolveImageForClient(req, i.image) ?? '',
@@ -84,8 +84,18 @@ const compositionTypePatch = compositionTypeCreate.partial().extend({
 });
 
 const replaceTypeExtras = z.object({
-  extraIds: z.array(z.string().uuid()),
+  extraIds: z.array(tenantEntityIdSchema),
 });
+
+function compositionTypeScalars(t: CompositionType): Record<string, unknown> {
+  const {
+    id,
+    extras: _e,
+    productSteps: _p,
+    ...rest
+  } = t as CompositionType & { extras?: unknown; productSteps?: unknown };
+  return { id, ...rest };
+}
 
 function sortFromBody(b: { sortOrder?: number; position?: number }): number {
   if (b.sortOrder !== undefined) return b.sortOrder;
@@ -123,6 +133,7 @@ export function attachCompositionCatalogRoutes(router: Router): void {
       const img = normalizeImageForStorage(parsed.data.image);
       const row = await req.tenant.prisma.extra.create({
         data: {
+          id: generatePublicId(),
           name: parsed.data.name,
           ...(img !== undefined ? { image: img ?? null } : {}),
           price: cents.price,
@@ -213,19 +224,8 @@ export function attachCompositionCatalogRoutes(router: Router): void {
         },
       });
       const mapType = (t: (typeof rows)[number]) => ({
-        _id: t.id,
-        id: t.id,
-        name: t.name,
-        label: t.label,
-        message: t.message,
-        min: t.min,
-        max: t.max,
-        payment: t.payment,
-        selection: t.selection,
-        mode: t.mode,
-        sortOrder: t.sortOrder,
+        ...compositionTypeScalars(t),
         position: t.sortOrder,
-        isActive: t.isActive,
         extraIds: t.extras.map((x) => x.extraId),
         extras: t.extras.map((x) => ({
           ...extraToMongoShape(req, x.extra),
@@ -252,6 +252,7 @@ export function attachCompositionCatalogRoutes(router: Router): void {
       if (!req.tenant) return;
       const row = await req.tenant.prisma.compositionType.create({
         data: {
+          id: generatePublicId(),
           name: parsed.data.name,
           label: parsed.data.label,
           message: parsed.data.message ?? null,
@@ -262,7 +263,7 @@ export function attachCompositionCatalogRoutes(router: Router): void {
           sortOrder: sortFromBody(parsed.data),
         },
       });
-      res.status(201).json({ compositionType: row });
+      res.status(201).json({ compositionType: compositionTypeScalars(row) });
     }),
   );
 
@@ -302,7 +303,7 @@ export function attachCompositionCatalogRoutes(router: Router): void {
             ...('isActive' in parsed.data ? { isActive: parsed.data.isActive } : {}),
           },
         });
-        res.json({ compositionType: row });
+        res.json({ compositionType: compositionTypeScalars(row) });
       } catch {
         sendError(res, 404, 'not_found', 'Composition type not found');
       }
@@ -402,7 +403,7 @@ export function attachCompositionCatalogRoutes(router: Router): void {
       }
       res.json({
         compositionType: {
-          ...updated,
+          ...compositionTypeScalars(updated),
           extras: updated.extras.map((x) => ({
             ...extraToMongoShape(req, x.extra),
             position: x.position,

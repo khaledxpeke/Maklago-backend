@@ -1,13 +1,20 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { Prisma } from '../../../db/tenant-client';
+import type { RestaurantTable } from '../../../db/tenant-client';
 import { asyncHandler } from '../../../http/asyncHandler';
 import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
 import { requireStaff } from '../../../middleware/requireStaff';
+import { generatePublicId } from '../../../services/publicId';
 
 export const tablesRouter = Router();
 tablesRouter.use(requireStaff);
+
+function tableJson(t: RestaurantTable): Record<string, unknown> {
+  const { id, ...rest } = t;
+  return { id, ...rest };
+}
 
 tablesRouter.get(
   '/',
@@ -17,7 +24,7 @@ tablesRouter.get(
       where: { isActive: true },
       orderBy: [{ tableNumber: 'asc' }, { sortOrder: 'asc' }],
     });
-    res.json({ tables: rows });
+    res.json({ tables: rows.map(tableJson) });
   }),
 );
 
@@ -44,13 +51,14 @@ tablesRouter.post(
     try {
       const t = await req.tenant.prisma.restaurantTable.create({
         data: {
+          id: generatePublicId(),
           name: parsed.data.name,
           tableNumber: parsed.data.tableNumber,
           zone: parsed.data.zone ?? undefined,
           sortOrder: parsed.data.sortOrder ?? 0,
         },
       });
-      res.status(201).json({ table: t });
+      res.status(201).json({ table: tableJson(t) });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
         sendError(res, 409, 'table_number_taken', 'Another table already uses this table number');
@@ -92,7 +100,7 @@ tablesRouter.patch(
             : {}),
         },
       });
-      res.json({ table });
+      res.json({ table: tableJson(table) });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
         sendError(res, 409, 'table_number_taken', 'Another table already uses this table number');

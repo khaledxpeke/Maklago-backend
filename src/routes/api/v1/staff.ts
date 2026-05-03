@@ -15,6 +15,7 @@ import {
   removeStaffLoginDirectory,
   upsertStaffLoginDirectory,
 } from '../../../services/staffLoginDirectory';
+import { generatePublicId } from '../../../services/publicId';
 
 const admin = requireRole('owner', 'manager');
 
@@ -132,6 +133,7 @@ staffRouter.post(
     try {
       const row = await req.tenant.prisma.staff.create({
         data: {
+          id: generatePublicId(),
           email: emailNorm,
           passwordHash: hash,
           fullName: parsed.data.fullName,
