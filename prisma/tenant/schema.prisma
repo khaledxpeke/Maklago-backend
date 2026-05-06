@@ -174,20 +174,32 @@ model Product {
   @@map("products")
 }
 
+/// Floor area (terrace, main room, etc.). Tables reference a zone; UI groups by zone.
+model TableZone {
+  id        String            @id
+  name      String
+  sortOrder Int               @default(0) @map("sort_order")
+  tables    RestaurantTable[]
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  @@unique([name])
+  @@map("table_zones")
+}
+
 model RestaurantTable {
   id          String      @id
-  /// Display / floor label (e.g. "Window booth").
-  name        String
-  /// Numeric label for quick selection (unique per tenant DB).
+  /// Numeric label per zone; **unique together with `zoneId`** (Terrace and Main can both have `#1`).
   tableNumber Int         @map("table_number")
-  zone        String?
+  zoneId      String      @map("zone_id")
+  zone        TableZone   @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  seatCount   Int         @default(4) @map("seat_count")
   sortOrder   Int         @default(0) @map("sort_order")
   status      TableStatus @default(free)
   isActive    Boolean     @default(true) @map("is_active")
   orders      Order[]
   createdAt   DateTime    @default(now()) @map("created_at")
 
-  @@unique([tableNumber])
+  /// DB: partial unique index `(zone_id, table_number) WHERE is_active` — same number allowed per zone; inactive rows do not block reuse.
   @@map("restaurant_tables")
 }
 

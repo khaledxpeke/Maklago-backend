@@ -3,7 +3,7 @@
   "info": {
     "title": "maklaGo API",
     "version": "1.0.0",
-    "description": "Restaurant POS backend. **Tenant**: optional header `x-tenant-id` (slug or registry UUID). With `Authorization: Bearer` staff JWT, the tenant is resolved from the token when the header is omitted. **`POST /api/v1/auth/login`** accepts optional `x-tenant-id` for tenant-scoped login; without it, the normalized email must exist in registry **`staff_login_directory`** (slugless directory login). **`GET /api/v1/orders`** returns enriched catalog labels on lines (dashboard); **`GET /api/v1/mobile/orders`** returns slim orders matching realtime. **`POST /api/v1/orders`** accepts **`products`** snapshots (`categoryId`, `id`, `count`, **`price`**, **`extras`**) for analytics; **`subtotal`**, **`tva`**, **`total`** use the same integer unit as storage (must match server); new orders start as **`waiting`**. **Platform** routes use `x-platform-key`. Errors: `{ \"error\": { \"code\", \"message\", \"details?\" } }`."
+    "description": "Restaurant POS backend. **Tenant**: optional header `x-tenant-id` (slug or registry UUID). With `Authorization: Bearer` staff JWT, the tenant is resolved from the token when the header is omitted. **`POST /api/v1/auth/login`** accepts optional `x-tenant-id` for tenant-scoped login; without it, the normalized email must exist in registry **`staff_login_directory`** (slugless directory login). **`GET /api/v1/orders`** returns enriched catalog labels on lines (dashboard); **`GET /api/v1/mobile/orders`** uses a slimmer shell than **`POST /orders`**: no **`staff`**, no nested **`table`** object; dine-in adds root **`tableId`** + **`tableNumber`**. Lines add **`products[].name`**, **`extras[].name`**, optional **`extras[].typeId`**, optional **`compositionSnapshot`**. **`POST /api/v1/orders`** accepts **`products`** snapshots (`categoryId`, `id`, `count`, **`price`**, **`extras`**) for analytics; **`subtotal`**, **`tva`**, **`total`** use the same integer unit as storage (must match server); new orders start as **`waiting`**. **Platform** routes use `x-platform-key`. Errors: `{ \"error\": { \"code\", \"message\", \"details?\" } }`."
   },
   "servers": [
     {
@@ -356,10 +356,14 @@
       },
       "OrderProductSerialized": {
         "type": "object",
-        "description": "Slim order line (**`POST`**, realtime **`order.*`**, **`GET /api/v1/mobile/orders`**): ids + amounts; resolve labels via catalog.",
+        "description": "Order line in **`products[]`**. **`POST /orders`** and realtime payloads omit optional **`name`**, **`extras[].name`**, **`extras[].typeId`**. **`GET /api/v1/mobile/orders`** adds **`name`**, **`extras[].name`**, and **`extras[].typeId`** (composition **`CompositionType`** id for that extra when linked via **`composition_type_extras`** + product steps). Optional **`compositionSnapshot`** when stored on the line.",
         "properties": {
           "categoryId": { "type": "string", "minLength": 12, "maxLength": 36 },
           "id": { "type": "string", "minLength": 12, "maxLength": 36, "description": "Product id." },
+          "name": {
+            "type": "string",
+            "description": "Product display name. Present on **`GET /api/v1/mobile/orders`** only."
+          },
           "count": { "type": "integer" },
           "price": { "type": "integer", "description": "Saved base unit price for this line." },
           "extras": {
@@ -369,7 +373,17 @@
               "properties": {
                 "id": { "type": "string" },
                 "count": { "type": "integer" },
-                "price": { "type": "integer" }
+                "price": { "type": "integer" },
+                "name": {
+                  "type": "string",
+                  "description": "Extra label when **`id`** matches a catalog extra. Present on **`GET /api/v1/mobile/orders`**."
+                },
+                "typeId": {
+                  "type": "string",
+                  "minLength": 12,
+                  "maxLength": 36,
+                  "description": "Selected composition slot id (**`CompositionType.id`**) for this extra. **`GET /api/v1/mobile/orders`** only, when the extra is linked for this product’s composition steps."
+                }
               }
             }
           },
@@ -404,9 +418,32 @@
           "compositionSnapshot": { "type": "object", "additionalProperties": true, "nullable": true }
         }
       },
+      "OrderTableSerialized": {
+        "type": "object",
+        "description": "Table row embedded on dine-in orders. Display label is **`T` + `tableNumber`** (no separate name field). **`zone`** is null when the table has no zone.",
+        "properties": {
+          "id": { "type": "string", "minLength": 12, "maxLength": 36 },
+          "tableNumber": { "type": "integer", "minimum": 1 },
+          "seatCount": { "type": "integer", "minimum": 1 },
+          "zoneId": { "type": "string", "minLength": 12, "maxLength": 36, "nullable": true },
+          "zone": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": { "type": "string", "minLength": 12, "maxLength": 36 },
+              "name": { "type": "string" },
+              "sortOrder": { "type": "integer" }
+            }
+          },
+          "sortOrder": { "type": "integer" },
+          "status": { "type": "string", "enum": ["free", "occupied"] },
+          "isActive": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
       "OrderSerialized": {
         "type": "object",
-        "description": "Slim order (**`POST /orders`** response body `order`, realtime payloads). Same shape as **`GET /api/v1/mobile/orders`**. **`tableId`** / **`table`** omitted for takeaway or null table.",
+        "description": "Slim order (**`POST /orders`** response body `order`, realtime **`order.*`**). **`GET /api/v1/mobile/orders`** omits **`staff`** and nested **`table`**, adds root **`tableNumber`** with **`tableId`** for dine-in; enriched lines (**`OrderProductSerialized`**). **`table`** / **`staff`** objects appear on **`POST`** / realtime only.",
         "properties": {
           "id": { "type": "string", "minLength": 12, "maxLength": 36 },
           "reference": {
@@ -424,6 +461,11 @@
             "maxLength": 36,
             "description": "Present only for dine-in orders with an assigned table."
           },
+          "tableNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "On **`GET /api/v1/mobile/orders`** only, next to **`tableId`** for dine-in. Omitted on **`POST /orders`** / realtime (nested **`table`** carries display info there)."
+          },
           "staffId": { "type": "string", "minLength": 12, "maxLength": 36 },
           "note": { "type": "string", "nullable": true },
           "customerName": { "type": "string", "nullable": true },
@@ -440,14 +482,15 @@
             "items": { "$ref": "#/components/schemas/OrderProductSerialized" }
           },
           "table": {
-            "type": "object",
-            "description": "Present only with `tableId` on dine-in orders when table row was loaded.",
-            "additionalProperties": true
+            "$ref": "#/components/schemas/OrderTableSerialized",
+            "description": "On **`POST /orders`** / realtime when the table row was loaded. **Not** returned on **`GET /api/v1/mobile/orders`** (use root **`tableId`** + **`tableNumber`**).",
+            "nullable": true
           },
           "staff": {
             "type": "object",
             "nullable": true,
-            "additionalProperties": true
+            "additionalProperties": true,
+            "description": "On **`POST /orders`** / realtime when loaded. **Not** returned on **`GET /api/v1/mobile/orders`**."
           }
         }
       },
@@ -487,9 +530,9 @@
             "items": { "$ref": "#/components/schemas/OrderProductEnriched" }
           },
           "table": {
-            "type": "object",
+            "$ref": "#/components/schemas/OrderTableSerialized",
             "description": "Present only with `tableId` on dine-in orders when table row was loaded.",
-            "additionalProperties": true
+            "nullable": true
           },
           "staff": {
             "type": "object",
@@ -501,24 +544,25 @@
       "TableBody": {
         "type": "object",
         "required": [
-          "name",
           "tableNumber"
         ],
         "properties": {
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 100
-          },
           "tableNumber": {
             "type": "integer",
             "minimum": 1,
-            "description": "Numeric label unique per restaurant (quick picker)."
+            "description": "Numeric label; **unique together with `zoneId`** (different zones may reuse the same number)."
           },
-          "zone": {
+          "zoneId": {
             "type": "string",
-            "maxLength": 100,
-            "nullable": true
+            "minLength": 12,
+            "maxLength": 36,
+            "description": "**POST /tables**: required — table numbers are unique **per zone**. **PATCH**: optional; omit keys you are not updating."
+          },
+          "seatCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 999,
+            "default": 4
           },
           "sortOrder": {
             "type": "integer"
@@ -2404,7 +2448,7 @@
           "Orders"
         ],
         "summary": "List orders",
-        "description": "Returns **`orders[]`** with **`OrderSerializedEnriched`** — catalog labels on lines for dashboard/backoffice. Mobile apps use **`GET /api/v1/mobile/orders`** for slim payloads.",
+        "description": "Returns **`orders[]`** with **`OrderSerializedEnriched`** — catalog labels on lines for dashboard/backoffice. Mobile apps use **`GET /api/v1/mobile/orders`** — same shell as realtime with **`products[].name`**, **`extras[].name`**, optional **`extras[].typeId`** on each line.",
         "security": [
           {
             "BearerAuth": []
@@ -2579,7 +2623,7 @@
       "get": {
         "tags": ["Orders"],
         "summary": "List orders (mobile slim)",
-        "description": "Slim **`OrderSerialized`** payloads (matches realtime `order.*`). Prefer over **`GET /orders`** on handset/tablet.",
+        "description": "Slim shell: no **`staff`** / nested **`table`**; dine-in includes **`tableId`** + **`tableNumber`**. Lines include **`name`**, **`extras[].name`**, optional **`extras[].typeId`**. Prefer over **`GET /orders`** on handset/tablet.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           { "$ref": "#/components/parameters/TenantHeaderOptional" },
@@ -2631,7 +2675,7 @@
       "get": {
         "tags": ["Orders"],
         "summary": "Get order by id (mobile slim)",
-        "description": "**`OrderSerialized`** — same inner shape as websocket payloads.",
+        "description": "**`OrderSerialized`** — mobile shell (**`tableId`** + **`tableNumber`**, no **`staff`** / nested **`table`**); enriched lines.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           { "$ref": "#/components/parameters/TenantHeaderOptional" },
@@ -2734,6 +2778,39 @@
             "$ref": "#/components/parameters/TenantHeaderOptional"
           }
         ]
+      }
+    },
+    "/api/v1/tables/{id}/toggle-status": {
+      "post": {
+        "tags": ["Tables"],
+        "summary": "Toggle table free / occupied",
+        "description": "Sets **`status`** to the opposite of the current value and emits **`table.updated`** on the staff WebSocket.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/TableId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — JSON `{ table, status }`"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/tables/{id}": {

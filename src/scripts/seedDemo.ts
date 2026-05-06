@@ -42,6 +42,7 @@ const S = {
   EX_ONION: '030000000304',
   TYPE_SAUCE: '040000000401',
   TYPE_GARNISH: '040000000402',
+  ZONE_MAIN: '050000000200',
   TABLE_1: '050000000201',
   ORDER_1: '060000000501',
   ORDER_2: '060000000502',
@@ -416,17 +417,23 @@ async function main(): Promise<void> {
   });
 
   const table1Id = S.TABLE_1;
+  await prisma.tableZone.upsert({
+    where: { id: S.ZONE_MAIN },
+    create: { id: S.ZONE_MAIN, name: 'Main', sortOrder: 0 },
+    update: { name: 'Main', sortOrder: 0 },
+  });
+
   await prisma.restaurantTable.upsert({
     where: { id: table1Id },
     create: {
       id: table1Id,
-      name: 'Table 1',
       tableNumber: 1,
-      zone: 'Main',
+      zoneId: S.ZONE_MAIN,
+      seatCount: 4,
       sortOrder: 0,
       status: 'free',
     },
-    update: { name: 'Table 1', zone: 'Main', tableNumber: 1 },
+    update: { tableNumber: 1, zoneId: S.ZONE_MAIN, seatCount: 4 },
   });
 
   const demoOrderIds = [S.ORDER_1, S.ORDER_2, S.ORDER_3];

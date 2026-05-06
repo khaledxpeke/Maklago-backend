@@ -2,6 +2,7 @@ import type { OrderStatus } from '../db/tenant-client';
 
 /**
  * Full order JSON from `serializeOrderSlim` — POST-aligned money keys (`subtotal`, `tva`, `total`); line items carry identities (`categoryId`, product `id`), `count`, `price`, `extras` (plus optional `compositionSnapshot`). Per-line TVA is omitted.
+ * **`GET /api/v1/mobile/orders`** uses `serializeOrdersMobile` (slimmer shell: no `staff` / nested `table`; root `tableId` + `tableNumber` for dine-in; enriched line extras).
  * `tableId` / `table` omitted for takeaway or missing table assignment.
  */
 export type SerializedOrderJson = Record<string, unknown>;

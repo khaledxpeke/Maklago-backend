@@ -9,6 +9,7 @@ import { sessionsRouter } from './sessions';
 import { settingsRouter } from './settings';
 import { staffRouter } from './staff';
 import { statsRouter } from './stats';
+import { tableZonesRouter } from './tableZones';
 import { tablesRouter } from './tables';
 
 export const apiV1Router = Router();
@@ -22,6 +23,7 @@ apiV1Router.use('/catalog', catalogRouter);
 apiV1Router.use('/orders', ordersRouter);
 apiV1Router.use('/mobile/orders', mobileOrdersRouter);
 apiV1Router.use('/tables', tablesRouter);
+apiV1Router.use('/table-zones', tableZonesRouter);
 apiV1Router.use('/sessions', sessionsRouter);
 apiV1Router.use('/stats', statsRouter);
 apiV1Router.use('/settings', settingsRouter);

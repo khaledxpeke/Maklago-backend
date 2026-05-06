@@ -4,7 +4,11 @@ import { asyncHandler } from '../../../http/asyncHandler';
 import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
 import { requireStaff } from '../../../middleware/requireStaff';
-import { orderDetailInclude, serializeOrderSlim, serializeOrdersSlim } from '../../../services/orderJson';
+import {
+  orderDetailInclude,
+  serializeOrderMobile,
+  serializeOrdersMobile,
+} from '../../../services/orderJson';
 
 /** Same lifecycle filters as `GET /api/v1/orders`. */
 const orderStatuses = [
@@ -15,7 +19,7 @@ const orderStatuses = [
   'canceled',
 ] as const;
 
-/** Slim order payloads for mobile — matches realtime `order.created` / `order.updated` inner `order`. */
+/** Mobile lists omit **`staff`** and nested **`table`**; dine-in adds root **`tableId`** + **`tableNumber`**. Lines add **`name`**, **`extras[].name`**, **`extras[].typeId`**. */
 export const mobileOrdersRouter = Router();
 mobileOrdersRouter.use(requireStaff);
 
@@ -38,7 +42,8 @@ mobileOrdersRouter.get(
       take,
       include: orderDetailInclude,
     });
-    res.json({ orders: serializeOrdersSlim(rows) });
+    const orders = await serializeOrdersMobile(req.tenant.prisma, rows);
+    res.json({ orders });
   }),
 );
 
@@ -59,6 +64,7 @@ mobileOrdersRouter.get(
       sendError(res, 404, 'not_found', 'Order not found');
       return;
     }
-    res.json({ order: serializeOrderSlim(row) });
+    const order = await serializeOrderMobile(req.tenant.prisma, row);
+    res.json({ order });
   }),
 );
