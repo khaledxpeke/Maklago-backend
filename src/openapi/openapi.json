@@ -31,6 +31,9 @@
       "name": "Tables"
     },
     {
+      "name": "Table zones"
+    },
+    {
       "name": "Sessions"
     },
     {
@@ -574,6 +577,32 @@
           }
         }
       },
+      "TableZone": {
+        "type": "object",
+        "description": "Dining area / floor section. **`RestaurantTable.zoneId`** references this; delete is blocked while tables still reference the zone (`409 zone_has_tables`). Zone **`name`** is unique.",
+        "required": ["id", "name", "sortOrder", "createdAt"],
+        "properties": {
+          "id": { "type": "string", "minLength": 12, "maxLength": 36 },
+          "name": { "type": "string", "maxLength": 100 },
+          "sortOrder": { "type": "integer", "description": "Lower sorts first in listings." },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "TableZoneCreateBody": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "sortOrder": { "type": "integer", "description": "Defaults to **0** when omitted." }
+        }
+      },
+      "TableZonePatchBody": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "sortOrder": { "type": "integer" }
+        }
+      },
       "OpenSessionRequest": {
         "type": "object",
         "properties": {
@@ -779,6 +808,17 @@
         "schema": {
           "type": "string",
           "format": "uuid"
+        }
+      },
+      "ZoneId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 12,
+          "maxLength": 36,
+          "description": "Table zone public id."
         }
       },
       "SessionId": {
@@ -2697,6 +2737,201 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/table-zones": {
+      "get": {
+        "tags": ["Table zones"],
+        "summary": "List table zones",
+        "description": "Returns all zones ordered by **`sortOrder`**, then **`name`**. Use **`id`** as **`zoneId`** when creating or moving tables.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/TenantHeaderOptional" }],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["zones"],
+                  "properties": {
+                    "zones": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/TableZone" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Table zones"],
+        "summary": "Create table zone",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/TenantHeaderOptional" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TableZoneCreateBody" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["zone"],
+                  "properties": {
+                    "zone": { "$ref": "#/components/schemas/TableZone" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate zone name (`zone_name_taken`)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/table-zones/{id}": {
+      "patch": {
+        "tags": ["Table zones"],
+        "summary": "Update table zone",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/ZoneId" }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TableZonePatchBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["zone"],
+                  "properties": {
+                    "zone": { "$ref": "#/components/schemas/TableZone" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "404": {
+            "description": "Zone not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate zone name (`zone_name_taken`)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Table zones"],
+        "summary": "Delete table zone",
+        "description": "Hard delete. Fails with **`409 zone_has_tables`** if any **`RestaurantTable`** still references this zone (FK **Restrict**).",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/ZoneId" }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "404": {
+            "description": "Zone not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Zone still has tables (`zone_has_tables`)",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ApiError" }
