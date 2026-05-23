@@ -5,10 +5,25 @@ import { asyncHandler } from '../../../http/asyncHandler';
 import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
 import { requireStaff } from '../../../middleware/requireStaff';
-import { effectiveTaxBps, taxCentsFromSubtotal } from '../../../services/pricing';
 import { getDefaultTaxBps } from '../../../services/settings';
+import {
+  logOrderCartUpdated,
+  logOrderCreated,
+  logOrderPaymentRecorded,
+  logOrderStatusChanged,
+  logOrderTableChanged,
+} from '../../../services/activityLog';
+import {
+  buildOrderCartFromProducts,
+  CategoryMismatchError,
+  OrderNotEditableError,
+  OrderNotFoundError,
+  ProductNotFoundError,
+  replaceOrderCart,
+  TotalsMismatchError,
+} from '../../../services/orderCart';
 import { buildCustomerReceiptJobs, buildKitchenTicketJobs } from '../../../services/printJob';
-import { refreshTableOccupancyFromOrders } from '../../../services/tableOccupancy';
+import { refreshTableOccupancyFromOrders, TABLE_OCCUPYING_ORDER_STATUSES } from '../../../services/tableOccupancy';
 import { nextCommandNumber, utcCommandDate } from '../../../services/orderCommandSeq';
 import { allocateUniqueOrderReference } from '../../../services/orderReference';
 import type { SerializableOrder } from '../../../services/orderJson';
@@ -18,24 +33,76 @@ import {
   serializeOrderEnriched,
   serializeOrderSlim,
   serializeOrdersEnriched,
-  serializeOrdersSlim,
 } from '../../../services/orderJson';
+import { activityLogToJson, listActivityLogs } from '../../../services/activityLog';
 import { generatePublicId, tenantEntityIdSchema } from '../../../services/publicId';
-import { broadcastStaffRealtime } from '../../../realtime/broadcastStaffRealtime';
+import {
+  emitOrderCreatedRealtime,
+  emitOrderUpdatedRealtime,
+} from '../../../realtime/emitOrderRealtime';
+import type { Response } from 'express';
 
-/** Money amounts (`price`, `subtotal`, `tva`, `total`) use the same integer unit as storage (JSON uses plain names, no `*_cents`). Line net = `count * price + Σ(extra.price * extra.count)`. */
+type TableBroadcast = { tableId: string; status: 'free' | 'occupied' };
+
+async function refreshTableBroadcasts(
+  prisma: Parameters<typeof refreshTableOccupancyFromOrders>[0],
+  tableIds: (string | null | undefined)[],
+): Promise<TableBroadcast[]> {
+  const seen = new Set<string>();
+  const out: TableBroadcast[] = [];
+  for (const id of tableIds) {
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    const status = await refreshTableOccupancyFromOrders(prisma, id);
+    out.push({ tableId: id, status });
+  }
+  return out;
+}
+
+/** Dine-in orders that can still be moved to another table. */
+const MUTABLE_DINE_IN_STATUSES: OrderStatus[] = ['confirmed', 'preparing'];
+
+/** Statuses staff may set via PATCH (waiting is reserved for future QR/web intake). */
+const PATCHABLE_ORDER_STATUSES = ['confirmed', 'preparing', 'completed', 'canceled'] as const;
+
+class InvalidStatusTransitionError extends Error {
+  constructor(
+    public from: OrderStatus,
+    public to: OrderStatus,
+  ) {
+    super('invalid_status_transition');
+    this.name = 'InvalidStatusTransitionError';
+  }
+}
+
+function assertOrderStatusTransition(from: OrderStatus, to: OrderStatus): void {
+  if (from === to) return;
+  if (from === 'completed' || from === 'canceled') {
+    throw new InvalidStatusTransitionError(from, to);
+  }
+  const allowed: Partial<Record<OrderStatus, OrderStatus[]>> = {
+    confirmed: ['preparing', 'completed', 'canceled'],
+    preparing: ['completed', 'canceled'],
+    waiting: ['confirmed', 'canceled'],
+  };
+  if (!allowed[from]?.includes(to)) {
+    throw new InvalidStatusTransitionError(from, to);
+  }
+}
+
+/** Money amounts (`price`, `subtotal`, `tva`, `total`) use major currency units in JSON (e.g. 2.5 TND); DB keeps cents. Line net = `count * price + Σ(extra.price * extra.count)`. */
 const orderExtraSchema = z.object({
   /** Catalog extra id (12 hex) or modifier key (e.g. milk). */
   id: z.string().min(1).max(64),
   count: z.number().int().min(0).max(999),
-  price: z.number().int().min(0),
+  price: z.number().min(0),
 });
 
 const orderProductSchema = z.object({
   categoryId: tenantEntityIdSchema,
   id: tenantEntityIdSchema,
   count: z.number().int().min(1).max(999),
-  price: z.number().int().min(0),
+  price: z.number().min(0),
   extras: z.array(orderExtraSchema).optional().default([]),
 });
 
@@ -47,12 +114,9 @@ const createOrderSchema = z
     customerName: z.string().max(200).optional(),
     discount: z.number().int().min(0).max(100).optional().default(0),
     paymentMethod: z.enum(['cash', 'card', 'unpaid']).optional().default('unpaid'),
-    /** Line net subtotal (before order-level discount). Must match server recomputation. */
-    subtotal: z.number().int().min(0),
-    /** Sum of line TVA amounts. Must match server. */
-    tva: z.number().int().min(0),
-    /** Final total after discount. Must match server. */
-    total: z.number().int().min(0),
+    subtotal: z.number().min(0),
+    tva: z.number().min(0),
+    total: z.number().min(0),
     products: z.array(orderProductSchema).min(1),
   })
   .superRefine((data, ctx) => {
@@ -73,18 +137,53 @@ const createOrderSchema = z
     }
   });
 
+export const editOrderSchema = z.object({
+  products: z.array(orderProductSchema).min(1),
+  subtotal: z.number().min(0),
+  tva: z.number().min(0),
+  total: z.number().min(0),
+  note: z.string().max(2000).optional(),
+  customerName: z.string().max(200).optional(),
+  discount: z.number().int().min(0).max(100).optional(),
+});
+
+export function sendOrderCartErrors(res: Response, e: unknown): boolean {
+  if (e instanceof ProductNotFoundError) {
+    sendError(res, 400, 'product_not_found', 'Product not found or inactive', {
+      productId: e.productId,
+    });
+    return true;
+  }
+  if (e instanceof CategoryMismatchError) {
+    sendError(res, 400, 'category_mismatch', 'categoryId does not match product category', {
+      productId: e.productId,
+      categoryId: e.sentCategoryId,
+      expectedCategoryId: e.actualCategoryId,
+    });
+    return true;
+  }
+  if (e instanceof TotalsMismatchError) {
+    sendError(res, 400, 'totals_mismatch', 'subtotal, tva, and total must match server totals', {
+      expected: e.expected,
+      received: e.received,
+    });
+    return true;
+  }
+  if (e instanceof OrderNotFoundError) {
+    sendError(res, 404, 'not_found', 'Order not found');
+    return true;
+  }
+  if (e instanceof OrderNotEditableError) {
+    sendError(res, 400, 'order_not_editable', 'Order cannot be edited in its current status', {
+      status: e.status,
+    });
+    return true;
+  }
+  return false;
+}
+
 export const ordersRouter = Router();
 ordersRouter.use(requireStaff);
-
-function extrasChargeCents(
-  extras: { id: string; count: number; price: number }[],
-): number {
-  let s = 0;
-  for (const e of extras) {
-    s += Math.round(e.price) * Math.round(e.count);
-  }
-  return s;
-}
 
 ordersRouter.post(
   '/',
@@ -120,72 +219,18 @@ ordersRouter.post(
     const defaultTax = await getDefaultTaxBps(prisma);
 
     try {
-      const { order, tableBroadcast } = await prisma.$transaction(async (tx) => {
-        let subtotal = 0;
-        let taxTotal = 0;
-        const lineRows: {
-          productId: string;
-          categoryId: string;
-          quantity: number;
-          unitPriceCents: number;
-          lineTotalCents: number;
-          taxCents: number;
-          modifiersSnapshot: unknown | null;
-          compositionSnapshot: unknown | null;
-          extrasSnapshot: unknown;
-        }[] = [];
-
-        for (const row of inputProducts) {
-          const product = await tx.product.findFirst({
-            where: { id: row.id, isActive: true },
-          });
-          if (!product) {
-            throw new ProductNotFoundError(row.id);
-          }
-          if (product.categoryId !== row.categoryId) {
-            throw new CategoryMismatchError(row.id, row.categoryId, product.categoryId);
-          }
-
-          const extras = row.extras ?? [];
-          const extraSum = extrasChargeCents(extras);
-          const lineTotalCents = row.count * row.price + extraSum;
-          const unitPriceCents = Math.round(lineTotalCents / row.count);
-          const taxBps = effectiveTaxBps(product.taxRateBps, defaultTax);
-          const lineTax = taxCentsFromSubtotal(lineTotalCents, taxBps);
-          subtotal += lineTotalCents;
-          taxTotal += lineTax;
-
-          lineRows.push({
-            productId: product.id,
-            categoryId: row.categoryId,
-            quantity: row.count,
-            unitPriceCents,
-            lineTotalCents,
-            taxCents: lineTax,
-            modifiersSnapshot: null,
-            compositionSnapshot: null,
-            extrasSnapshot: extras.map((e) => ({ id: e.id, count: e.count, price: e.price })),
-          });
-        }
-
-        const grossTotal = subtotal + taxTotal;
-        const discountPriceCents = Math.round((grossTotal * discount) / 100);
-        const totalCents = grossTotal - discountPriceCents;
-
-        if (
-          parsed.data.subtotal !== subtotal ||
-          parsed.data.tva !== taxTotal ||
-          parsed.data.total !== totalCents
-        ) {
-          throw new TotalsMismatchError(
-            { subtotal, tva: taxTotal, total: totalCents },
-            {
-              subtotal: parsed.data.subtotal,
-              tva: parsed.data.tva,
-              total: parsed.data.total,
-            },
-          );
-        }
+      const { order, tableBroadcasts } = await prisma.$transaction(async (tx) => {
+        const cart = await buildOrderCartFromProducts(
+          tx,
+          inputProducts,
+          discount,
+          {
+            subtotal: parsed.data.subtotal,
+            tva: parsed.data.tva,
+            total: parsed.data.total,
+          },
+          defaultTax,
+        );
 
         const commandDate = utcCommandDate(new Date());
         const commandNumber = await nextCommandNumber(tx, commandDate);
@@ -195,22 +240,22 @@ ordersRouter.post(
           data: {
             id: generatePublicId(),
             reference,
-            status: 'waiting',
+            status: 'confirmed',
             orderType,
             tableId: tableId ?? undefined,
             staffId: req.staff!.id,
             note: parsed.data.note ?? undefined,
             customerName: parsed.data.customerName ?? undefined,
             discount,
-            discountPriceCents,
+            discountPriceCents: cart.discountPriceCents,
             commandDate,
             commandNumber,
-            subtotalCents: subtotal,
-            taxCents: taxTotal,
-            totalCents,
+            subtotalCents: cart.subtotalCents,
+            taxCents: cart.taxCents,
+            totalCents: cart.totalCents,
             paymentMethod: paymentMethod as PaymentMethod,
             lines: {
-              create: lineRows.map((r) => ({
+              create: cart.lineRows.map((r) => ({
                 id: generatePublicId(),
                 productId: r.productId,
                 categoryId: r.categoryId,
@@ -227,33 +272,27 @@ ordersRouter.post(
           include: orderDetailInclude,
         });
 
-        let tableBroadcast: { tableId: string; status: 'free' | 'occupied' } | undefined;
+        let tableBroadcasts: TableBroadcast[] = [];
         if (orderType === 'dine_in' && tableId) {
-          const status = await refreshTableOccupancyFromOrders(tx, tableId);
-          tableBroadcast = { tableId, status };
+          tableBroadcasts = await refreshTableBroadcasts(tx, [tableId]);
         }
 
-        return { order: created, tableBroadcast };
+        return { order: created, tableBroadcasts };
       });
 
       const orderJson = serializeOrderSlim(order);
-      const ts = new Date().toISOString();
-      broadcastStaffRealtime(req.tenant.id, {
-        v: 1,
-        type: 'order.created',
-        orderId: order.id,
-        order: orderJson,
-        ts,
+      await emitOrderCreatedRealtime(req.tenant.id, req.tenant.prisma, order, tableBroadcasts);
+
+      await logOrderCreated(req.tenant.prisma, req.staff!.id, {
+        id: order.id,
+        reference: order.reference,
+        commandNumber: order.commandNumber,
+        orderType: order.orderType,
+        tableId: order.tableId,
+        status: order.status,
+        totalCents: order.totalCents,
+        lineCount: order.lines.length,
       });
-      if (tableBroadcast) {
-        broadcastStaffRealtime(req.tenant.id, {
-          v: 1,
-          type: 'table.updated',
-          tableId: tableBroadcast.tableId,
-          status: tableBroadcast.status,
-          ts,
-        });
-      }
 
       const printJobs = [
         ...buildCustomerReceiptJobs({
@@ -269,59 +308,53 @@ ordersRouter.post(
 
       res.status(201).json({ order: orderJson, printJobs });
     } catch (e) {
-      if (e instanceof ProductNotFoundError) {
-        sendError(res, 400, 'product_not_found', 'Product not found or inactive', {
-          productId: e.productId,
-        });
-        return;
-      }
-      if (e instanceof CategoryMismatchError) {
-        sendError(res, 400, 'category_mismatch', 'categoryId does not match product category', {
-          productId: e.productId,
-          categoryId: e.sentCategoryId,
-          expectedCategoryId: e.actualCategoryId,
-        });
-        return;
-      }
-      if (e instanceof TotalsMismatchError) {
-        sendError(res, 400, 'totals_mismatch', 'subtotal, tva, and total must match server totals', {
-          expected: e.expected,
-          received: e.received,
-        });
-        return;
-      }
+      if (sendOrderCartErrors(res, e)) return;
       throw e;
     }
   }),
 );
 
-class ProductNotFoundError extends Error {
-  constructor(public productId: string) {
-    super('product_not_found');
-    this.name = 'ProductNotFoundError';
-  }
-}
+ordersRouter.patch(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    if (!req.tenant) return;
+    const parsed = editOrderSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendError(res, 400, 'validation_error', 'Invalid body', parsed.error.flatten());
+      return;
+    }
 
-class CategoryMismatchError extends Error {
-  constructor(
-    public productId: string,
-    public sentCategoryId: string,
-    public actualCategoryId: string,
-  ) {
-    super('category_mismatch');
-    this.name = 'CategoryMismatchError';
-  }
-}
+    const orderId = paramId(req);
+    if (!orderId) {
+      sendError(res, 400, 'validation_error', 'Missing order id');
+      return;
+    }
 
-class TotalsMismatchError extends Error {
-  constructor(
-    public expected: { subtotal: number; tva: number; total: number },
-    public received: { subtotal: number; tva: number; total: number },
-  ) {
-    super('totals_mismatch');
-    this.name = 'TotalsMismatchError';
-  }
-}
+    try {
+      const existing = await req.tenant.prisma.order.findUnique({ where: { id: orderId } });
+      if (!existing) {
+        sendError(res, 404, 'not_found', 'Order not found');
+        return;
+      }
+      const hadPaid = existing.paymentMethod === 'cash' || existing.paymentMethod === 'card';
+      const order = await replaceOrderCart(req.tenant.prisma, orderId, parsed.data);
+      await emitOrderUpdatedRealtime(req.tenant.id, req.tenant.prisma, order);
+      await logOrderCartUpdated(req.tenant.prisma, req.staff!.id, orderId, {
+        lineCount: order.lines.length,
+        totalCents: order.totalCents,
+        paymentReset: hadPaid,
+      });
+      const enriched = await req.tenant.prisma.order.findUnique({
+        where: { id: orderId },
+        include: orderEnrichedInclude,
+      });
+      res.json({ order: await serializeOrderEnriched(req, req.tenant.prisma, enriched!) });
+    } catch (e) {
+      if (sendOrderCartErrors(res, e)) return;
+      throw e;
+    }
+  }),
+);
 
 const orderStatuses = [
   'waiting',
@@ -348,10 +381,37 @@ ordersRouter.get(
       where,
       orderBy: { createdAt: 'desc' },
       take,
-      include: orderDetailInclude,
+      include: orderEnrichedInclude,
     });
-    const ordersJson = serializeOrdersSlim(rows);
+    const ordersJson = await serializeOrdersEnriched(req, req.tenant.prisma, rows);
     res.json({ orders: ordersJson });
+  }),
+);
+
+ordersRouter.get(
+  '/:id/logs',
+  asyncHandler(async (req, res) => {
+    if (!req.tenant) return;
+    const id = paramId(req);
+    if (!id) {
+      sendError(res, 400, 'validation_error', 'Missing order id');
+      return;
+    }
+    const order = await req.tenant.prisma.order.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!order) {
+      sendError(res, 404, 'not_found', 'Order not found');
+      return;
+    }
+    const take = Math.min(200, Math.max(1, Number(req.query.limit ?? 50)));
+    const rows = await listActivityLogs(req.tenant.prisma, {
+      entityType: 'order',
+      entityId: id,
+      take,
+    });
+    res.json({ logs: rows.map(activityLogToJson) });
   }),
 );
 
@@ -377,11 +437,168 @@ ordersRouter.get(
 );
 
 ordersRouter.patch(
+  '/:id/table',
+  asyncHandler(async (req, res) => {
+    if (!req.tenant) return;
+    const schema = z.object({ tableId: tenantEntityIdSchema });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      sendError(res, 400, 'validation_error', 'Invalid body', parsed.error.flatten());
+      return;
+    }
+
+    const orderId = paramId(req);
+    if (!orderId) {
+      sendError(res, 400, 'validation_error', 'Missing order id');
+      return;
+    }
+
+    const prisma = req.tenant.prisma;
+    const existing = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!existing) {
+      sendError(res, 404, 'not_found', 'Order not found');
+      return;
+    }
+    if (existing.orderType !== 'dine_in') {
+      sendError(res, 400, 'not_dine_in', 'Only dine-in orders can be assigned to a table');
+      return;
+    }
+    if (!MUTABLE_DINE_IN_STATUSES.includes(existing.status)) {
+      sendError(res, 400, 'order_closed', 'Cannot change table on a completed or canceled order');
+      return;
+    }
+
+    const nextTableId = parsed.data.tableId;
+    if (existing.tableId === nextTableId) {
+      const row = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: orderEnrichedInclude,
+      });
+      res.json({ order: await serializeOrderEnriched(req, prisma, row!) });
+      return;
+    }
+
+    const tableRow = await prisma.restaurantTable.findFirst({
+      where: { id: nextTableId, isActive: true },
+    });
+    if (!tableRow) {
+      sendError(res, 400, 'table_not_found', 'Table not found or inactive', { tableId: nextTableId });
+      return;
+    }
+
+    const occupyingOnTarget = await prisma.order.count({
+      where: {
+        id: { not: orderId },
+        tableId: nextTableId,
+        orderType: 'dine_in',
+        status: { in: TABLE_OCCUPYING_ORDER_STATUSES },
+      },
+    });
+    if (occupyingOnTarget > 0) {
+      sendError(res, 409, 'table_occupied', 'Target table already has an active dine-in order');
+      return;
+    }
+
+    const previousTableId = existing.tableId;
+    try {
+      const order = await prisma.order.update({
+        where: { id: orderId },
+        data: { tableId: nextTableId },
+        include: orderDetailInclude,
+      });
+
+      const tableBroadcasts = await refreshTableBroadcasts(prisma, [previousTableId, order.tableId]);
+      await emitOrderUpdatedRealtime(req.tenant.id, req.tenant.prisma, order, tableBroadcasts);
+
+      if (req.staff) {
+        await logOrderTableChanged(
+          prisma,
+          req.staff.id,
+          orderId,
+          previousTableId,
+          nextTableId,
+        );
+      }
+
+      const enriched = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: orderEnrichedInclude,
+      });
+      res.json({ order: await serializeOrderEnriched(req, prisma, enriched!) });
+    } catch {
+      sendError(res, 404, 'not_found', 'Order not found');
+    }
+  }),
+);
+
+ordersRouter.patch(
+  '/:id/payment',
+  asyncHandler(async (req, res) => {
+    if (!req.tenant) return;
+    const schema = z
+      .object({
+        paymentMethod: z.enum(['cash', 'card']).optional(),
+        paymentType: z.enum(['cash', 'card']).optional(),
+      })
+      .refine((d) => d.paymentMethod !== undefined || d.paymentType !== undefined, {
+        message: 'paymentMethod or paymentType is required',
+      });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      sendError(res, 400, 'validation_error', 'Invalid body', parsed.error.flatten());
+      return;
+    }
+
+    const orderId = paramId(req);
+    if (!orderId) {
+      sendError(res, 400, 'validation_error', 'Missing order id');
+      return;
+    }
+
+    const method = (parsed.data.paymentMethod ?? parsed.data.paymentType)! as PaymentMethod;
+    const prisma = req.tenant.prisma;
+    const existing = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!existing) {
+      sendError(res, 404, 'not_found', 'Order not found');
+      return;
+    }
+    if (existing.status === 'canceled') {
+      sendError(res, 400, 'order_canceled', 'Cannot pay a canceled order');
+      return;
+    }
+
+    const order = await prisma.order.update({
+      where: { id: orderId },
+      data: { paymentMethod: method },
+      include: orderDetailInclude,
+    });
+
+    await emitOrderUpdatedRealtime(req.tenant.id, prisma, order);
+
+    if (req.staff) {
+      await logOrderPaymentRecorded(
+        prisma,
+        req.staff.id,
+        orderId,
+        method,
+        existing.paymentMethod,
+      );
+    }
+
+    const enriched = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: orderEnrichedInclude,
+    });
+    res.json({ order: await serializeOrderEnriched(req, prisma, enriched!) });
+  }),
+);
+
+ordersRouter.patch(
   '/:id/status',
   asyncHandler(async (req, res) => {
     if (!req.tenant) return;
     const schema = z.object({
-      status: z.enum(orderStatuses),
+      status: z.enum(PATCHABLE_ORDER_STATUSES),
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) {
@@ -396,39 +613,54 @@ ordersRouter.patch(
         return;
       }
       const prisma = req.tenant.prisma;
-      let tableBroadcast: { tableId: string; status: 'free' | 'occupied' } | undefined;
+      const existing = await prisma.order.findUnique({ where: { id: orderId } });
+      if (!existing) {
+        sendError(res, 404, 'not_found', 'Order not found');
+        return;
+      }
+
+      const nextStatus = parsed.data.status as OrderStatus;
+      try {
+        assertOrderStatusTransition(existing.status, nextStatus);
+      } catch (e) {
+        if (e instanceof InvalidStatusTransitionError) {
+          sendError(res, 400, 'invalid_status_transition', `Cannot change status from ${e.from} to ${e.to}`, {
+            from: e.from,
+            to: e.to,
+          });
+          return;
+        }
+        throw e;
+      }
+
       const order = await prisma.order.update({
         where: { id: orderId },
-        data: { status: parsed.data.status as OrderStatus },
+        data: { status: nextStatus },
+        include: orderDetailInclude,
+      });
+
+      const tableBroadcasts =
+        order.orderType === 'dine_in' && order.tableId
+          ? await refreshTableBroadcasts(prisma, [order.tableId])
+          : [];
+
+      await emitOrderUpdatedRealtime(req.tenant.id, req.tenant.prisma, order, tableBroadcasts);
+
+      if (req.staff) {
+        await logOrderStatusChanged(
+          prisma,
+          req.staff.id,
+          orderId,
+          existing.status,
+          nextStatus,
+        );
+      }
+
+      const enriched = await prisma.order.findUnique({
+        where: { id: orderId },
         include: orderEnrichedInclude,
       });
-      if (order.tableId && order.orderType === 'dine_in') {
-        const status = await refreshTableOccupancyFromOrders(prisma, order.tableId);
-        tableBroadcast = { tableId: order.tableId, status };
-      }
-
-      const ts = new Date().toISOString();
-      const orderRealtime = serializeOrderSlim(order as SerializableOrder);
-      broadcastStaffRealtime(req.tenant.id, {
-        v: 1,
-        type: 'order.updated',
-        orderId: order.id,
-        status: order.status,
-        order: orderRealtime,
-        ts,
-      });
-      if (tableBroadcast) {
-        broadcastStaffRealtime(req.tenant.id, {
-          v: 1,
-          type: 'table.updated',
-          tableId: tableBroadcast.tableId,
-          status: tableBroadcast.status,
-          ts,
-        });
-      }
-
-      const orderJson = await serializeOrderEnriched(req, prisma, order);
-      res.json({ order: orderJson });
+      res.json({ order: await serializeOrderEnriched(req, prisma, enriched!) });
     } catch {
       sendError(res, 404, 'not_found', 'Order not found');
     }

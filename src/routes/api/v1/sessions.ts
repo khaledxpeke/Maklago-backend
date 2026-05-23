@@ -11,14 +11,19 @@ export const sessionsRouter = Router();
 sessionsRouter.use(requireStaff);
 
 type SessionWithStaff = CashierSession & {
-  staff?: Pick<Staff, 'id' | 'fullName' | 'email'> | null;
+  staff?: Pick<Staff, 'id' | 'firstName' | 'lastName' | 'email'> | null;
 };
 
 function sessionJson(s: SessionWithStaff): Record<string, unknown> {
   const { id, staff, ...rest } = s;
   const base: Record<string, unknown> = { id, ...rest };
   if (staff != null) {
-    base.staff = { id: staff.id, fullName: staff.fullName, email: staff.email };
+    base.staff = {
+      id: staff.id,
+      firstName: staff.firstName,
+      lastName: staff.lastName,
+      email: staff.email,
+    };
   }
   return base;
 }
@@ -145,7 +150,7 @@ sessionsRouter.get(
       orderBy: { openedAt: 'desc' },
       take,
       include: {
-        staff: { select: { id: true, fullName: true, email: true } },
+        staff: { select: { id: true, firstName: true, lastName: true, email: true } },
       },
     });
     res.json({ sessions: rows.map((r) => sessionJson(r)) });

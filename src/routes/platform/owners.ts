@@ -23,7 +23,8 @@ platformOwnersRouter.get(
         tenantName: o.tenant.name,
         tenantActive: o.tenant.isActive,
         email: o.email,
-        fullName: o.fullName,
+        firstName: o.firstName,
+        lastName: o.lastName,
         createdAt: o.createdAt.toISOString(),
       })),
     });

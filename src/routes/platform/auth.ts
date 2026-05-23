@@ -47,7 +47,8 @@ platformAuthRouter.post(
       admin: {
         id: admin.id,
         email: admin.email,
-        fullName: admin.fullName,
+        firstName: admin.firstName,
+        lastName: admin.lastName,
       },
     });
   }),
@@ -73,7 +74,8 @@ platformAuthRouter.get(
       admin: {
         id: admin.id,
         email: admin.email,
-        fullName: admin.fullName,
+        firstName: admin.firstName,
+        lastName: admin.lastName,
       },
     });
   }),

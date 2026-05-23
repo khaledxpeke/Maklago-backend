@@ -45,11 +45,106 @@ Body:
 { "status": "confirmed" }
 ```
 
-Allowed **`status`** values: `waiting`, `confirmed`, `preparing`, `completed`, `canceled`.
-
-Response includes the enriched **`order`** for HTTP; the server also broadcasts **`order.updated`** over WebSocket (see below).
+Allowed **`status`** values on **`PATCH …/status`**: `confirmed`, `preparing`, `completed`, `canceled`. Cashier **`POST /orders`** creates orders as **`confirmed`** (dine-in tables become **`occupied`** immediately). Kitchen: **`preparing`** → **`completed`**. Cashier may **`canceled`** from **`confirmed`** or **`preparing`**. **`waiting`** is reserved for a future QR/web flow and cannot be set via this API yet.
 
 There is **no** REST route in this API to replace arbitrary line items on an existing order; workflow is create order → status transitions → cancel if needed.
+
+## Move order to another table (REST)
+
+**`PATCH /api/v1/orders/{id}/table`**
+
+Headers: same as above.
+
+Body:
+
+```json
+{ "tableId": "050000000201" }
+```
+
+Allowed only for **dine-in** orders in **`confirmed`** or **`preparing`**. The target table must be active and must not already have another confirmed/preparing dine-in order.
+
+On success, the server broadcasts **`order.updated`** (slim order includes new **`tableId`**) and **`table.updated`** for the previous and new tables when occupancy changes.
+
+## Record payment (REST)
+
+**`PATCH /api/v1/orders/{id}/payment`**
+
+Headers: same as above.
+
+Body (either field name works):
+
+```json
+{ "paymentMethod": "cash" }
+```
+
+```json
+{ "paymentType": "card" }
+```
+
+Allowed values: **`cash`**, **`card`**. The order id is the path parameter `{id}`. Cannot pay a **canceled** order. Response includes enriched **`order`** with **`paymentMethod`** set; **`order.updated`** is broadcast on the WebSocket.
+
+## Edit order cart (REST, mobile)
+
+**`PATCH /api/v1/mobile/orders/{id}`** (preferred on handset — response uses mobile line labels)
+
+Same body shape as **`POST /orders`**, minus `orderType` / `tableId`:
+
+```json
+{
+  "products": [
+    { "categoryId": "010000000001", "id": "020000000101", "count": 2, "price": 2.5, "extras": [] }
+  ],
+  "subtotal": 5.0,
+  "tva": 0.5,
+  "total": 5.5,
+  "note": "No ice",
+  "discount": 0
+}
+```
+
+Allowed while status is **`confirmed`** or **`preparing`**. Replaces all lines server-side (same total validation as create). If the order was already paid (**cash** / **card**), payment resets to **`unpaid`** so the cashier can charge again. Broadcasts **`order.updated`** — other devices (kitchen, another tablet on the same table) refresh via WebSocket; no separate WS write from the client.
+
+**Load order when user taps a table:**
+
+```http
+GET /api/v1/mobile/orders/by-table/{tableId}
+```
+
+Returns `{ "order": null }` or `{ "order": { ... } }` for the active dine-in ticket (**confirmed** / **preparing**).
+
+Backoffice / generic: **`PATCH /api/v1/orders/{id}`** (same body, enriched **`order`** in response).
+
+## Kitchen display (REST)
+
+**`GET /api/v1/kitchen/orders`** — active tickets (**`confirmed`**, **`preparing`**), no prices.
+
+**`GET /api/v1/kitchen/orders/{id}`** — one ticket.
+
+**`PATCH /api/v1/kitchen/orders/{id}/seen`** — clears **`isChanged`** (kitchen acknowledged current cart).
+
+Example kitchen **`order`**:
+
+```json
+{
+  "id": "…",
+  "commandNumber": 12,
+  "status": "confirmed",
+  "orderType": "takeaway",
+  "note": "No ice",
+  "isChanged": true,
+  "cartRevision": 1,
+  "products": [
+    {
+      "id": "020000000101",
+      "name": "Sandwich escalope",
+      "count": 2,
+      "extras": [{ "id": "…", "name": "Sauce", "count": 1, "typeId": "…" }]
+    }
+  ]
+}
+```
+
+On cart edit (**`PATCH /mobile/orders/{id}`**), **`cartRevision`** increments and **`isChanged`** becomes **`true`** until **`seen`**. WebSocket **`kitchen.order.updated`** carries the full kitchen payload.
 
 ## Connect WebSocket (Flutter)
 
@@ -112,9 +207,13 @@ Every message is a JSON object with **`v`: 1**.
 | **`connected`**  | **`tenantId`** — registry tenant id for this socket. |
 | **`order.created`** | **`orderId`**, **`order`** (slim order JSON), **`ts`** (ISO-8601). |
 | **`order.updated`** | **`orderId`**, **`status`**, full slim **`order`**, **`ts`**. |
-| **`table.updated`** | **`tableId`**, **`status`** (`free` \| `occupied`), **`ts`**. |
+| **`kitchen.order.created`** | **`orderId`**, **`order`** (kitchen JSON — no prices), **`ts`**. Same socket as cashier. |
+| **`kitchen.order.updated`** | **`orderId`**, **`status`**, kitchen **`order`**, **`ts`**. Fired on create, cart edit, status change, table move. |
+| **`table.updated`** | **`tableId`**, **`status`** (`free` \| `occupied`), **`ts`**. Dine-in tables are **`occupied`** while the order is **`confirmed`** or **`preparing`**. |
 
-**`order`** in WebSocket events matches **`serializeOrderSlim`**: money keys **`subtotal`**, **`tva`**, **`total`**; lines under **`products`** with **`categoryId`**, product **`id`**, **`count`**, **`price`**, **`extras`**, optional **`compositionSnapshot`**. For **labeled** lines (product name, extra names, **`extras[].typeId`**), use **`GET /api/v1/mobile/orders`** or **`GET /api/v1/mobile/orders/{id}`** after receiving an event.
+**Kitchen app:** listen for **`kitchen.order.*`** (or load **`GET /api/v1/kitchen/orders`** on any **`order.*`** event). Kitchen **`order`** has **`products[].name`**, **`count`**, **`extras[].name`**, no **`price`** / totals / payment. **`isChanged`**: `true` when the cashier edited the cart since the kitchen last acknowledged (**`PATCH /api/v1/kitchen/orders/{id}/seen`**). **`cartRevision`** increments on each cart replace.
+
+**Cashier **`order`** in WebSocket events matches **`serializeOrderSlim`**: money keys **`subtotal`**, **`tva`**, **`total`**; lines under **`products`** with **`categoryId`**, product **`id`**, **`count`**, **`price`**, **`extras`**, optional **`compositionSnapshot`**. For **labeled** lines (product name, extra names, **`extras[].typeId`**), use **`GET /api/v1/mobile/orders`** or **`GET /api/v1/mobile/orders/{id}`** after receiving an event.
 
 ## Summary
 
@@ -123,6 +222,12 @@ Every message is a JSON object with **`v`: 1**.
 | Login               | REST      | `POST /api/v1/auth/login` |
 | Create order        | REST      | `POST /api/v1/orders` |
 | Update order status | REST      | `PATCH /api/v1/orders/{id}/status` |
+| Record payment      | REST      | `PATCH /api/v1/orders/{id}/payment` |
+| Edit order cart     | REST      | `PATCH /api/v1/mobile/orders/{id}` |
+| Order on table      | REST      | `GET /api/v1/mobile/orders/by-table/{tableId}` |
+| Move dine-in table  | REST      | `PATCH /api/v1/orders/{id}/table` |
+| Kitchen ticket list | REST      | `GET /api/v1/kitchen/orders` |
+| Kitchen acknowledge | REST      | `PATCH /api/v1/kitchen/orders/{id}/seen` |
 | Live notifications  | WebSocket | `GET ws(s)://…/api/v1/realtime?token=…` |
 
 OpenAPI: **`GET /openapi.json`** or **`/docs`** on the running server.

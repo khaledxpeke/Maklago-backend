@@ -10,6 +10,7 @@ import type {
   TableZone,
 } from '../db/tenant-client';
 import { resolveImageForClient } from '../http/imageUrl';
+import { centsToMajor } from '../http/money';
 
 /** Product row for slim/mobile payloads and POST/create DB load (receipts need `name`). */
 export const orderLineProductSelect = {
@@ -109,7 +110,7 @@ function collectExtraIdsFromOrders(orders: { lines: OrderLine[] }[], into: Set<s
   }
 }
 
-/** Line extras snapshot only: `id`, `count`, `price`. */
+/** Line extras snapshot only: `id`, `count`, `price` (major currency units in JSON). */
 function serializeExtrasForOrderLine(raw: unknown): { id: string; count: number; price: number }[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((item) => {
@@ -117,8 +118,8 @@ function serializeExtrasForOrderLine(raw: unknown): { id: string; count: number;
     const o = item as Record<string, unknown>;
     const exId = typeof o.id === 'string' ? o.id : typeof o._id === 'string' ? o._id : '';
     const count = typeof o.count === 'number' && Number.isFinite(o.count) ? Math.round(o.count) : 1;
-    const price = typeof o.price === 'number' && Number.isFinite(o.price) ? Math.round(o.price) : 0;
-    return { id: exId, count, price };
+    const priceCents = typeof o.price === 'number' && Number.isFinite(o.price) ? Math.round(o.price) : 0;
+    return { id: exId, count, price: centsToMajor(priceCents) };
   });
 }
 
@@ -138,7 +139,7 @@ type MobileCompositionContext = {
   extraToType: Map<string, Map<string, string>>;
 };
 
-async function loadMobileCompositionContext(
+export async function loadMobileCompositionContext(
   prisma: TenantDb,
   orders: SerializableOrder[],
 ): Promise<MobileCompositionContext> {
@@ -221,7 +222,7 @@ function serializeOrderLineMobile(
     id: line.product.id,
     name: line.product.name,
     count: line.quantity,
-    price: baseUnitPrice,
+    price: centsToMajor(baseUnitPrice),
     extras: extrasOut,
   };
 
@@ -241,7 +242,7 @@ function serializeOrderLineSlim(line: OrderLine & { product: OrderLineProductRow
     categoryId: line.categoryId,
     id: line.product.id,
     count: line.quantity,
-    price: baseUnitPrice,
+    price: centsToMajor(baseUnitPrice),
     extras: serializeExtrasForOrderLine(line.extrasSnapshot),
   };
 
@@ -271,7 +272,7 @@ function serializeOrderLineEnriched(
     categoryName: p.category.name,
     image: resolveImageForClient(req, p.image),
     count: line.quantity,
-    price: baseUnitPrice,
+    price: centsToMajor(baseUnitPrice),
     extras: serializeExtrasEnriched(line.extrasSnapshot, extraById),
   };
 
@@ -301,11 +302,11 @@ function attachOrderShell(
     note: order.note ?? '',
     customerName: order.customerName ?? null,
     discount: order.discount,
-    discountPrice: order.discountPriceCents,
+    discountPrice: centsToMajor(order.discountPriceCents),
     paymentMethod: order.paymentMethod,
-    subtotal: order.subtotalCents,
-    tva: order.taxCents,
-    total: order.totalCents,
+    subtotal: centsToMajor(order.subtotalCents),
+    tva: centsToMajor(order.taxCents),
+    total: centsToMajor(order.totalCents),
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
     products,
@@ -335,7 +336,8 @@ function attachOrderShell(
     base.staff = order.staff
       ? {
           id: order.staff.id,
-          fullName: order.staff.fullName,
+          firstName: order.staff.firstName,
+          lastName: order.staff.lastName,
           email: order.staff.email,
           role: order.staff.role,
         }
@@ -369,11 +371,11 @@ function attachOrderShellMobile(
     note: order.note ?? '',
     customerName: order.customerName ?? null,
     discount: order.discount,
-    discountPrice: order.discountPriceCents,
+    discountPrice: centsToMajor(order.discountPriceCents),
     paymentMethod: order.paymentMethod,
-    subtotal: order.subtotalCents,
-    tva: order.taxCents,
-    total: order.totalCents,
+    subtotal: centsToMajor(order.subtotalCents),
+    tva: centsToMajor(order.taxCents),
+    total: centsToMajor(order.totalCents),
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
     products,

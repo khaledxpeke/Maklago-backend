@@ -1,10 +1,44 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { asyncHandler } from '../../../http/asyncHandler';
+import { centsToMajor } from '../../../http/money';
 import { sendError } from '../../../http/errorResponse';
 import { requireStaff } from '../../../middleware/requireStaff';
+import { getStatistics } from '../../../services/statistics';
+
+const dateOnlySchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD');
+
+const statisticsQuerySchema = z.object({
+  filter: z.enum(['today', 'week', 'month', 'year', 'custom']).optional(),
+  startDate: dateOnlySchema.optional(),
+  endDate: dateOnlySchema.optional(),
+});
 
 export const statsRouter = Router();
 statsRouter.use(requireStaff);
+
+statsRouter.get(
+  '/statistics',
+  asyncHandler(async (req, res) => {
+    if (!req.tenant) return;
+
+    const parsed = statisticsQuerySchema.safeParse({
+      filter: typeof req.query.filter === 'string' ? req.query.filter : undefined,
+      startDate: typeof req.query.startDate === 'string' ? req.query.startDate : undefined,
+      endDate: typeof req.query.endDate === 'string' ? req.query.endDate : undefined,
+    });
+
+    if (!parsed.success) {
+      sendError(res, 400, 'validation_error', 'Invalid query', parsed.error.flatten());
+      return;
+    }
+
+    const stats = await getStatistics(req.tenant.prisma, parsed.data);
+    res.json(stats);
+  }),
+);
 
 statsRouter.get(
   '/summary',
@@ -48,7 +82,7 @@ statsRouter.get(
       }),
       prisma.order.count({
         where: {
-          status: { in: ['waiting', 'confirmed', 'preparing'] },
+          status: { in: ['confirmed', 'preparing'] },
           ...dateFilter,
         },
       }),
@@ -60,10 +94,14 @@ statsRouter.get(
         completedOrders: completedAgg._count,
         activeOrDraftOrders: activeCount,
         revenueCentsCompleted: completedAgg._sum.totalCents ?? 0,
+        revenueCompleted: centsToMajor(completedAgg._sum.totalCents ?? 0),
         allTimeTotals: {
           subtotalCents: allAgg._sum.subtotalCents ?? 0,
           taxCents: allAgg._sum.taxCents ?? 0,
           totalCents: allAgg._sum.totalCents ?? 0,
+          subtotal: centsToMajor(allAgg._sum.subtotalCents ?? 0),
+          tax: centsToMajor(allAgg._sum.taxCents ?? 0),
+          total: centsToMajor(allAgg._sum.totalCents ?? 0),
         },
       },
     });

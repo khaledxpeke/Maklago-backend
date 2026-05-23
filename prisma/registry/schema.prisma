@@ -43,7 +43,8 @@ model Owner {
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   email        String
   passwordHash String   @map("password_hash")
-  fullName     String   @map("full_name")
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
   createdAt    DateTime @default(now()) @map("created_at")
 
   @@unique([tenantId, email])
@@ -55,7 +56,8 @@ model PlatformAdmin {
   id           String   @id @default(uuid())
   email        String   @unique
   passwordHash String   @map("password_hash")
-  fullName     String   @map("full_name")
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
   createdAt    DateTime @default(now()) @map("created_at")
 
   @@map("platform_admins")

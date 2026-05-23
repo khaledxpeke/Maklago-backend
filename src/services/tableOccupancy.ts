@@ -2,9 +2,10 @@ import type { OrderStatus, PrismaClient } from '../db/tenant-client';
 
 type Db = Pick<PrismaClient, 'order' | 'restaurantTable'>;
 
-const OPEN_ORDER_STATUSES: OrderStatus[] = ['waiting', 'confirmed', 'preparing'];
+/** Dine-in orders that keep a table marked occupied. */
+export const TABLE_OCCUPYING_ORDER_STATUSES: OrderStatus[] = ['confirmed', 'preparing'];
 
-/** Keeps `RestaurantTable.status` in sync with open dine-in orders (kitchen lifecycle). */
+/** Keeps `RestaurantTable.status` in sync with confirmed/preparing dine-in orders. */
 export async function refreshTableOccupancyFromOrders(
   db: Db,
   tableId: string,
@@ -13,7 +14,7 @@ export async function refreshTableOccupancyFromOrders(
     where: {
       tableId,
       orderType: 'dine_in',
-      status: { in: OPEN_ORDER_STATUSES },
+      status: { in: TABLE_OCCUPYING_ORDER_STATUSES },
     },
   });
   const status = openCount > 0 ? 'occupied' : ('free' as const);

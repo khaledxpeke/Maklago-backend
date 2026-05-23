@@ -24,23 +24,24 @@ const bodySchema = z
     databaseUrl: z.string().min(1),
     ownerEmail: z.string().email().optional(),
     ownerPassword: z.string().min(8).optional(),
-    ownerFullName: z.string().min(1).max(200).optional(),
+    ownerFirstName: z.string().min(1).max(100).optional(),
+    ownerLastName: z.string().min(1).max(100).optional(),
     ownerPin: z.string().regex(/^\d{4}$/).optional(),
   })
   .refine(
     (d) => {
-      const hasAny = !!(d.ownerEmail || d.ownerPassword || d.ownerFullName);
+      const hasAny = !!(d.ownerEmail || d.ownerPassword || d.ownerFirstName || d.ownerLastName);
       if (!hasAny) return true;
-      return !!(d.ownerEmail && d.ownerPassword && d.ownerFullName);
+      return !!(d.ownerEmail && d.ownerPassword && d.ownerFirstName && d.ownerLastName);
     },
-    { message: 'ownerEmail, ownerPassword, and ownerFullName must be set together' },
+    { message: 'ownerEmail, ownerPassword, ownerFirstName, and ownerLastName must be set together' },
   )
   .refine(
     (d) =>
       d.ownerPin === undefined ||
-      !!(d.ownerEmail && d.ownerPassword && d.ownerFullName),
+      !!(d.ownerEmail && d.ownerPassword && d.ownerFirstName && d.ownerLastName),
     {
-      message: 'ownerPin requires ownerEmail, ownerPassword, and ownerFullName',
+      message: 'ownerPin requires ownerEmail, ownerPassword, ownerFirstName, and ownerLastName',
       path: ['ownerPin'],
     },
   );
@@ -56,7 +57,8 @@ const patchSchema = z.object({
 const bootstrapOwnerSchema = z.object({
   ownerEmail: z.string().email(),
   ownerPassword: z.string().min(8),
-  ownerFullName: z.string().min(1).max(200),
+  ownerFirstName: z.string().min(1).max(100),
+  ownerLastName: z.string().min(1).max(100),
   ownerPin: z.string().regex(/^\d{4}$/).optional(),
 });
 
@@ -67,7 +69,8 @@ const platformStaffPinBody = z.object({
 function tenantStaffPinSummary(s: {
   id: string;
   email: string;
-  fullName: string;
+  firstName: string;
+  lastName: string;
   role: StaffRole;
   isActive: boolean;
   createdAt: Date;
@@ -80,7 +83,8 @@ function tenantStaffPinSummary(s: {
   return {
     id: s.id,
     email: s.email,
-    fullName: s.fullName,
+    firstName: s.firstName,
+    lastName: s.lastName,
     role: s.role,
     isActive: s.isActive,
     createdAt: s.createdAt.toISOString(),
@@ -214,7 +218,8 @@ platformTenantsRouter.post(
     }
 
     const passwordHash = await bcrypt.hash(parsed.data.ownerPassword, env.bcryptRounds);
-    const fullName = parsed.data.ownerFullName.trim();
+    const firstName = parsed.data.ownerFirstName.trim();
+    const lastName = parsed.data.ownerLastName.trim();
     const pinHash = parsed.data.ownerPin
       ? await bcrypt.hash(parsed.data.ownerPin, env.bcryptRounds)
       : undefined;
@@ -225,7 +230,8 @@ platformTenantsRouter.post(
           id: generatePublicId(),
           email: emailTrim,
           passwordHash,
-          fullName,
+          firstName,
+          lastName,
           role: StaffRole.owner,
           ...(pinHash ? { pinHash, pinMobileEnabled: true } : {}),
         },
@@ -236,7 +242,8 @@ platformTenantsRouter.post(
           tenantId: tenantRow.id,
           email: emailTrim,
           passwordHash,
-          fullName,
+          firstName,
+          lastName,
         },
       });
       res.status(201).json({
@@ -450,7 +457,8 @@ platformTenantsRouter.post(
       sendError(res, 400, 'validation_error', 'Invalid body', parsed.error.flatten());
       return;
     }
-    const { slug, name, databaseUrl, ownerEmail, ownerPassword, ownerFullName, ownerPin } = parsed.data;
+    const { slug, name, databaseUrl, ownerEmail, ownerPassword, ownerFirstName, ownerLastName, ownerPin } =
+      parsed.data;
 
     const registry = getRegistryClient();
     const existing = await registry.tenant.findUnique({ where: { slug } });
@@ -460,7 +468,7 @@ platformTenantsRouter.post(
     }
 
     const hasOwner =
-      !!(ownerEmail && ownerPassword && ownerFullName);
+      !!(ownerEmail && ownerPassword && ownerFirstName && ownerLastName);
     const ownerPasswordHash = hasOwner
       ? await bcrypt.hash(ownerPassword!, env.bcryptRounds)
       : null;
@@ -478,7 +486,8 @@ platformTenantsRouter.post(
                 create: {
                   email: ownerEmail!.trim().toLowerCase(),
                   passwordHash: ownerPasswordHash,
-                  fullName: ownerFullName!,
+                  firstName: ownerFirstName!,
+                  lastName: ownerLastName!,
                 },
               },
             }
@@ -494,7 +503,8 @@ platformTenantsRouter.post(
             id: generatePublicId(),
             email: ownerEmail!.trim().toLowerCase(),
             passwordHash: ownerPasswordHash,
-            fullName: ownerFullName!,
+            firstName: ownerFirstName!,
+            lastName: ownerLastName!,
             role: StaffRole.owner,
             ...(ownerPinHash ? { pinHash: ownerPinHash, pinMobileEnabled: true } : {}),
           },

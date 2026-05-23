@@ -131,7 +131,8 @@ authRouter.post(
       staff: {
         id: staff.id,
         email: staff.email,
-        fullName: staff.fullName,
+        firstName: staff.firstName,
+        lastName: staff.lastName,
         role: staff.role,
         ...staffAuthPinFields(staff),
       },
@@ -158,7 +159,8 @@ authRouter.get(
       staff: {
         id: staff.id,
         email: staff.email,
-        fullName: staff.fullName,
+        firstName: staff.firstName,
+        lastName: staff.lastName,
         role: staff.role,
         ...staffAuthPinFields(staff),
       },
@@ -219,7 +221,8 @@ authRouter.patch(
       staff: {
         id: row.id,
         email: row.email,
-        fullName: row.fullName,
+        firstName: row.firstName,
+        lastName: row.lastName,
         role: row.role,
         ...staffAuthPinFields(row),
       },

@@ -10,7 +10,7 @@ info:
       normalized email exists in registry `staff_login_directory` (slugless directory login).
     - Authenticated routes use Bearer JWT from login (response includes `tenantId`, `tenantSlug`).
     - **`GET /api/v1/orders`**: backoffice — enriched lines (names, images). **`GET /api/v1/mobile/orders`**: slim payload matching realtime.
-    - `POST /api/v1/orders`: body **`products`** `{ categoryId, id, count, price, extras?[] }`, plus required **`subtotal`**, **`tva`**, **`total`** (same integer unit as stored, must match server); new orders are **`waiting`** from the server.
+    - `POST /api/v1/orders`: body **`products`** `{ categoryId, id, count, price, extras?[] }`, plus required **`subtotal`**, **`tva`**, **`total`** (major currency units, e.g. 2.5 — must match server); cashier orders are created as **`confirmed`** (dine-in table occupied immediately).
     - **Mobile bootstrap:** `GET /api/v1/catalog/categories/menu` returns slim `{ categories[] }` with **`id`** on nested entities, `kind`, and `type[].extras`.
 servers:
   - url: http://localhost:3000
@@ -38,7 +38,8 @@ paths:
                 databaseUrl: { type: string }
                 ownerEmail: { type: string, format: email }
                 ownerPassword: { type: string, minLength: 8 }
-                ownerFullName: { type: string }
+                ownerFirstName: { type: string }
+                ownerLastName: { type: string }
       responses:
         '201': { description: Created }
   /platform/v1/tenants/{id}/bootstrap-owner:
@@ -56,11 +57,12 @@ paths:
           application/json:
             schema:
               type: object
-              required: [ownerEmail, ownerPassword, ownerFullName]
+              required: [ownerEmail, ownerPassword, ownerFirstName, ownerLastName]
               properties:
                 ownerEmail: { type: string, format: email }
                 ownerPassword: { type: string, minLength: 8 }
-                ownerFullName: { type: string }
+                ownerFirstName: { type: string }
+                ownerLastName: { type: string }
       responses:
         '201': { description: Created }
         '409': { description: Already has owner or email conflict }
@@ -100,7 +102,8 @@ paths:
                     properties:
                       id: { type: string, format: uuid }
                       email: { type: string }
-                      fullName: { type: string }
+                      firstName: { type: string }
+                      lastName: { type: string }
                       role: { type: string, enum: [owner, manager, cashier] }
                       hasPin: { type: boolean }
                       requiresMobilePin: { type: boolean, description: Owner — PIN exists and mobile gate is on }
@@ -273,7 +276,7 @@ paths:
         '200': { description: OK }
   /api/v1/orders:
     post:
-      summary: Create order (status waiting; products snapshot)
+      summary: Create order (status confirmed; products snapshot)
       security: [{ BearerAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/TenantHeaderOptional'

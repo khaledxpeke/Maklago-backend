@@ -76,7 +76,7 @@ Use this when you add another restaurant after initial setup. Each restaurant ha
 4. **Register the tenant** using either the backoffice or the API:
 
    - **Backoffice:** open the [backoffice](../backoffice) app → **Platform admin sign in** (`/platform-login`) → **Platform tenants** (`/platform`) → **New restaurant**. Enter a unique **slug** (lowercase letters, numbers, hyphens), **display name**, and the **same database URL** as in step 2. Optionally set **owner** email, password (8+ characters), and full name: that creates an **owner** staff user in the tenant database so you can sign in on the Connection page.
-   - **API:** `POST /platform/v1/auth/login`, then `POST /platform/v1/tenants` with `slug`, `name`, `databaseUrl`, and optional `ownerEmail` / `ownerPassword` / `ownerFullName` (see OpenAPI).
+   - **API:** `POST /platform/v1/auth/login`, then `POST /platform/v1/tenants` with `slug`, `name`, `databaseUrl`, and optional `ownerEmail` / `ownerPassword` / `ownerFirstName` / `ownerLastName` (see OpenAPI).
 
 5. **Sign in as restaurant staff** in the backoffice: **Connection** → set **tenant slug** to the slug from step 4 → **Sign in** with the owner credentials from step 4 (or another staff user you create in that tenant DB).
 
@@ -189,7 +189,7 @@ The spec file in the repo is `src/openapi/openapi.json`. Update it when you chan
 
 **Tenant admin (owner/manager):** Products expose **`price`** (main units in JSON; cents in DB), **`modifiers`**, and **`kind`** (`simple` vs `composed`). Omit **`kind`** on create only when inferring composed products from non-empty **`compositionTypeIds`**. **Extras** (add-ons for composed-product steps) use **`price`** / **`suppPrice`** in catalog JSON (same semantics as the former “ingredients” model). **`CompositionSlotMode`** in the DB is **`extras`** or **`products`** (only **`extras`** is used today).
 
-**Orders:** `POST /api/v1/orders` sends **`products`**: `{ categoryId, _id, count, price (cents), extras?, note? }` per row (validated against catalog). Root **`note`** is ticket-wide; each row's **`note`** is line-only (e.g. prep). **`discount`** is order-level percent **0–100**. New orders are **`waiting`** until patched. See **`CreateOrderRequest`** in OpenAPI.
+**Orders:** `POST /api/v1/orders` sends **`products`**: `{ categoryId, _id, count, price, extras?, note? }` per row (validated against catalog). Root **`note`** is ticket-wide; each row's **`note`** is line-only (e.g. prep). **`discount`** is order-level percent **0–100**. New cashier orders are created as **`confirmed`** (dine-in table **`occupied`** immediately). Lifecycle: **`confirmed`** → **`preparing`** → **`completed`**, or **`canceled`**. See **`CreateOrderRequest`** in OpenAPI.
 
 **Tenant admin routes:** `POST/PATCH/DELETE /api/v1/catalog/categories`, `POST/PATCH/DELETE /api/v1/catalog/products`, **`GET/POST /api/v1/catalog/extras`**, **`PATCH/DELETE /api/v1/catalog/extras/{id}`**, **`GET/POST /api/v1/catalog/composition-types`**, **`PATCH/DELETE /api/v1/catalog/composition-types/{id}`**, **`PUT /api/v1/catalog/composition-types/{id}/extras`** (body **`{ "extraIds": ["uuid", ...] }`**), and `GET/POST/PATCH /api/v1/staff` for menu and staff management.
 

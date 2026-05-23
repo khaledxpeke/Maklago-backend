@@ -30,14 +30,16 @@ function canSetRole(actor: StaffRole, targetRole: StaffRole): boolean {
 const createBody = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(200),
-  fullName: z.string().min(1).max(200),
+  firstName: z.string().min(1).max(100),
+  lastName: z.string().min(1).max(100),
   role: roleEnum,
 });
 
 const patchBody = z.object({
   email: z.string().email().optional(),
   password: z.string().min(8).max(200).optional(),
-  fullName: z.string().min(1).max(200).optional(),
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
   role: roleEnum.optional(),
   isActive: z.boolean().optional(),
 });
@@ -50,7 +52,8 @@ staffRouter.use(admin);
 function staffPublic(s: {
   id: string;
   email: string;
-  fullName: string;
+  firstName: string;
+  lastName: string;
   role: StaffRole;
   isActive: boolean;
   createdAt: Date;
@@ -64,7 +67,8 @@ function staffPublic(s: {
   return {
     id: s.id,
     email: s.email,
-    fullName: s.fullName,
+    firstName: s.firstName,
+    lastName: s.lastName,
     role: s.role,
     isActive: s.isActive,
     createdAt: s.createdAt.toISOString(),
@@ -136,7 +140,8 @@ staffRouter.post(
           id: generatePublicId(),
           email: emailNorm,
           passwordHash: hash,
-          fullName: parsed.data.fullName,
+          firstName: parsed.data.firstName,
+          lastName: parsed.data.lastName,
           role: parsed.data.role,
         },
       });
@@ -197,7 +202,8 @@ staffRouter.patch(
 
     const data: {
       email?: string;
-      fullName?: string;
+      firstName?: string;
+      lastName?: string;
       role?: StaffRole;
       isActive?: boolean;
       passwordHash?: string;
@@ -205,7 +211,8 @@ staffRouter.patch(
       pinMobileEnabled?: boolean;
     } = {};
     if (parsed.data.email !== undefined) data.email = parsed.data.email.trim().toLowerCase();
-    if (parsed.data.fullName !== undefined) data.fullName = parsed.data.fullName;
+    if (parsed.data.firstName !== undefined) data.firstName = parsed.data.firstName;
+    if (parsed.data.lastName !== undefined) data.lastName = parsed.data.lastName;
     if (parsed.data.role !== undefined) data.role = parsed.data.role;
     if (parsed.data.isActive !== undefined) data.isActive = parsed.data.isActive;
     if (parsed.data.password !== undefined) {

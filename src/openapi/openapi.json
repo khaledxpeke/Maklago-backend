@@ -3,7 +3,7 @@
   "info": {
     "title": "maklaGo API",
     "version": "1.0.0",
-    "description": "Restaurant POS backend. **Tenant**: optional header `x-tenant-id` (slug or registry UUID). With `Authorization: Bearer` staff JWT, the tenant is resolved from the token when the header is omitted. **`POST /api/v1/auth/login`** accepts optional `x-tenant-id` for tenant-scoped login; without it, the normalized email must exist in registry **`staff_login_directory`** (slugless directory login). **`GET /api/v1/orders`** returns enriched catalog labels on lines (dashboard); **`GET /api/v1/mobile/orders`** uses a slimmer shell than **`POST /orders`**: no **`staff`**, no nested **`table`** object; dine-in adds root **`tableId`** + **`tableNumber`**. Lines add **`products[].name`**, **`extras[].name`**, optional **`extras[].typeId`**, optional **`compositionSnapshot`**. **`POST /api/v1/orders`** accepts **`products`** snapshots (`categoryId`, `id`, `count`, **`price`**, **`extras`**) for analytics; **`subtotal`**, **`tva`**, **`total`** use the same integer unit as storage (must match server); new orders start as **`waiting`**. **Platform** routes use `x-platform-key`. Errors: `{ \"error\": { \"code\", \"message\", \"details?\" } }`."
+    "description": "Restaurant POS backend. **Tenant**: optional header `x-tenant-id` (slug or registry UUID). With `Authorization: Bearer` staff JWT, the tenant is resolved from the token when the header is omitted. **`POST /api/v1/auth/login`** accepts optional `x-tenant-id` for tenant-scoped login; without it, the normalized email must exist in registry **`staff_login_directory`** (slugless directory login). **`GET /api/v1/orders`** returns enriched catalog labels on lines (dashboard); **`GET /api/v1/mobile/orders`** uses a slimmer shell than **`POST /orders`**: no **`staff`**, no nested **`table`** object; dine-in adds root **`tableId`** + **`tableNumber`**. Lines add **`products[].name`**, **`extras[].name`**, optional **`extras[].typeId`**, optional **`compositionSnapshot`**. **`POST /api/v1/orders`** accepts **`products`** snapshots (`categoryId`, `id`, `count`, **`price`**, **`extras`**) for analytics; **`subtotal`**, **`tva`**, **`total`** use major currency units in JSON (e.g. 2.5); DB keeps cents internally (must match server); new orders start as **`waiting`**. **Platform** routes use `x-platform-key`. Errors: `{ \"error\": { \"code\", \"message\", \"details?\" } }`."
   },
   "servers": [
     {
@@ -41,6 +41,9 @@
     },
     {
       "name": "Settings"
+    },
+    {
+      "name": "Activity logs"
     },
     {
       "name": "Staff"
@@ -123,7 +126,10 @@
               "email": {
                 "type": "string"
               },
-              "fullName": {
+              "firstName": {
+                "type": "string"
+              },
+              "lastName": {
                 "type": "string"
               },
               "role": {
@@ -178,7 +184,10 @@
               "email": {
                 "type": "string"
               },
-              "fullName": {
+              "firstName": {
+                "type": "string"
+              },
+              "lastName": {
                 "type": "string"
               },
               "role": {
@@ -254,24 +263,24 @@
             "default": "unpaid"
           },
           "subtotal": {
-            "type": "integer",
+            "type": "number",
             "minimum": 0,
-            "description": "Sum of line net totals (before order discount); must match server."
+            "description": "Sum of line net totals (before order discount) in major currency units; must match server."
           },
           "tva": {
-            "type": "integer",
+            "type": "number",
             "minimum": 0,
-            "description": "Sum of line TVA amounts; must match server."
+            "description": "Sum of line TVA amounts in major currency units; must match server."
           },
           "total": {
-            "type": "integer",
+            "type": "number",
             "minimum": 0,
-            "description": "Final total after discount; must match server."
+            "description": "Final total after discount in major currency units; must match server."
           },
           "products": {
             "type": "array",
             "minItems": 1,
-            "description": "Saved line snapshots for statistics. Money fields use the same integer unit as storage. Line total = count × price + Σ(extra.price × extra.count). Order status is always `waiting` from the server.",
+            "description": "Saved line snapshots for statistics. Money fields use major currency units (e.g. 2.5). Line total = count × price + Σ(extra.price × extra.count). Cashier POST creates orders as `confirmed`.",
             "items": {
               "type": "object",
               "required": ["categoryId", "id", "count", "price"],
@@ -294,9 +303,9 @@
                   "maximum": 999
                 },
                 "price": {
-                  "type": "integer",
+                  "type": "number",
                   "minimum": 0,
-                  "description": "Base unit price (before extras)."
+                  "description": "Base unit price in major currency units (before extras)."
                 },
                 "extras": {
                   "type": "array",
@@ -306,7 +315,7 @@
                     "properties": {
                       "id": { "type": "string", "minLength": 1 },
                       "count": { "type": "integer", "minimum": 0, "maximum": 999 },
-                      "price": { "type": "integer", "minimum": 0, "description": "Extra unit price (same unit as line)" }
+                      "price": { "type": "number", "minimum": 0, "description": "Extra unit price in major currency units (same unit as line)" }
                     }
                   }
                 }
@@ -325,6 +334,11 @@
           "canceled"
         ]
       },
+      "StaffSettableOrderStatus": {
+        "type": "string",
+        "enum": ["confirmed", "preparing", "completed", "canceled"],
+        "description": "Cashier/kitchen lifecycle. `waiting` is reserved for future QR/web intake and cannot be PATCHed."
+      },
       "PatchOrderStatusRequest": {
         "type": "object",
         "required": [
@@ -332,8 +346,75 @@
         ],
         "properties": {
           "status": {
-            "$ref": "#/components/schemas/OrderStatus"
+            "$ref": "#/components/schemas/StaffSettableOrderStatus"
           }
+        },
+        "description": "Transitions: confirmed → preparing | completed | canceled; preparing → completed | canceled."
+      },
+      "PatchOrderTableRequest": {
+        "type": "object",
+        "required": ["tableId"],
+        "properties": {
+          "tableId": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 36,
+            "description": "Active restaurant table id for this dine-in order."
+          }
+        }
+      },
+      "PatchOrderPaymentRequest": {
+        "type": "object",
+        "description": "Record payment for an order. Send **paymentMethod** or **paymentType** (`cash` | `card`).",
+        "properties": {
+          "paymentMethod": {
+            "type": "string",
+            "enum": ["cash", "card"]
+          },
+          "paymentType": {
+            "type": "string",
+            "enum": ["cash", "card"],
+            "description": "Alias for paymentMethod (mobile clients)."
+          }
+        }
+      },
+      "EditOrderRequest": {
+        "type": "object",
+        "required": ["products", "subtotal", "tva", "total"],
+        "description": "Replace entire cart on an open order. Same line/total rules as create (without orderType/tableId).",
+        "properties": {
+          "products": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["categoryId", "id", "count", "price"],
+              "properties": {
+                "categoryId": { "type": "string", "minLength": 12, "maxLength": 36 },
+                "id": { "type": "string", "minLength": 12, "maxLength": 36 },
+                "count": { "type": "integer", "minimum": 1, "maximum": 999 },
+                "price": { "type": "number", "minimum": 0 },
+                "extras": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "count", "price"],
+                    "properties": {
+                      "id": { "type": "string" },
+                      "count": { "type": "integer", "minimum": 0, "maximum": 999 },
+                      "price": { "type": "number", "minimum": 0 }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "subtotal": { "type": "number", "minimum": 0 },
+          "tva": { "type": "number", "minimum": 0 },
+          "total": { "type": "number", "minimum": 0 },
+          "note": { "type": "string", "maxLength": 2000 },
+          "customerName": { "type": "string", "maxLength": 200 },
+          "discount": { "type": "integer", "minimum": 0, "maximum": 100 }
         }
       },
       "OrderProductSummary": {
@@ -368,7 +449,7 @@
             "description": "Product display name. Present on **`GET /api/v1/mobile/orders`** only."
           },
           "count": { "type": "integer" },
-          "price": { "type": "integer", "description": "Saved base unit price for this line." },
+          "price": { "type": "number", "description": "Saved base unit price for this line (major currency units)." },
           "extras": {
             "type": "array",
             "items": {
@@ -376,7 +457,7 @@
               "properties": {
                 "id": { "type": "string" },
                 "count": { "type": "integer" },
-                "price": { "type": "integer" },
+                "price": { "type": "number" },
                 "name": {
                   "type": "string",
                   "description": "Extra label when **`id`** matches a catalog extra. Present on **`GET /api/v1/mobile/orders`**."
@@ -405,7 +486,7 @@
           "categoryName": { "type": "string" },
           "image": { "type": "string", "nullable": true },
           "count": { "type": "integer" },
-          "price": { "type": "integer", "description": "Saved base unit price for this line." },
+          "price": { "type": "number", "description": "Saved base unit price for this line (major currency units)." },
           "extras": {
             "type": "array",
             "items": {
@@ -413,7 +494,7 @@
               "properties": {
                 "id": { "type": "string" },
                 "count": { "type": "integer" },
-                "price": { "type": "integer" },
+                "price": { "type": "number" },
                 "name": { "type": "string", "description": "Present when catalog extra exists." }
               }
             }
@@ -473,11 +554,11 @@
           "note": { "type": "string", "nullable": true },
           "customerName": { "type": "string", "nullable": true },
           "discount": { "type": "integer", "description": "Order-level discount percent (0–100)." },
-          "discountPrice": { "type": "integer" },
+          "discountPrice": { "type": "number" },
           "paymentMethod": { "type": "string", "enum": ["cash", "card", "unpaid"] },
-          "subtotal": { "type": "integer", "description": "Sum of line net totals." },
-          "tva": { "type": "integer", "description": "Sum of line TVA amounts." },
-          "total": { "type": "integer", "description": "Final total after discount." },
+          "subtotal": { "type": "number", "description": "Sum of line net totals (major currency units)." },
+          "tva": { "type": "number", "description": "Sum of line TVA amounts (major currency units)." },
+          "total": { "type": "number", "description": "Final total after discount (major currency units)." },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" },
           "products": {
@@ -494,6 +575,54 @@
             "nullable": true,
             "additionalProperties": true,
             "description": "On **`POST /orders`** / realtime when loaded. **Not** returned on **`GET /api/v1/mobile/orders`**."
+          }
+        }
+      },
+      "KitchenOrderProduct": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "count": { "type": "integer" },
+          "extras": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "count": { "type": "integer" },
+                "typeId": { "type": "string" }
+              }
+            }
+          },
+          "compositionSnapshot": { "nullable": true },
+          "note": { "type": "string", "nullable": true }
+        }
+      },
+      "KitchenOrder": {
+        "type": "object",
+        "description": "Kitchen / KDS payload — no prices, payment, or staff. WebSocket **`kitchen.order.*`** uses the same shape.",
+        "properties": {
+          "id": { "type": "string" },
+          "commandNumber": { "type": "integer" },
+          "commandDate": { "type": "string", "format": "date" },
+          "status": { "$ref": "#/components/schemas/OrderStatus" },
+          "orderType": { "type": "string", "enum": ["dine_in", "takeaway"] },
+          "tableId": { "type": "string", "nullable": true },
+          "tableNumber": { "type": "integer", "nullable": true },
+          "note": { "type": "string" },
+          "customerName": { "type": "string", "nullable": true },
+          "isChanged": {
+            "type": "boolean",
+            "description": "True when cartRevision > kitchenSeenRevision (cashier edited cart)."
+          },
+          "cartRevision": { "type": "integer" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "products": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/KitchenOrderProduct" }
           }
         }
       },
@@ -521,11 +650,11 @@
           "note": { "type": "string", "nullable": true },
           "customerName": { "type": "string", "nullable": true },
           "discount": { "type": "integer", "description": "Order-level discount percent (0–100)." },
-          "discountPrice": { "type": "integer" },
+          "discountPrice": { "type": "number" },
           "paymentMethod": { "type": "string", "enum": ["cash", "card", "unpaid"] },
-          "subtotal": { "type": "integer", "description": "Sum of line net totals." },
-          "tva": { "type": "integer", "description": "Sum of line TVA amounts." },
-          "total": { "type": "integer", "description": "Final total after discount." },
+          "subtotal": { "type": "number", "description": "Sum of line net totals (major currency units)." },
+          "tva": { "type": "number", "description": "Sum of line TVA amounts (major currency units)." },
+          "total": { "type": "number", "description": "Final total after discount (major currency units)." },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" },
           "products": {
@@ -693,10 +822,15 @@
             "type": "string",
             "minLength": 8
           },
-          "ownerFullName": {
+          "ownerFirstName": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 200
+            "maxLength": 100
+          },
+          "ownerLastName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
           },
           "ownerPin": {
             "type": "string",
@@ -704,7 +838,7 @@
             "description": "Optional 4-digit PIN for owner (requires owner fields together)."
           }
         },
-        "description": "If any owner field is set, all three owner fields are required. ownerPin requires the owner trio."
+        "description": "If any owner field is set, all four owner fields are required. ownerPin requires the owner quartet."
       },
       "PatchTenantRequest": {
         "type": "object",
@@ -725,7 +859,7 @@
       },
       "BootstrapOwnerRequest": {
         "type": "object",
-        "required": ["ownerEmail", "ownerPassword", "ownerFullName"],
+        "required": ["ownerEmail", "ownerPassword", "ownerFirstName", "ownerLastName"],
         "properties": {
           "ownerEmail": {
             "type": "string",
@@ -735,10 +869,15 @@
             "type": "string",
             "minLength": 8
           },
-          "ownerFullName": {
+          "ownerFirstName": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 200
+            "maxLength": 100
+          },
+          "ownerLastName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
           },
           "ownerPin": {
             "type": "string",
@@ -763,7 +902,8 @@
         "required": [
           "email",
           "password",
-          "fullName",
+          "firstName",
+          "lastName",
           "role"
         ],
         "properties": {
@@ -775,7 +915,10 @@
             "type": "string",
             "minLength": 8
           },
-          "fullName": {
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
             "type": "string"
           },
           "role": {
@@ -799,7 +942,10 @@
             "type": "string",
             "minLength": 8
           },
-          "fullName": {
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
             "type": "string"
           },
           "role": {
@@ -813,6 +959,137 @@
           "isActive": {
             "type": "boolean"
           }
+        }
+      },
+      "ActivityAction": {
+        "type": "string",
+        "enum": [
+          "order_created",
+          "order_updated",
+          "order_status_changed",
+          "order_payment_recorded",
+          "order_table_changed"
+        ]
+      },
+      "ActivityEntityType": {
+        "type": "string",
+        "enum": ["order"]
+      },
+      "ActivityLogStaff": {
+        "type": "object",
+        "required": ["id", "firstName", "lastName", "email", "role"],
+        "properties": {
+          "id": { "type": "string" },
+          "firstName": { "type": "string" },
+          "lastName": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "role": { "type": "string", "enum": ["owner", "manager", "cashier"] }
+        }
+      },
+      "ActivityLog": {
+        "type": "object",
+        "required": ["id", "action", "entityType", "entityId", "createdAt", "staff"],
+        "properties": {
+          "id": { "type": "string" },
+          "action": { "$ref": "#/components/schemas/ActivityAction" },
+          "entityType": { "$ref": "#/components/schemas/ActivityEntityType" },
+          "entityId": { "type": "string" },
+          "summary": { "type": "string", "nullable": true },
+          "metadata": { "type": "object", "additionalProperties": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "staff": { "$ref": "#/components/schemas/ActivityLogStaff" }
+        }
+      },
+      "ActivityLogListResponse": {
+        "type": "object",
+        "required": ["logs"],
+        "properties": {
+          "logs": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ActivityLog" }
+          }
+        }
+      },
+      "StatsFilter": {
+        "type": "string",
+        "enum": ["today", "week", "month", "year", "custom"],
+        "default": "today"
+      },
+      "OrderStatusCounts": {
+        "type": "object",
+        "properties": {
+          "waiting": { "type": "integer" },
+          "confirmed": { "type": "integer" },
+          "preparing": { "type": "integer" },
+          "completed": { "type": "integer" },
+          "canceled": { "type": "integer" }
+        }
+      },
+      "StatisticsResponse": {
+        "type": "object",
+        "description": "Dashboard statistics (amounts in major currency units, e.g. 2.5 TND). Period boundaries use Europe/Paris.",
+        "properties": {
+          "totalRevenue": { "type": "number" },
+          "completedOrders": { "type": "integer", "description": "Revenue-eligible order count (non-canceled) in period" },
+          "moyenRevenue": { "type": "number", "description": "Average order value in period" },
+          "paymentMethodsTotalRevenue": {
+            "type": "object",
+            "properties": {
+              "cash": { "type": "number" },
+              "card": { "type": "number" },
+              "cashCount": { "type": "integer" },
+              "cardCount": { "type": "integer" }
+            }
+          },
+          "orderTypes": {
+            "type": "object",
+            "description": "Dine-in vs takeaway breakdown",
+            "properties": {
+              "dineInCount": { "type": "integer" },
+              "takeawayCount": { "type": "integer" },
+              "dineIn": { "type": "number" },
+              "takeaway": { "type": "number" }
+            }
+          },
+          "totalOrders": { "type": "integer" },
+          "totalPlat": { "type": "integer", "description": "All-time units sold (non-canceled orders)" },
+          "orderStatuses": { "$ref": "#/components/schemas/OrderStatusCounts" },
+          "revenueComparison": {
+            "type": "object",
+            "properties": {
+              "currentRevenue": { "type": "number" },
+              "previousRevenue": { "type": "number" },
+              "difference": { "type": "number" },
+              "percentageChange": { "type": "number" },
+              "currentRevenuePercentage": { "type": "number" },
+              "trend": { "type": "string", "enum": ["increase", "decrease", "stable"] }
+            }
+          },
+          "revenueOverTime": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": { "type": "string" },
+                "totalRevenue": { "type": "number" }
+              }
+            }
+          },
+          "topProducts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "image": { "type": "string", "nullable": true },
+                "totalCount": { "type": "integer" },
+                "totalRevenue": { "type": "number" }
+              }
+            }
+          },
+          "filter": { "$ref": "#/components/schemas/StatsFilter" },
+          "timeRangeLabel": { "type": "string" }
         }
       }
     },
@@ -2452,7 +2729,7 @@
           "Orders"
         ],
         "summary": "Create order",
-        "description": "Assigns `reference`, `commandNumber`, and `commandDate` (UTC day). Status is always **`waiting`**. Body **`products`**: line net = count×price + Σ(extra.price×extra.count); **`subtotal`**, **`tva`**, **`total`** must match server (same integer unit as storage). For composed products send resolved **`extras`** client-side.",
+        "description": "Assigns `reference`, `commandNumber`, and `commandDate` (UTC day). Status is **`confirmed`** for cashier-created orders (dine-in table occupied when applicable). Body **`products`**: line net = count×price + Σ(extra.price×extra.count); **`subtotal`**, **`tva`**, **`total`** must match server (major currency units in JSON). For composed products send resolved **`extras`** client-side.",
         "security": [
           {
             "BearerAuth": []
@@ -2618,6 +2895,41 @@
             }
           }
         }
+      },
+      "patch": {
+        "tags": ["Orders"],
+        "summary": "Edit order cart",
+        "description": "Replace all lines on **confirmed** or **preparing** orders. Broadcasts **order.updated**. Resets **paymentMethod** to **unpaid** if previously paid.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/OrderId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/EditOrderRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": { "$ref": "#/components/schemas/OrderSerializedEnriched" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation / not editable / totals mismatch" },
+          "404": { "description": "Not found" }
+        }
       }
     },
     "/api/v1/orders/{id}/status": {
@@ -2626,6 +2938,7 @@
           "Orders"
         ],
         "summary": "Update order status",
+        "description": "Kitchen/cashier lifecycle: **confirmed** → **preparing** → **completed**, or **canceled** from **confirmed**/**preparing**. Dine-in table occupancy refreshes on change. Broadcasts **order.updated** and **table.updated** when applicable.",
         "security": [
           {
             "BearerAuth": []
@@ -2686,6 +2999,260 @@
         }
       }
     },
+    "/api/v1/orders/{id}/payment": {
+      "patch": {
+        "tags": ["Orders"],
+        "summary": "Record order payment",
+        "description": "Sets **`paymentMethod`** to **`cash`** or **`card`**. Order id is in the path. Broadcasts **`order.updated`** on the staff WebSocket. Not allowed on **canceled** orders.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/OrderId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PatchOrderPaymentRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": { "$ref": "#/components/schemas/OrderSerializedEnriched" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation / order canceled",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{id}/table": {
+      "patch": {
+        "tags": ["Orders"],
+        "summary": "Move dine-in order to another table",
+        "description": "Updates **`tableId`** on an open dine-in order (`confirmed` or `preparing`). Refreshes occupancy on old and new tables. Broadcasts **`order.updated`** and **`table.updated`** on the staff WebSocket. Target table must not already have another **`confirmed`** or **`preparing`** dine-in order.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/OrderId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PatchOrderTableRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": { "$ref": "#/components/schemas/OrderSerializedEnriched" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation / not dine-in / order closed / table not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Target table already occupied",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{id}/logs": {
+      "get": {
+        "tags": ["Activity logs"],
+        "summary": "Order activity history",
+        "description": "Audit trail for one order (create, cart edit, status, payment, table move). Newest first.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/OrderId" },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ActivityLogListResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/activity-logs": {
+      "get": {
+        "tags": ["Activity logs"],
+        "summary": "List activity logs",
+        "description": "Filter by **entityType**, **entityId**, and/or **action**. Defaults to latest 50 rows.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          {
+            "name": "entityType",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/ActivityEntityType" }
+          },
+          {
+            "name": "entityId",
+            "in": "query",
+            "schema": { "type": "string", "minLength": 12, "maxLength": 36 }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/ActivityAction" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ActivityLogListResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/activity-logs/orders/{orderId}": {
+      "get": {
+        "tags": ["Activity logs"],
+        "summary": "Order activity history (alias)",
+        "description": "Same as **GET /api/v1/orders/{id}/logs**.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 12, "maxLength": 36 }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/ActivityAction" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ActivityLogListResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/mobile/orders": {
       "get": {
         "tags": ["Orders"],
@@ -2738,6 +3305,43 @@
         }
       }
     },
+    "/api/v1/mobile/orders/by-table/{tableId}": {
+      "get": {
+        "tags": ["Orders"],
+        "summary": "Active dine-in order on table (mobile)",
+        "description": "Returns the latest **confirmed** or **preparing** dine-in order for **tableId**, or **`order: null`**.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 12, "maxLength": 36 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": {
+                      "oneOf": [
+                        { "$ref": "#/components/schemas/OrderSerialized" },
+                        { "type": "null" }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/mobile/orders/{id}": {
       "get": {
         "tags": ["Orders"],
@@ -2770,6 +3374,130 @@
               }
             }
           }
+        }
+      },
+      "patch": {
+        "tags": ["Orders"],
+        "summary": "Edit order cart (mobile)",
+        "description": "Same as **PATCH /api/v1/orders/{id}**; response uses mobile **OrderSerialized** (line names, extras labels). Broadcasts **order.updated**.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/OrderId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/EditOrderRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": { "$ref": "#/components/schemas/OrderSerialized" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation / not editable" },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/v1/kitchen/orders": {
+      "get": {
+        "tags": ["Orders"],
+        "summary": "Kitchen ticket queue",
+        "description": "Active **`confirmed`** and **`preparing`** orders for KDS. No prices. Includes **`isChanged`** when the cashier edited the cart.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`{ orders: KitchenOrder[] }`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "orders": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/KitchenOrder" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/kitchen/orders/{id}": {
+      "get": {
+        "tags": ["Orders"],
+        "summary": "Kitchen ticket by id",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/OrderId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": { "$ref": "#/components/schemas/KitchenOrder" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/v1/kitchen/orders/{id}/seen": {
+      "patch": {
+        "tags": ["Orders"],
+        "summary": "Kitchen acknowledge ticket",
+        "description": "Sets **`kitchenSeenRevision`** to **`cartRevision`**, clearing **`isChanged`** on kitchen clients.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/OrderId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": { "$ref": "#/components/schemas/KitchenOrder" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Not found" }
         }
       }
     },
@@ -3341,6 +4069,52 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/stats/statistics": {
+      "get": {
+        "tags": ["Stats"],
+        "summary": "Dashboard statistics",
+        "description": "Legacy-style POS statistics adapted to maklaGo orders. **`filter`**: `today` (default), `week`, `month`, `year`, or `custom`. Optional **`startDate`** / **`endDate`** (`YYYY-MM-DD`, Europe/Paris day boundaries) override the filter range. Revenue includes non-canceled orders (`waiting`, `confirmed`, `preparing`, `completed`). Amounts in major currency units.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          {
+            "name": "filter",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/StatsFilter" }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "Inclusive start (Paris timezone)"
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "Inclusive end (Paris timezone)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StatisticsResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
           }
         }
       }

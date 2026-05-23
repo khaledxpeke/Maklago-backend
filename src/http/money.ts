@@ -4,6 +4,10 @@ export function majorToCents(value: number): number {
   return Math.round(value * 100);
 }
 
+export function centsToMajor(cents: number): number {
+  return cents / 100;
+}
+
 export function resolvePriceCents(body: { price?: number; priceCents?: number }): number | null {
   if (body.priceCents !== undefined) return Math.round(body.priceCents);
   if (body.price !== undefined) return majorToCents(body.price);

@@ -86,7 +86,8 @@ async function main(): Promise<void> {
     create: {
       email: platformEmail,
       passwordHash: platformHash,
-      fullName: 'Platform Admin',
+      firstName: 'Platform',
+      lastName: 'Admin',
     },
     update: { passwordHash: platformHash },
   });
@@ -142,10 +143,11 @@ async function main(): Promise<void> {
       id: S.STAFF_MGR,
       email,
       passwordHash: hash,
-      fullName: 'Demo Manager',
+      firstName: 'Demo',
+      lastName: 'Manager',
       role: 'manager',
     },
-    update: { passwordHash: hash, fullName: 'Demo Manager', role: 'manager' },
+    update: { passwordHash: hash, firstName: 'Demo', lastName: 'Manager', role: 'manager' },
   });
   await upsertStaffLoginDirectory(registry, tenant.id, demoStaff.id, demoStaff.email);
   console.log('Staff (manager):', email, '/', password);
@@ -158,10 +160,11 @@ async function main(): Promise<void> {
       id: S.STAFF_OWNER,
       email: ownerEmailAddr,
       passwordHash: ownerHash,
-      fullName: 'Demo Owner',
+      firstName: 'Demo',
+      lastName: 'Owner',
       role: 'owner',
     },
-    update: { passwordHash: ownerHash, fullName: 'Demo Owner', role: 'owner' },
+    update: { passwordHash: ownerHash, firstName: 'Demo', lastName: 'Owner', role: 'owner' },
   });
   await upsertStaffLoginDirectory(registry, tenant.id, demoOwner.id, demoOwner.email);
   await registry.owner.upsert({
@@ -170,9 +173,10 @@ async function main(): Promise<void> {
       tenantId: tenant.id,
       email: ownerEmailAddr,
       passwordHash: ownerHash,
-      fullName: 'Demo Owner',
+      firstName: 'Demo',
+      lastName: 'Owner',
     },
-    update: { passwordHash: ownerHash, fullName: 'Demo Owner' },
+    update: { passwordHash: ownerHash, firstName: 'Demo', lastName: 'Owner' },
   });
   console.log('Staff (owner):', ownerEmailAddr, '/', password);
 

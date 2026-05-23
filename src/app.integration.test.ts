@@ -65,15 +65,15 @@ describe.skipIf(!integration)('integration (set INTEGRATION_TEST=1 and DB URLs)'
       .post('/api/v1/orders')
       .set({ Authorization: `Bearer ${token}` })
       .send({
-        subtotal: 250,
-        tva: 25,
-        total: 275,
-        products: [{ categoryId: categoryDrinks, id: productId, count: 1, price: 250 }],
+        subtotal: 2.5,
+        tva: 0.25,
+        total: 2.75,
+        products: [{ categoryId: categoryDrinks, id: productId, count: 1, price: 2.5 }],
       });
 
     expect(order.status).toBe(201);
     expect(order.body.order).toBeDefined();
-    expect(order.body.order.status).toBe('waiting');
+    expect(order.body.order.status).toBe('confirmed');
     expect(order.body.order.products?.length).toBeGreaterThan(0);
     expect(order.body.order.orderType).toBe('takeaway');
   });
@@ -90,10 +90,10 @@ describe.skipIf(!integration)('integration (set INTEGRATION_TEST=1 and DB URLs)'
       .set({ Authorization: `Bearer ${token}` })
       .send({
         orderType: 'dine_in',
-        subtotal: 250,
-        tva: 25,
-        total: 275,
-        products: [{ categoryId: categoryDrinks, id: productId, count: 1, price: 250 }],
+        subtotal: 2.5,
+        tva: 0.25,
+        total: 2.75,
+        products: [{ categoryId: categoryDrinks, id: productId, count: 1, price: 2.5 }],
       });
 
     expect(res.status).toBe(400);
