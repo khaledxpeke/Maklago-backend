@@ -4,6 +4,7 @@ import type { OrderStatus, PaymentMethod } from '../../../db/tenant-client';
 import { asyncHandler } from '../../../http/asyncHandler';
 import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
+import { discountPercentSchema, moneyMajorSchema } from '../../../http/money';
 import { requireStaff } from '../../../middleware/requireStaff';
 import { getDefaultTaxBps } from '../../../services/settings';
 import {
@@ -16,6 +17,8 @@ import {
 import {
   buildOrderCartFromProducts,
   CategoryMismatchError,
+  MissingLinePriceError,
+  normalizeOrderCartProducts,
   OrderNotEditableError,
   OrderNotFoundError,
   ProductNotFoundError,
@@ -90,19 +93,20 @@ function assertOrderStatusTransition(from: OrderStatus, to: OrderStatus): void {
   }
 }
 
-/** Money amounts (`price`, `subtotal`, `tva`, `total`) use major currency units in JSON (e.g. 2.5 TND); DB keeps cents. Line net = `count * price + Σ(extra.price * extra.count)`. */
+/** Money amounts (`price`, `subtotal`, `tva`, `total`) use major currency units in JSON (e.g. 2.5 TND); DB keeps cents. */
 const orderExtraSchema = z.object({
-  /** Catalog extra id (12 hex) or modifier key (e.g. milk). */
   id: z.string().min(1).max(64),
-  count: z.number().int().min(0).max(999),
-  price: z.number().min(0),
+  count: z.coerce.number().int().min(0).max(999),
+  price: moneyMajorSchema.optional(),
+  priceCents: z.coerce.number().int().min(0).optional(),
 });
 
 const orderProductSchema = z.object({
   categoryId: tenantEntityIdSchema,
   id: tenantEntityIdSchema,
-  count: z.number().int().min(1).max(999),
-  price: z.number().min(0),
+  count: z.coerce.number().int().min(1).max(999),
+  price: moneyMajorSchema.optional(),
+  priceCents: z.coerce.number().int().min(0).optional(),
   extras: z.array(orderExtraSchema).optional().default([]),
 });
 
@@ -112,11 +116,11 @@ const createOrderSchema = z
     tableId: tenantEntityIdSchema.nullable().optional(),
     note: z.string().max(2000).optional(),
     customerName: z.string().max(200).optional(),
-    discount: z.number().int().min(0).max(100).optional().default(0),
+    discount: discountPercentSchema.optional().default(0),
     paymentMethod: z.enum(['cash', 'card', 'unpaid']).optional().default('unpaid'),
-    subtotal: z.number().min(0),
-    tva: z.number().min(0),
-    total: z.number().min(0),
+    subtotal: moneyMajorSchema,
+    tva: moneyMajorSchema,
+    total: moneyMajorSchema,
     products: z.array(orderProductSchema).min(1),
   })
   .superRefine((data, ctx) => {
@@ -135,17 +139,44 @@ const createOrderSchema = z
         path: ['tableId'],
       });
     }
+    refineCartProductPrices(data, ctx);
   });
 
-export const editOrderSchema = z.object({
-  products: z.array(orderProductSchema).min(1),
-  subtotal: z.number().min(0),
-  tva: z.number().min(0),
-  total: z.number().min(0),
-  note: z.string().max(2000).optional(),
-  customerName: z.string().max(200).optional(),
-  discount: z.number().int().min(0).max(100).optional(),
-});
+function refineCartProductPrices(
+  data: { products: z.infer<typeof orderProductSchema>[] },
+  ctx: z.RefinementCtx,
+): void {
+  data.products.forEach((p, i) => {
+    if (p.price === undefined && p.priceCents === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Provide price (major units, e.g. 2.5) or priceCents on each line',
+        path: ['products', i, 'price'],
+      });
+    }
+    (p.extras ?? []).forEach((e, j) => {
+      if (e.price === undefined && e.priceCents === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Provide price or priceCents on each extra',
+          path: ['products', i, 'extras', j, 'price'],
+        });
+      }
+    });
+  });
+}
+
+export const editOrderSchema = z
+  .object({
+    products: z.array(orderProductSchema).min(1),
+    subtotal: moneyMajorSchema,
+    tva: moneyMajorSchema,
+    total: moneyMajorSchema,
+    note: z.string().max(2000).optional(),
+    customerName: z.string().max(200).optional(),
+    discount: discountPercentSchema.optional(),
+  })
+  .superRefine((data, ctx) => refineCartProductPrices(data, ctx));
 
 export function sendOrderCartErrors(res: Response, e: unknown): boolean {
   if (e instanceof ProductNotFoundError) {
@@ -166,6 +197,12 @@ export function sendOrderCartErrors(res: Response, e: unknown): boolean {
     sendError(res, 400, 'totals_mismatch', 'subtotal, tva, and total must match server totals', {
       expected: e.expected,
       received: e.received,
+    });
+    return true;
+  }
+  if (e instanceof MissingLinePriceError) {
+    sendError(res, 400, 'validation_error', 'Each line and extra needs price (major units, e.g. 2.5) or priceCents', {
+      field: e.field,
     });
     return true;
   }
@@ -200,10 +237,17 @@ ordersRouter.post(
     const {
       orderType,
       tableId: bodyTableId,
-      products: inputProducts,
+      products: rawProducts,
       discount,
       paymentMethod,
     } = parsed.data;
+    let inputProducts;
+    try {
+      inputProducts = normalizeOrderCartProducts(rawProducts);
+    } catch (e) {
+      if (sendOrderCartErrors(res, e)) return;
+      throw e;
+    }
     const tableId = orderType === 'takeaway' ? undefined : bodyTableId!;
 
     if (orderType === 'dine_in') {
@@ -337,7 +381,10 @@ ordersRouter.patch(
         return;
       }
       const hadPaid = existing.paymentMethod === 'cash' || existing.paymentMethod === 'card';
-      const order = await replaceOrderCart(req.tenant.prisma, orderId, parsed.data);
+      const order = await replaceOrderCart(req.tenant.prisma, orderId, {
+        ...parsed.data,
+        products: normalizeOrderCartProducts(parsed.data.products),
+      });
       await emitOrderUpdatedRealtime(req.tenant.id, req.tenant.prisma, order);
       await logOrderCartUpdated(req.tenant.prisma, req.staff!.id, orderId, {
         lineCount: order.lines.length,

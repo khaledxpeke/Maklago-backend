@@ -1,5 +1,5 @@
 import type { OrderStatus, PaymentMethod, Prisma, PrismaClient } from '../db/tenant-client';
-import { majorToCents, centsToMajor } from '../http/money';
+import { majorToCents, centsToMajor, normalizeMajorUnits, resolvePriceCents } from '../http/money';
 import { orderDetailInclude, type SerializableOrder } from './orderJson';
 import { generatePublicId } from './publicId';
 import { effectiveTaxBps, taxCentsFromSubtotal } from './pricing';
@@ -20,6 +20,52 @@ export type OrderCartProductInput = {
   price: number;
   extras?: OrderCartExtraInput[];
 };
+
+type RawCartExtra = {
+  id: string;
+  count: number;
+  price?: number;
+  priceCents?: number;
+};
+
+type RawCartProduct = {
+  categoryId: string;
+  id: string;
+  count: number;
+  price?: number;
+  priceCents?: number;
+  extras?: RawCartExtra[];
+};
+
+export class MissingLinePriceError extends Error {
+  constructor(public field: 'price' | 'extra') {
+    super('missing_line_price');
+    this.name = 'MissingLinePriceError';
+  }
+}
+
+function resolveMajorLinePrice(raw: { price?: number; priceCents?: number }, kind: 'price' | 'extra'): number {
+  const cents = resolvePriceCents(raw);
+  if (cents === null) {
+    throw new MissingLinePriceError(kind);
+  }
+  return normalizeMajorUnits(centsToMajor(cents));
+}
+
+/** Accept **`price`** (major units, e.g. 2.5) or legacy **`priceCents`** on lines/extras. */
+export function normalizeOrderCartProducts(products: RawCartProduct[]): OrderCartProductInput[] {
+  return products.map((row) => ({
+    categoryId: row.categoryId,
+    id: row.id,
+    count: row.count,
+    price: resolveMajorLinePrice(row, 'price'),
+    extras: (row.extras ?? []).map((extra) => ({
+      id: extra.id,
+      count: extra.count,
+      price: resolveMajorLinePrice(extra, 'extra'),
+    })),
+  }));
+}
 
 export type OrderCartLineRow = {
   productId: string;
@@ -130,9 +176,9 @@ export async function buildOrderCartFromProducts(
   const totalCents = grossTotal - discountPriceCents;
 
   if (
-    majorToCents(clientTotals.subtotal) !== subtotal ||
-    majorToCents(clientTotals.tva) !== taxTotal ||
-    majorToCents(clientTotals.total) !== totalCents
+    majorToCents(normalizeMajorUnits(clientTotals.subtotal)) !== subtotal ||
+    majorToCents(normalizeMajorUnits(clientTotals.tva)) !== taxTotal ||
+    majorToCents(normalizeMajorUnits(clientTotals.total)) !== totalCents
   ) {
     throw new TotalsMismatchError(
       {

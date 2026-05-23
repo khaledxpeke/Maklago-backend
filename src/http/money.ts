@@ -1,11 +1,17 @@
 /** Money from API: Mongo used main currency units (Number); DB keeps integer cents. */
 
+import { z } from 'zod';
+
+export function normalizeMajorUnits(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 export function majorToCents(value: number): number {
-  return Math.round(value * 100);
+  return Math.round(normalizeMajorUnits(value) * 100);
 }
 
 export function centsToMajor(cents: number): number {
-  return cents / 100;
+  return normalizeMajorUnits(cents / 100);
 }
 
 export function resolvePriceCents(body: { price?: number; priceCents?: number }): number | null {
@@ -22,3 +28,9 @@ export function resolveOptionalCents(body: {
   if (body.valueMajor !== undefined) return majorToCents(body.valueMajor);
   return undefined;
 }
+
+/** Zod: decimal major units in JSON (e.g. 2.5 TND). Coerces numeric strings from clients. */
+export const moneyMajorSchema = z.coerce.number().min(0).transform(normalizeMajorUnits);
+
+/** Order-level discount percent 0–100 (whole units; decimals like 10.0 accepted). */
+export const discountPercentSchema = z.coerce.number().min(0).max(100).transform((v) => Math.round(v));

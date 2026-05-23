@@ -251,11 +251,11 @@
             "description": "Optional customer display name."
           },
           "discount": {
-            "type": "integer",
+            "type": "number",
             "minimum": 0,
             "maximum": 100,
             "default": 0,
-            "description": "Order-level discount as whole percent (0–100)."
+            "description": "Order-level discount percent (0–100). Decimal JSON numbers accepted (e.g. 10.0)."
           },
           "paymentMethod": {
             "type": "string",
@@ -414,7 +414,7 @@
           "total": { "type": "number", "minimum": 0 },
           "note": { "type": "string", "maxLength": 2000 },
           "customerName": { "type": "string", "maxLength": 200 },
-          "discount": { "type": "integer", "minimum": 0, "maximum": 100 }
+          "discount": { "type": "number", "minimum": 0, "maximum": 100 }
         }
       },
       "OrderProductSummary": {
@@ -553,7 +553,7 @@
           "staffId": { "type": "string", "minLength": 12, "maxLength": 36 },
           "note": { "type": "string", "nullable": true },
           "customerName": { "type": "string", "nullable": true },
-          "discount": { "type": "integer", "description": "Order-level discount percent (0–100)." },
+          "discount": { "type": "number", "description": "Order-level discount percent (0–100)." },
           "discountPrice": { "type": "number" },
           "paymentMethod": { "type": "string", "enum": ["cash", "card", "unpaid"] },
           "subtotal": { "type": "number", "description": "Sum of line net totals (major currency units)." },
@@ -649,7 +649,7 @@
           "staffId": { "type": "string", "minLength": 12, "maxLength": 36 },
           "note": { "type": "string", "nullable": true },
           "customerName": { "type": "string", "nullable": true },
-          "discount": { "type": "integer", "description": "Order-level discount percent (0–100)." },
+          "discount": { "type": "number", "description": "Order-level discount percent (0–100)." },
           "discountPrice": { "type": "number" },
           "paymentMethod": { "type": "string", "enum": ["cash", "card", "unpaid"] },
           "subtotal": { "type": "number", "description": "Sum of line net totals (major currency units)." },

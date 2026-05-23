@@ -13,6 +13,7 @@ import {
 import {
   OrderNotEditableError,
   OrderNotFoundError,
+  normalizeOrderCartProducts,
   replaceOrderCart,
 } from '../../../services/orderCart';
 import { TABLE_OCCUPYING_ORDER_STATUSES } from '../../../services/tableOccupancy';
@@ -163,7 +164,10 @@ mobileOrdersRouter.patch(
         return;
       }
       const hadPaid = existing.paymentMethod === 'cash' || existing.paymentMethod === 'card';
-      const order = await replaceOrderCart(req.tenant.prisma, orderId, parsed.data);
+      const order = await replaceOrderCart(req.tenant.prisma, orderId, {
+        ...parsed.data,
+        products: normalizeOrderCartProducts(parsed.data.products),
+      });
       await emitOrderUpdatedRealtime(req.tenant.id, req.tenant.prisma, order);
       await logOrderCartUpdated(req.tenant.prisma, req.staff!.id, orderId, {
         lineCount: order.lines.length,

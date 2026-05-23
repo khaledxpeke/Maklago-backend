@@ -22,12 +22,13 @@ Headers:
 - `Content-Type: application/json`
 - Optional: `x-tenant-id: <slug>`
 
-Body (shape must match server pricing; amounts are **integer cents** as in storage — JSON fields use `subtotal`, `tva`, `total`, line `price`, etc.):
+Body (shape must match server pricing; **money uses major currency units as decimals**, e.g. `2.5` for 2.500 TND — **not** integer cents):
 
 - **`orderType`**: `dine_in` | `takeaway` (default `takeaway`).
 - **`tableId`**: required for `dine_in`; must be omitted for `takeaway`.
-- **`products`**: non-empty array of `{ categoryId, id, count, price, extras? }` per line (`extras`: `{ id, count, price }[]`).
+- **`products`**: non-empty array of `{ categoryId, id, count, price, extras? }` per line (`extras`: `{ id, count, price }[]`). **`price`** / **`subtotal`** / **`tva`** / **`total`** are **`num`** / JSON **`number`** (e.g. `2.5`). Optional legacy **`priceCents`** on a line/extra instead of **`price`**.
 - **`subtotal`**, **`tva`**, **`total`**: must match server recomputation from catalog and tax settings.
+- **`discount`**: order-level percent **`0`–`100`** (number; `10.0` is fine).
 
 See **`CreateOrderRequest`** / OpenAPI (`/openapi.json` or `/docs`) for full validation rules.
 
