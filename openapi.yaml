@@ -295,7 +295,7 @@ paths:
                 note: { type: string, description: 'Optional note for the whole order' }
                 customerName: { type: string }
                 discount: { type: integer, minimum: 0, maximum: 100, default: 0, description: 'Order-level discount percent (0–100)' }
-                paymentMethod: { type: string, enum: [cash, card, unpaid], default: unpaid }
+                paymentMethod: { type: string, enum: [unpaid], default: unpaid }
                 subtotal: { type: integer, minimum: 0, description: 'Sum of line net totals (must match server)' }
                 tva: { type: integer, minimum: 0, description: 'Sum of line TVA amounts (must match server)' }
                 total: { type: integer, minimum: 0, description: 'Final total after discount (must match server)' }

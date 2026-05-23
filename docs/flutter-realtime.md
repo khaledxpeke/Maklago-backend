@@ -29,6 +29,7 @@ Body (shape must match server pricing; **money uses major currency units as deci
 - **`products`**: non-empty array of `{ categoryId, id, count, price, extras? }` per line (`extras`: `{ id, count, price }[]`). **`price`** / **`subtotal`** / **`tva`** / **`total`** are **`num`** / JSON **`number`** (e.g. `2.5`). Optional legacy **`priceCents`** on a line/extra instead of **`price`**.
 - **`subtotal`**, **`tva`**, **`total`**: must match server recomputation from catalog and tax settings.
 - **`discount`**: order-level percent **`0`–`100`** (number; `10.0` is fine).
+- **`paymentMethod`**: always **`unpaid`** on create (optional in body, defaults to **`unpaid`**). Use **`PATCH /orders/{id}/payment`** for **`cash`** / **`card`**.
 
 See **`CreateOrderRequest`** / OpenAPI (`/openapi.json` or `/docs`) for full validation rules.
 
@@ -76,10 +77,6 @@ Body (either field name works):
 
 ```json
 { "paymentMethod": "cash" }
-```
-
-```json
-{ "paymentType": "card" }
 ```
 
 Allowed values: **`cash`**, **`card`**. The order id is the path parameter `{id}`. Cannot pay a **canceled** order. Response includes enriched **`order`** with **`paymentMethod`** set; **`order.updated`** is broadcast on the WebSocket.

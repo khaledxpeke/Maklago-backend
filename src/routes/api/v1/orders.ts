@@ -117,7 +117,8 @@ const createOrderSchema = z
     note: z.string().max(2000).optional(),
     customerName: z.string().max(200).optional(),
     discount: discountPercentSchema.optional().default(0),
-    paymentMethod: z.enum(['cash', 'card', 'unpaid']).optional().default('unpaid'),
+    /** New orders are always unpaid; use PATCH /orders/:id/payment to record cash/card. */
+    paymentMethod: z.literal('unpaid').optional().default('unpaid'),
     subtotal: moneyMajorSchema,
     tva: moneyMajorSchema,
     total: moneyMajorSchema,
@@ -239,7 +240,6 @@ ordersRouter.post(
       tableId: bodyTableId,
       products: rawProducts,
       discount,
-      paymentMethod,
     } = parsed.data;
     let inputProducts;
     try {
@@ -297,7 +297,7 @@ ordersRouter.post(
             subtotalCents: cart.subtotalCents,
             taxCents: cart.taxCents,
             totalCents: cart.totalCents,
-            paymentMethod: paymentMethod as PaymentMethod,
+            paymentMethod: 'unpaid',
             lines: {
               create: cart.lineRows.map((r) => ({
                 id: generatePublicId(),
@@ -582,14 +582,9 @@ ordersRouter.patch(
   '/:id/payment',
   asyncHandler(async (req, res) => {
     if (!req.tenant) return;
-    const schema = z
-      .object({
-        paymentMethod: z.enum(['cash', 'card']).optional(),
-        paymentType: z.enum(['cash', 'card']).optional(),
-      })
-      .refine((d) => d.paymentMethod !== undefined || d.paymentType !== undefined, {
-        message: 'paymentMethod or paymentType is required',
-      });
+    const schema = z.object({
+      paymentMethod: z.enum(['cash', 'card']),
+    });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) {
       sendError(res, 400, 'validation_error', 'Invalid body', parsed.error.flatten());
@@ -602,7 +597,7 @@ ordersRouter.patch(
       return;
     }
 
-    const method = (parsed.data.paymentMethod ?? parsed.data.paymentType)! as PaymentMethod;
+    const method = parsed.data.paymentMethod as PaymentMethod;
     const prisma = req.tenant.prisma;
     const existing = await prisma.order.findUnique({ where: { id: orderId } });
     if (!existing) {

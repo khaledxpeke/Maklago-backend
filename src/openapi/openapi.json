@@ -259,8 +259,9 @@
           },
           "paymentMethod": {
             "type": "string",
-            "enum": ["cash", "card", "unpaid"],
-            "default": "unpaid"
+            "enum": ["unpaid"],
+            "default": "unpaid",
+            "description": "Always **unpaid** on create. Record **cash** / **card** later via **PATCH /orders/{id}/payment**."
           },
           "subtotal": {
             "type": "number",
@@ -365,16 +366,12 @@
       },
       "PatchOrderPaymentRequest": {
         "type": "object",
-        "description": "Record payment for an order. Send **paymentMethod** or **paymentType** (`cash` | `card`).",
+        "required": ["paymentMethod"],
+        "description": "Record payment for an order.",
         "properties": {
           "paymentMethod": {
             "type": "string",
             "enum": ["cash", "card"]
-          },
-          "paymentType": {
-            "type": "string",
-            "enum": ["cash", "card"],
-            "description": "Alias for paymentMethod (mobile clients)."
           }
         }
       },
