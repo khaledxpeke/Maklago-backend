@@ -77,9 +77,7 @@ function tenantStaffPinSummary(s: {
   pinHash: string | null;
   pinMobileEnabled: boolean;
 }) {
-  const owner = s.role === StaffRole.owner;
   const hasPin = Boolean(s.pinHash);
-  const gateOn = owner ? s.pinMobileEnabled : false;
   return {
     id: s.id,
     email: s.email,
@@ -89,7 +87,7 @@ function tenantStaffPinSummary(s: {
     isActive: s.isActive,
     createdAt: s.createdAt.toISOString(),
     hasPin,
-    requiresMobilePin: owner && hasPin && gateOn,
+    requiresMobilePin: hasPin && s.pinMobileEnabled,
   };
 }
 

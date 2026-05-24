@@ -119,9 +119,9 @@ paths:
         '200': { description: Staff profile }
   /api/v1/auth/me/pin-mobile-enabled:
     patch:
-      summary: Toggle mobile PIN gate (owner)
+      summary: Toggle mobile PIN gate
       description: |
-        PIN digits are set/cleared only from the backoffice. Owners use this to enable or disable requiring PIN on mobile when a PIN exists.
+        PIN digits are set/cleared only by the owner (backoffice). Any staff member with a PIN can enable or disable requiring PIN on mobile.
         Enabling requires `pinHash` (PIN configured). Disabling while a PIN exists requires `currentPin`.
       security: [{ BearerAuth: [] }]
       parameters:

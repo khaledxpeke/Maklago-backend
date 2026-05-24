@@ -67,9 +67,9 @@ model Staff {
   id           String    @id
   email        String    @unique
   passwordHash String    @map("password_hash")
-  /// bcrypt hash of optional 4-digit PIN for owners (sensitive actions after login).
+  /// bcrypt hash of optional 4-digit PIN (owners: mobile gate; staff: set by owner).
   pinHash      String?   @map("pin_hash")
-  /// When true (owner only), mobile clients should require PIN for gated flows when pinHash is set.
+  /// When true, mobile clients should require PIN for gated flows when pinHash is set (user can toggle on mobile).
   pinMobileEnabled Boolean @default(true) @map("pin_mobile_enabled")
   firstName    String    @map("first_name")
   lastName     String    @map("last_name")

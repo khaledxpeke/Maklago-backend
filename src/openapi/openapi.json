@@ -142,11 +142,11 @@
               },
               "hasPin": {
                 "type": "boolean",
-                "description": "Owner: a PIN is configured (platform)."
+                "description": "A PIN is configured (set by owner or platform admin)."
               },
               "requiresMobilePin": {
                 "type": "boolean",
-                "description": "Owner: true when PIN exists and mobile gate is on — use for gated flows / verify-pin."
+                "description": "True when PIN exists and the user has the mobile gate enabled — prompt for PIN on gated flows."
               }
             }
           },
@@ -209,7 +209,7 @@
         "properties": {
           "pinMobileEnabled": {
             "type": "boolean",
-            "description": "When true, mobile clients should require PIN for gated flows if an owner PIN is configured."
+            "description": "When true, mobile should require PIN for gated flows if a PIN is configured on this account."
           },
           "currentPin": {
             "type": "string",
@@ -891,6 +891,17 @@
           "pin": {
             "type": "string",
             "pattern": "^\\d{4}$"
+          }
+        }
+      },
+      "StaffPinPutRequest": {
+        "type": "object",
+        "required": ["pin"],
+        "properties": {
+          "pin": {
+            "type": "string",
+            "pattern": "^\\d{4}$",
+            "description": "4-digit PIN for manager/cashier (owner-only API)."
           }
         }
       },
@@ -1719,8 +1730,8 @@
     "/api/v1/auth/me/pin-mobile-enabled": {
       "patch": {
         "tags": ["Auth"],
-        "summary": "Toggle mobile PIN gate (owner)",
-        "description": "PIN value is managed in the backoffice. Owners enable/disable whether mobile must verify PIN when one is set.",
+        "summary": "Toggle mobile PIN gate",
+        "description": "PIN digits are set/cleared only by the owner (backoffice). Any staff member with a PIN can enable or disable whether mobile must verify it. Disabling while a PIN exists requires `currentPin`.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [{ "$ref": "#/components/parameters/TenantHeaderOptional" }],
         "requestBody": {
@@ -1745,14 +1756,6 @@
           },
           "401": {
             "description": "`invalid_pin` when disabling gate",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiError" }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden (non-owner)",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ApiError" }
@@ -1923,6 +1926,45 @@
               }
             }
           }
+        }
+      }
+    },
+    "/api/v1/staff/{id}/pin": {
+      "put": {
+        "tags": ["Staff"],
+        "summary": "Set staff PIN (owner only)",
+        "description": "Sets a 4-digit PIN on **manager** or **cashier** staff. Owners may set their own PIN; other owners are managed via platform admin.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/StaffId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StaffPinPutRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "{ staff } with hasPin true" },
+          "403": { "description": "Not owner" },
+          "404": { "description": "Staff not found" }
+        }
+      },
+      "delete": {
+        "tags": ["Staff"],
+        "summary": "Remove staff PIN (owner only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/StaffId" }
+        ],
+        "responses": {
+          "200": { "description": "{ staff } with hasPin false" },
+          "403": { "description": "Not owner" },
+          "404": { "description": "Staff not found" }
         }
       }
     },

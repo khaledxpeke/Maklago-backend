@@ -60,10 +60,8 @@ function staffPublic(s: {
   pinHash?: string | null;
   pinMobileEnabled?: boolean;
 }) {
-  const owner = s.role === 'owner';
   const hasPin = Boolean(s.pinHash);
-  const gateOn = owner ? Boolean(s.pinMobileEnabled ?? true) : false;
-  const requiresMobilePin = owner && hasPin && gateOn;
+  const requiresMobilePin = hasPin && Boolean(s.pinMobileEnabled ?? true);
   return {
     id: s.id,
     email: s.email,
@@ -76,6 +74,12 @@ function staffPublic(s: {
     requiresMobilePin,
   };
 }
+
+const pinBody = z.object({
+  pin: z.string().regex(/^\d{4}$/, 'Must be exactly 4 digits'),
+});
+
+const ownerOnly = requireRole('owner');
 
 staffRouter.get(
   '/',
@@ -153,6 +157,82 @@ staffRouter.post(
   }),
 );
 
+/** Owner: set 4-digit PIN on manager/cashier (or on self). */
+staffRouter.put(
+  '/:id/pin',
+  ownerOnly,
+  asyncHandler(async (req, res) => {
+    const parsed = pinBody.safeParse(req.body);
+    if (!parsed.success) {
+      sendError(res, 400, 'validation_error', 'Invalid body', parsed.error.flatten());
+      return;
+    }
+    if (!req.tenant || !req.staff) return;
+
+    const id = paramId(req);
+    if (!id) {
+      sendError(res, 400, 'validation_error', 'Missing staff id');
+      return;
+    }
+
+    const existing = await req.tenant.prisma.staff.findUnique({ where: { id } });
+    if (!existing) {
+      sendError(res, 404, 'not_found', 'Staff not found');
+      return;
+    }
+    if (!existing.isActive) {
+      sendError(res, 400, 'staff_inactive', 'Cannot set PIN on inactive staff');
+      return;
+    }
+    if (existing.role === 'owner' && existing.id !== req.staff.id) {
+      sendError(res, 403, 'forbidden', 'Use platform admin or set your own owner PIN only on your account');
+      return;
+    }
+    if (existing.role !== 'owner' && existing.role !== 'manager' && existing.role !== 'cashier') {
+      sendError(res, 400, 'validation_error', 'Invalid staff role for PIN');
+      return;
+    }
+
+    const pinHash = await bcrypt.hash(parsed.data.pin, env.bcryptRounds);
+    const row = await req.tenant.prisma.staff.update({
+      where: { id },
+      data: { pinHash, pinMobileEnabled: true },
+    });
+    res.json({ staff: staffPublic(row) });
+  }),
+);
+
+/** Owner: remove PIN from manager/cashier (or self). */
+staffRouter.delete(
+  '/:id/pin',
+  ownerOnly,
+  asyncHandler(async (req, res) => {
+    if (!req.tenant || !req.staff) return;
+
+    const id = paramId(req);
+    if (!id) {
+      sendError(res, 400, 'validation_error', 'Missing staff id');
+      return;
+    }
+
+    const existing = await req.tenant.prisma.staff.findUnique({ where: { id } });
+    if (!existing) {
+      sendError(res, 404, 'not_found', 'Staff not found');
+      return;
+    }
+    if (existing.role === 'owner' && existing.id !== req.staff.id) {
+      sendError(res, 403, 'forbidden', 'Cannot remove another owner PIN from here');
+      return;
+    }
+
+    const row = await req.tenant.prisma.staff.update({
+      where: { id },
+      data: { pinHash: null, pinMobileEnabled: true },
+    });
+    res.json({ staff: staffPublic(row) });
+  }),
+);
+
 staffRouter.patch(
   '/:id',
   asyncHandler(async (req, res) => {
@@ -218,7 +298,7 @@ staffRouter.patch(
     if (parsed.data.password !== undefined) {
       data.passwordHash = await bcrypt.hash(parsed.data.password, env.bcryptRounds);
     }
-    if (parsed.data.role !== undefined && parsed.data.role !== 'owner') {
+    if (parsed.data.role !== undefined && parsed.data.role !== 'owner' && existing.role === 'owner') {
       data.pinHash = null;
       data.pinMobileEnabled = true;
     }

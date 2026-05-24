@@ -7,7 +7,6 @@ import { getRegistryClient } from '../../../db/registry';
 import { getTenantPrisma } from '../../../db/tenantPool';
 import { asyncHandler } from '../../../http/asyncHandler';
 import { sendError } from '../../../http/errorResponse';
-import { requireRole } from '../../../middleware/requireRole';
 import { requireStaff } from '../../../middleware/requireStaff';
 import { normalizeStaffLoginEmail } from '../../../services/staffLoginDirectory';
 
@@ -20,17 +19,15 @@ const patchPinMobileSchema = z.object({
   currentPin: z.string().regex(/^\d{4}$/).optional(),
 });
 
-/** PIN flags for clients: `hasPin` = PIN stored; `requiresMobilePin` = enforce on mobile (owner && PIN && gate on). */
+/** PIN flags: `hasPin` = stored; `requiresMobilePin` = mobile should verify (respects per-user gate toggle). */
 function staffAuthPinFields(staff: {
-  role: string;
   pinHash: string | null;
   pinMobileEnabled: boolean;
 }) {
-  const owner = staff.role === 'owner';
   const hasPin = Boolean(staff.pinHash);
   return {
     hasPin,
-    requiresMobilePin: owner && hasPin && staff.pinMobileEnabled,
+    requiresMobilePin: hasPin && staff.pinMobileEnabled,
   };
 }
 
@@ -171,7 +168,6 @@ authRouter.get(
 authRouter.patch(
   '/me/pin-mobile-enabled',
   requireStaff,
-  requireRole('owner'),
   asyncHandler(async (req, res) => {
     const parsed = patchPinMobileSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -183,8 +179,8 @@ authRouter.patch(
       return;
     }
     const staff = await req.tenant.prisma.staff.findUnique({ where: { id: req.staff.id } });
-    if (!staff || staff.role !== 'owner') {
-      sendError(res, 403, 'forbidden', 'Only owners can change mobile PIN gate');
+    if (!staff) {
+      sendError(res, 404, 'not_found', 'Staff not found');
       return;
     }
     const next = parsed.data.pinMobileEnabled;
@@ -193,7 +189,7 @@ authRouter.patch(
         res,
         400,
         'pin_required',
-        'Set an owner PIN in the backoffice before enabling the mobile PIN gate.',
+        'A PIN must be configured by the owner before enabling the mobile PIN gate.',
       );
       return;
     }
@@ -233,7 +229,6 @@ authRouter.patch(
 authRouter.post(
   '/verify-pin',
   requireStaff,
-  requireRole('owner'),
   asyncHandler(async (req, res) => {
     const parsed = verifyPinSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -245,8 +240,8 @@ authRouter.post(
       return;
     }
     const staff = await req.tenant.prisma.staff.findUnique({ where: { id: req.staff.id } });
-    if (!staff || staff.role !== 'owner') {
-      sendError(res, 403, 'forbidden', 'PIN verification is for owner accounts');
+    if (!staff) {
+      sendError(res, 404, 'not_found', 'Staff not found');
       return;
     }
     if (!staff.pinHash) {

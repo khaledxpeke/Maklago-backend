@@ -142,7 +142,23 @@ Cashier events (`order.created` / `order.updated`) unchanged.
 
 ---
 
-## 7. Key files touched
+## 7. Staff PIN (owner-managed)
+
+Owners set or remove **4-digit PINs** for **manager** and **cashier** staff. Platform admin still bootstraps **owner** PIN at tenant creation; an owner may set/remove **their own** PIN.
+
+| Action | Endpoint | Who |
+|--------|----------|-----|
+| Set staff PIN | `PUT /api/v1/staff/:id/pin` `{ "pin": "1234" }` | Owner only |
+| Remove staff PIN | `DELETE /api/v1/staff/:id/pin` | Owner only |
+| Verify PIN (mobile) | `POST /api/v1/auth/verify-pin` | Any staff with PIN |
+| Owner mobile gate | `PATCH /api/v1/auth/me/pin-mobile-enabled` | Any staff with PIN (own account) |
+
+- Staff list / `GET /auth/me` expose `hasPin` and `requiresMobilePin`. Any staff with a PIN can toggle the mobile gate via `PATCH /auth/me/pin-mobile-enabled` (not change the PIN itself).
+- Backoffice: **Staff → Edit** — PIN section for owners on manager/cashier rows (and self).
+
+---
+
+## 8. Key files touched
 
 | Area | Paths |
 |------|--------|
@@ -155,11 +171,11 @@ Cashier events (`order.created` / `order.updated`) unchanged.
 | Schema | `backend/prisma/tenant/schema.prisma` |
 | OpenAPI | `backend/src/openapi/openapi.json` |
 | Mobile docs | `backend/docs/flutter-realtime.md` |
-| Backoffice | `backoffice/src/features/dashboard/`, `orders/OrderActivityLog.tsx` |
+| Backoffice | `backoffice/src/features/dashboard/`, `orders/OrderActivityLog.tsx`, `staff/StaffPage.tsx` |
 
 ---
 
-## 8. Migrations to run
+## 9. Migrations to run
 
 ```powershell
 cd backend
@@ -177,7 +193,7 @@ Tenant migrations from today (if not yet applied):
 
 ---
 
-## 9. Mobile quick reference
+## 10. Mobile quick reference
 
 | Action | Endpoint |
 |--------|----------|
@@ -189,5 +205,6 @@ Tenant migrations from today (if not yet applied):
 | Kitchen queue | `GET /api/v1/kitchen/orders` |
 | Kitchen ack | `PATCH /api/v1/kitchen/orders/{id}/seen` |
 | Live updates | `ws://host/api/v1/realtime?token=...` |
+| Verify PIN | `POST /api/v1/auth/verify-pin` |
 
 **Money in JSON:** decimals (`20.5`, `41`, `4.1`, `45.1`) — not cents.
