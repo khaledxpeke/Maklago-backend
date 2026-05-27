@@ -1,6 +1,6 @@
 import type { OrderStatus } from '../db/tenant-client';
 import type { SerializableOrder } from '../services/orderJson';
-import { serializeOrderSlim } from '../services/orderJson';
+import { serializeOrderMobile } from '../services/orderJson';
 import { serializeOrderKitchen } from '../services/orderJsonKitchen';
 import type { PrismaClient } from '../db/tenant-client';
 import { broadcastStaffRealtime } from './broadcastStaffRealtime';
@@ -15,14 +15,17 @@ export async function emitOrderCreatedRealtime(
   tableBroadcasts?: TableBroadcast[],
 ): Promise<void> {
   const ts = new Date().toISOString();
-  const kitchenOrder = await serializeOrderKitchen(prisma, order);
+  const [staffOrder, kitchenOrder] = await Promise.all([
+    serializeOrderMobile(prisma, order),
+    serializeOrderKitchen(prisma, order),
+  ]);
 
   const messages: StaffRealtimeMessageV1[] = [
     {
       v: 1,
       type: 'order.created',
       orderId: order.id,
-      order: serializeOrderSlim(order),
+      order: staffOrder,
       ts,
     },
     {
@@ -56,7 +59,10 @@ export async function emitOrderUpdatedRealtime(
   tableBroadcasts?: TableBroadcast[],
 ): Promise<void> {
   const ts = new Date().toISOString();
-  const kitchenOrder = await serializeOrderKitchen(prisma, order);
+  const [staffOrder, kitchenOrder] = await Promise.all([
+    serializeOrderMobile(prisma, order),
+    serializeOrderKitchen(prisma, order),
+  ]);
 
   const messages: StaffRealtimeMessageV1[] = [
     {
@@ -64,7 +70,7 @@ export async function emitOrderUpdatedRealtime(
       type: 'order.updated',
       orderId: order.id,
       status: order.status,
-      order: serializeOrderSlim(order),
+      order: staffOrder,
       ts,
     },
     {

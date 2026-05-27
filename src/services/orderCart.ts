@@ -151,7 +151,7 @@ export async function buildOrderCartFromProducts(
     const unitPriceCents = Math.round(lineTotalCents / row.count);
     const taxBps = effectiveTaxBps(product.taxRateBps, defaultTaxBps);
     const lineTax = taxCentsFromSubtotal(lineTotalCents, taxBps);
-    subtotal += lineTotalCents;
+    subtotal += lineTotalCents - lineTax;
     taxTotal += lineTax;
 
     lineRows.push({

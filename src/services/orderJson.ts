@@ -366,7 +366,12 @@ function attachOrderShellMobile(
       ? {}
       : {
           tableId: order.tableId,
-          ...(order.table != null ? { tableNumber: order.table.tableNumber } : {}),
+          ...(order.table != null
+            ? {
+                tableNumber: order.table.tableNumber,
+                zoneName: order.table.zone?.name ?? null,
+              }
+            : {}),
         }),
     note: order.note ?? '',
     customerName: order.customerName ?? null,
@@ -376,6 +381,7 @@ function attachOrderShellMobile(
     subtotal: centsToMajor(order.subtotalCents),
     tva: centsToMajor(order.taxCents),
     total: centsToMajor(order.totalCents),
+    isChanged: order.cartRevision > 0,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
     products,
