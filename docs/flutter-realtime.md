@@ -149,7 +149,7 @@ Backoffice / generic: **`PATCH /api/v1/orders/{id}`** (same body, enriched **`or
 
 ## Kitchen display (REST)
 
-**`GET /api/v1/kitchen/orders`** — active tickets (**`confirmed`**, **`preparing`**), no prices.
+**`GET /api/v1/kitchen/orders`** — active tickets (**`confirmed`**, **`preparing`**) from the **last 24 hours** only. Paginated: **`page`** (default 1), **`limit`** (default 10, max 100). Response: **`{ orders, pagination }`**. No prices. Pair with WebSocket **`kitchen.order.created`** / **`kitchen.order.updated`** for live queue updates.
 
 **`GET /api/v1/kitchen/orders/{id}`** — one ticket.
 
@@ -259,7 +259,7 @@ Every message is a JSON object with **`v`: 1**.
 | Edit order cart     | REST      | `PATCH /api/v1/mobile/orders/{id}` |
 | Order on table      | REST      | `GET /api/v1/mobile/orders/by-table/{tableId}` |
 | Move dine-in table  | REST      | `PATCH /api/v1/orders/{id}/table` |
-| Kitchen ticket list | REST      | `GET /api/v1/kitchen/orders` |
+| Kitchen ticket list | REST      | `GET /api/v1/kitchen/orders?page=&limit=` (last 24h) |
 | Kitchen acknowledge | REST      | `PATCH /api/v1/kitchen/orders/{id}/seen` |
 | Live notifications  | WebSocket | `GET ws(s)://…/api/v1/realtime?token=…` |
 

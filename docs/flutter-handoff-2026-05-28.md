@@ -215,6 +215,29 @@ final detail = await api.get('/api/v1/mobile/orders/$orderId');
 
 Also listen for **`kitchen.order.updated`** on the **same socket** if you build kitchen UI — cashier Tables tab can ignore it.
 
+### Kitchen display (REST + WebSocket)
+
+**Initial load and “load more”:**
+
+```http
+GET /api/v1/kitchen/orders?page=1&limit=10
+→ {
+  "orders": [ /* KitchenOrder — no prices, isChanged, products[].name */ ],
+  "pagination": { "currentPage", "pageSize", "totalPages", "totalRecords" }
+}
+```
+
+- Only **`confirmed`** and **`preparing`** tickets **created in the last 24 hours** (rolling window).
+- Default **`limit=10`**, max **100** — same pagination shape as **`GET /mobile/orders`**.
+- On **`kitchen.order.created`** / **`kitchen.order.updated`**, merge or refetch page 1; use pagination for history scroll.
+
+**Acknowledge cart edits:**
+
+```http
+PATCH /api/v1/kitchen/orders/{id}/seen
+→ { "order": { ... isChanged: false ... } }
+```
+
 ### REST endpoints (Tables tab)
 
 **Initial floor plan (once per tab visit or on pull-to-refresh only):**
@@ -431,7 +454,7 @@ When printer is wired: send `printJob.escPosBase64` to ESC/POS and pulse drawer 
 | Status | PATCH | `/api/v1/orders/{id}/status` |
 | Move table | PATCH | `/api/v1/orders/{id}/table` |
 | Tables list | GET | `/api/v1/tables` |
-| Kitchen queue | GET | `/api/v1/kitchen/orders` |
+| Kitchen queue | GET | `/api/v1/kitchen/orders?page=1&limit=10` (last 24h, paginated) |
 | Shift summary | GET | `/api/v1/cash/shift/summary` |
 | Shift detailed | GET | `/api/v1/cash/shift/detailed` |
 | Close shift | POST | `/api/v1/cash/shift/close` |
@@ -445,8 +468,9 @@ When printer is wired: send `printJob.escPosBase64` to ESC/POS and pulse drawer 
 2. **HTTP client** — add `lang` header from app locale on every request.
 3. **PIN settings screen** — switch bound to `pin-mobile-enabled`; verify with `currentPin` when disabling.
 4. **Orders / history tab** — infinite scroll or page buttons using `pagination` from `GET /mobile/orders`.
-5. **Manager cash screen** — summary + detailed modals; close shift POST; stash `printJob` for future printer plugin.
-6. **Role gating** — hide cash + PIN management UI for `cashier`; show for `manager` and `owner`.
+5. **Kitchen KDS** — `GET /kitchen/orders` page 1 on open; WebSocket `kitchen.order.*` for live queue; infinite scroll via `pagination`.
+6. **Manager cash screen** — summary + detailed modals; close shift POST; stash `printJob` for future printer plugin.
+7. **Role gating** — hide cash + PIN management UI for `cashier`; show for `manager` and `owner`.
 
 ---
 

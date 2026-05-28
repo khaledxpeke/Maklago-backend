@@ -9,10 +9,18 @@ import {
   serializeOrderKitchen,
   serializeOrdersKitchen,
 } from '../../../services/orderJsonKitchen';
+import { paginationMeta, parseListPagination } from '../../../services/orderListQuery';
 import { TABLE_OCCUPYING_ORDER_STATUSES } from '../../../services/tableOccupancy';
 
 /** Active tickets for kitchen display (same as table-occupying lifecycle). */
 const KITCHEN_ORDER_STATUSES: OrderStatus[] = [...TABLE_OCCUPYING_ORDER_STATUSES];
+
+/** Kitchen list: rolling 24h window (orders older than this are excluded). */
+const KITCHEN_LIST_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+function kitchenListCreatedSince(): Date {
+  return new Date(Date.now() - KITCHEN_LIST_MAX_AGE_MS);
+}
 
 /** Kitchen display API — no prices; includes **`isChanged`** when cart was edited after kitchen last acknowledged. */
 export const kitchenOrdersRouter = Router();
@@ -22,17 +30,30 @@ kitchenOrdersRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     if (!req.tenant) return;
-    const take = Math.min(100, Math.max(1, Number(req.query.limit ?? 50)));
+    const { page, limit, skip } = parseListPagination(req.query as Record<string, unknown>);
+    const createdSince = kitchenListCreatedSince();
 
-    const rows = await req.tenant.prisma.order.findMany({
-      where: { status: { in: KITCHEN_ORDER_STATUSES } },
-      orderBy: [{ status: 'asc' }, { createdAt: 'asc' }],
-      take,
-      include: kitchenOrderInclude,
-    });
+    const where = {
+      status: { in: KITCHEN_ORDER_STATUSES },
+      createdAt: { gte: createdSince },
+    };
+
+    const [totalRecords, rows] = await Promise.all([
+      req.tenant.prisma.order.count({ where }),
+      req.tenant.prisma.order.findMany({
+        where,
+        orderBy: [{ status: 'asc' }, { createdAt: 'asc' }],
+        skip,
+        take: limit,
+        include: kitchenOrderInclude,
+      }),
+    ]);
 
     const orders = await serializeOrdersKitchen(req.tenant.prisma, rows);
-    res.json({ orders });
+    res.json({
+      orders,
+      pagination: paginationMeta(page, limit, totalRecords),
+    });
   }),
 );
 

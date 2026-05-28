@@ -1072,6 +1072,17 @@
           "pagination": { "$ref": "#/components/schemas/OrderListPagination" }
         }
       },
+      "KitchenOrderListResponse": {
+        "type": "object",
+        "required": ["orders", "pagination"],
+        "properties": {
+          "orders": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/KitchenOrder" }
+          },
+          "pagination": { "$ref": "#/components/schemas/OrderListPagination" }
+        }
+      },
       "StatsFilter": {
         "type": "string",
         "enum": ["today", "week", "month", "year", "custom"],
@@ -3752,30 +3763,27 @@
       "get": {
         "tags": ["Orders"],
         "summary": "Kitchen ticket queue",
-        "description": "Active **`confirmed`** and **`preparing`** orders for KDS. No prices. Includes **`isChanged`** when the cashier edited the cart.",
+        "description": "Active **`confirmed`** and **`preparing`** orders for KDS created within the **last 24 hours** (rolling window). Paginated like **`GET /api/v1/mobile/orders`** (default **10** per page). No prices. Includes **`isChanged`** when the cashier edited the cart. Use WebSocket **`kitchen.order.*`** for live updates; REST is initial load and pagination.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           { "$ref": "#/components/parameters/TenantHeaderOptional" },
           {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
             "name": "limit",
             "in": "query",
-            "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 100 }
+            "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 100 }
           }
         ],
         "responses": {
           "200": {
-            "description": "`{ orders: KitchenOrder[] }`",
+            "description": "`{ orders: KitchenOrder[], pagination }`",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "orders": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/KitchenOrder" }
-                    }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/KitchenOrderListResponse" }
               }
             }
           }

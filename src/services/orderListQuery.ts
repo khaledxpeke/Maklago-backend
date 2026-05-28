@@ -36,6 +36,19 @@ const orderTypes = ['dine_in', 'takeaway'] as const satisfies readonly OrderType
 
 const listFilters = ['all', 'today', 'week', 'month', 'custom'] as const;
 
+export function parseListPagination(query: Record<string, unknown>): {
+  page: number;
+  limit: number;
+  skip: number;
+} {
+  const page = Math.max(1, Number(typeof query.page === 'string' ? query.page : undefined) || 1);
+  const limit = Math.min(
+    100,
+    Math.max(1, Number(typeof query.limit === 'string' ? query.limit : undefined) || 10),
+  );
+  return { page, limit, skip: (page - 1) * limit };
+}
+
 export function paginationMeta(
   currentPage: number,
   pageSize: number,
@@ -48,11 +61,7 @@ export function paginationMeta(
 export function parseMobileOrderListQuery(
   query: Record<string, unknown>,
 ): { ok: true; value: ParsedMobileOrderListQuery } | { ok: false; message: string } {
-  const page = Math.max(1, Number(typeof query.page === 'string' ? query.page : undefined) || 1);
-  const limit = Math.min(
-    100,
-    Math.max(1, Number(typeof query.limit === 'string' ? query.limit : undefined) || 10),
-  );
+  const { page, limit } = parseListPagination(query);
 
   const filterRaw = typeof query.filter === 'string' ? query.filter.trim() : 'all';
   const filter = (listFilters as readonly string[]).includes(filterRaw)
