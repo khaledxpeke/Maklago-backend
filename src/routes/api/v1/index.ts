@@ -3,6 +3,7 @@ import { attachTenantFromStaffJwt } from '../../../middleware/attachTenantFromSt
 import { tenantResolve } from '../../../middleware/tenantResolve';
 import { activityLogsRouter } from './activityLogs';
 import { authRouter } from './auth';
+import { cashRouter } from './cash';
 import { catalogRouter } from './catalog';
 import { kitchenOrdersRouter } from './kitchenOrders';
 import { mobileOrdersRouter } from './mobileOrders';
@@ -32,4 +33,5 @@ apiV1Router.use('/tables', tablesRouter);
 apiV1Router.use('/table-zones', tableZonesRouter);
 apiV1Router.use('/sessions', sessionsRouter);
 apiV1Router.use('/stats', statsRouter);
+apiV1Router.use('/cash', cashRouter);
 apiV1Router.use('/settings', settingsRouter);

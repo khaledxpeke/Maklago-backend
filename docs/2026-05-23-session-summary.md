@@ -64,7 +64,7 @@ Summary of backend + backoffice work from today’s session.
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/api/v1/mobile/orders` | Slim list |
+| GET | `/api/v1/mobile/orders` | Paginated slim list (`page`, `limit`, `filter`, `search`) |
 | GET | `/api/v1/mobile/orders/:id` | Slim detail |
 | GET | `/api/v1/mobile/orders/by-table/:tableId` | Active ticket on table |
 | PATCH | `/api/v1/mobile/orders/:id` | Edit cart |
@@ -106,7 +106,7 @@ GET /api/v1/stats/statistics?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
 ```
 
 - Legacy-style stats adapted to maklaGo (revenue, status counts, payment breakdown, dine-in vs takeaway, top products, revenue over time, period comparison).
-- Amounts in **major currency units**; period boundaries use **Europe/Paris**.
+- Amounts in **major currency units**; period boundaries use **Africa/Tunis (Tunisia)**.
 - Legacy **`GET /api/v1/stats/summary`** kept for simple aggregates.
 
 ### Backoffice dashboard

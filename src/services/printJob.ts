@@ -69,6 +69,49 @@ export function buildCustomerReceiptJobs(args: {
   return [job];
 }
 
+/** Shift-close ticket for manager caisse (summary lines + totals). */
+export function buildShiftCloseReceipt(args: {
+  venueName: string;
+  closedAt: Date;
+  periodLabel: string;
+  lines: { commandNumber: number; reference: string; total: number }[];
+  totals: {
+    grandTotal: number;
+    cashTotal: number;
+    cardTotal: number;
+    orderCount: number;
+  };
+}): PrintJob {
+  const textLines: ReceiptLine[] = [
+    { text: args.venueName, bold: true, size: 'large' },
+    { text: 'SHIFT CLOSE', bold: true },
+    { text: args.periodLabel },
+    { text: args.closedAt.toISOString() },
+    { text: '---' },
+  ];
+  for (const line of args.lines) {
+    textLines.push({
+      text: `#${line.commandNumber} ${line.reference}  ${line.total.toFixed(2)}`,
+    });
+  }
+  textLines.push({ text: '---' });
+  textLines.push({ text: `Orders: ${args.totals.orderCount}` });
+  textLines.push({ text: `Cash: ${args.totals.cashTotal.toFixed(2)}` });
+  textLines.push({ text: `Card: ${args.totals.cardTotal.toFixed(2)}` });
+  textLines.push({
+    text: `TOTAL ${args.totals.grandTotal.toFixed(2)}`,
+    bold: true,
+    size: 'large',
+  });
+
+  return {
+    kind: 'customer_receipt',
+    title: 'Shift close',
+    lines: textLines,
+    escPosBase64: toEscPosBase64(textLines),
+  };
+}
+
 export function buildKitchenTicketJobs(args: {
   order: Order;
   lines: (OrderLine & { product: Pick<Product, 'name'> })[];

@@ -1,0 +1,15 @@
+{
+  "errors.unauthorized": "Non autorisé",
+  "errors.unauthorized_missing_header": "En-tête Authorization manquant ou invalide",
+  "errors.unauthorized_missing_token": "Jeton bearer manquant",
+  "errors.unauthorized_tenant_context": "Contexte tenant manquant — envoyez x-tenant-id ou utilisez un jeton staff valide",
+  "errors.unauthorized_invalid_token": "Jeton invalide ou expiré",
+  "errors.forbidden": "Accès refusé",
+  "errors.forbidden_tenant_mismatch": "Le jeton appartient à un autre restaurant",
+  "errors.not_found": "Introuvable",
+  "errors.validation_error": "Requête invalide",
+  "errors.internal_error": "Erreur interne du serveur",
+  "errors.invalid_credentials": "E-mail ou mot de passe incorrect",
+  "errors.invalid_current_password": "Mot de passe actuel incorrect",
+  "errors.password_unchanged": "Le nouveau mot de passe doit être différent de l'actuel"
+}

@@ -9,7 +9,22 @@ describe('health', () => {
   it('returns ok', async () => {
     const res = await request(app).get('/health');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ status: 'ok' });
+    expect(res.body).toEqual({ status: 'ok', lang: 'fr' });
+    expect(res.headers['content-language']).toBe('fr');
+  });
+
+  it('respects lang header', async () => {
+    const res = await request(app).get('/health').set('lang', 'en');
+    expect(res.body.lang).toBe('en');
+    expect(res.headers['content-language']).toBe('en');
+  });
+});
+
+describe('lang header on errors', () => {
+  it('returns localized unauthorized message', async () => {
+    const res = await request(app).get('/api/v1/auth/me').set('lang', 'ar');
+    expect(res.status).toBe(401);
+    expect(res.body.error.message).toMatch(/[\u0600-\u06FF]/);
   });
 });
 

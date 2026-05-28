@@ -3,7 +3,7 @@
   "info": {
     "title": "maklaGo API",
     "version": "1.0.0",
-    "description": "Restaurant POS backend. **Tenant**: optional header `x-tenant-id` (slug or registry UUID). With `Authorization: Bearer` staff JWT, the tenant is resolved from the token when the header is omitted. **`POST /api/v1/auth/login`** accepts optional `x-tenant-id` for tenant-scoped login; without it, the normalized email must exist in registry **`staff_login_directory`** (slugless directory login). **`GET /api/v1/orders`** returns enriched catalog labels on lines (dashboard); **`GET /api/v1/mobile/orders`** uses a slimmer shell than **`POST /orders`**: no **`staff`**, no nested **`table`** object; dine-in adds root **`tableId`** + **`tableNumber`**. Lines add **`products[].name`**, **`extras[].name`**, optional **`extras[].typeId`**, optional **`compositionSnapshot`**. **`POST /api/v1/orders`** accepts **`products`** snapshots (`categoryId`, `id`, `count`, **`price`**, **`extras`**) for analytics; **`subtotal`**, **`tva`**, **`total`** use major currency units in JSON (e.g. 2.5); DB keeps cents internally (must match server); new orders start as **`waiting`**. **Platform** routes use `x-platform-key`. Errors: `{ \"error\": { \"code\", \"message\", \"details?\" } }`."
+    "description": "Restaurant POS backend. **Tenant**: optional header `x-tenant-id` (slug or registry UUID). With `Authorization: Bearer` staff JWT, the tenant is resolved from the token when the header is omitted. **Language**: optional header **`lang`** (`fr`, `en`, `ar`; default **`fr`**) on every request — error messages and localized strings follow it; response includes **`Content-Language`**. **`POST /api/v1/auth/login`** accepts optional `x-tenant-id` for tenant-scoped login; without it, the normalized email must exist in registry **`staff_login_directory`** (slugless directory login). **`GET /api/v1/orders`** returns enriched catalog labels on lines (dashboard); **`GET /api/v1/mobile/orders`** uses a slimmer shell than **`POST /orders`**: no **`staff`**, no nested **`table`** object; dine-in adds root **`tableId`** + **`tableNumber`**. Lines add **`products[].name`**, **`extras[].name`**, optional **`extras[].typeId`**, optional **`compositionSnapshot`**. **`POST /api/v1/orders`** accepts **`products`** snapshots (`categoryId`, `id`, `count`, **`price`**, **`extras`**) for analytics; **`subtotal`**, **`tva`**, **`total`** use major currency units in JSON (e.g. 2.5); DB keeps cents internally (must match server); new orders start as **`waiting`**. **Platform** routes use `x-platform-key`. Errors: `{ \"error\": { \"code\", \"message\", \"details?\" } }`."
   },
   "servers": [
     {
@@ -35,6 +35,9 @@
     },
     {
       "name": "Sessions"
+    },
+    {
+      "name": "Cash"
     },
     {
       "name": "Stats"
@@ -216,6 +219,36 @@
             "pattern": "^\\d{4}$",
             "description": "Required when disabling the gate while a PIN is set."
           }
+        }
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "required": ["currentPassword", "newPassword", "confirmPassword"],
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Current account password."
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 200,
+            "description": "New password (min 8 characters)."
+          },
+          "confirmPassword": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 200,
+            "description": "Must match **newPassword**."
+          }
+        }
+      },
+      "ChangePasswordResponse": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean", "enum": [true] }
         }
       },
       "CreateOrderRequest": {
@@ -1018,10 +1051,165 @@
           }
         }
       },
+      "OrderListPagination": {
+        "type": "object",
+        "required": ["currentPage", "pageSize", "totalPages", "totalRecords"],
+        "properties": {
+          "currentPage": { "type": "integer", "minimum": 1 },
+          "pageSize": { "type": "integer", "minimum": 1 },
+          "totalPages": { "type": "integer", "minimum": 0 },
+          "totalRecords": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "MobileOrderListResponse": {
+        "type": "object",
+        "required": ["orders", "pagination"],
+        "properties": {
+          "orders": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OrderSerialized" }
+          },
+          "pagination": { "$ref": "#/components/schemas/OrderListPagination" }
+        }
+      },
       "StatsFilter": {
         "type": "string",
         "enum": ["today", "week", "month", "year", "custom"],
         "default": "today"
+      },
+      "CashShiftFilter": {
+        "type": "string",
+        "enum": ["today", "week", "month", "custom"],
+        "default": "today",
+        "description": "Shift period. Use **`custom`** with **`startDate`** / **`endDate`** to close a previous day (e.g. yesterday — set both to the same `YYYY-MM-DD`). Boundaries use **Africa/Tunis**."
+      },
+      "CashShiftPeriod": {
+        "type": "object",
+        "required": ["filter", "start", "end"],
+        "properties": {
+          "filter": { "$ref": "#/components/schemas/CashShiftFilter" },
+          "start": { "type": "string", "format": "date-time", "description": "Inclusive period start (UTC instant)." },
+          "end": { "type": "string", "format": "date-time", "description": "Inclusive period end (UTC instant)." }
+        }
+      },
+      "CashShiftSummaryLine": {
+        "type": "object",
+        "required": ["id", "commandNumber", "reference", "status", "paymentMethod", "orderType", "total", "createdAt"],
+        "properties": {
+          "id": { "type": "string" },
+          "commandNumber": { "type": "integer" },
+          "reference": { "type": "string", "description": "8-char ticket reference." },
+          "status": { "$ref": "#/components/schemas/OrderStatus" },
+          "paymentMethod": { "type": "string", "enum": ["unpaid", "cash", "card"] },
+          "orderType": { "type": "string", "enum": ["dine_in", "takeaway"] },
+          "total": { "type": "number", "description": "Major currency units (e.g. 12.5 TND)." },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CashShiftTotals": {
+        "type": "object",
+        "required": ["orderCount", "completedCount", "cashTotal", "cardTotal", "unpaidTotal", "subtotal", "tva", "grandTotal"],
+        "description": "Grand total and payment split count **completed** orders only. Amounts in major currency units.",
+        "properties": {
+          "orderCount": { "type": "integer", "description": "Non-canceled active tickets in period (confirmed + preparing + completed)." },
+          "completedCount": { "type": "integer" },
+          "cashTotal": { "type": "number" },
+          "cardTotal": { "type": "number" },
+          "unpaidTotal": { "type": "number" },
+          "subtotal": { "type": "number" },
+          "tva": { "type": "number" },
+          "grandTotal": { "type": "number" }
+        }
+      },
+      "CashShiftSummaryReport": {
+        "type": "object",
+        "required": ["period", "orders", "totals"],
+        "properties": {
+          "period": { "$ref": "#/components/schemas/CashShiftPeriod" },
+          "orders": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CashShiftSummaryLine" }
+          },
+          "totals": { "$ref": "#/components/schemas/CashShiftTotals" }
+        }
+      },
+      "CashShiftDetailedReport": {
+        "allOf": [
+          { "$ref": "#/components/schemas/CashShiftSummaryReport" },
+          {
+            "type": "object",
+            "required": ["ordersDetailed"],
+            "properties": {
+              "ordersDetailed": {
+                "type": "array",
+                "description": "Same shape as **`GET /api/v1/orders`** enriched list items.",
+                "items": { "$ref": "#/components/schemas/OrderSerializedEnriched" }
+              }
+            }
+          }
+        ]
+      },
+      "CloseShiftRequest": {
+        "type": "object",
+        "properties": {
+          "filter": { "$ref": "#/components/schemas/CashShiftFilter" },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Required for `filter=custom`. Pick a single shift day: use the same value for **`endDate`** (e.g. both `2026-05-22` for yesterday)."
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Required for `filter=custom`. Same as **`startDate`** for one-day shift close."
+          },
+          "note": { "type": "string", "maxLength": 2000 }
+        }
+      },
+      "PrintJob": {
+        "type": "object",
+        "required": ["kind", "title", "lines", "escPosBase64"],
+        "properties": {
+          "kind": { "type": "string", "enum": ["customer_receipt", "kitchen_ticket"] },
+          "title": { "type": "string" },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": { "type": "string" },
+                "bold": { "type": "boolean" },
+                "size": { "type": "string", "enum": ["normal", "large"] }
+              }
+            }
+          },
+          "escPosBase64": { "type": "string", "nullable": true, "description": "Raw ESC/POS for future printer integration." }
+        }
+      },
+      "ShiftCloseHardwareStub": {
+        "type": "object",
+        "required": ["print", "openDrawer", "message"],
+        "properties": {
+          "print": { "type": "string", "nullable": true, "description": "Null until printer is configured." },
+          "openDrawer": { "type": "boolean", "description": "False until cash drawer is wired." },
+          "message": { "type": "string" }
+        }
+      },
+      "CloseShiftResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/CashShiftSummaryReport" },
+          {
+            "type": "object",
+            "required": ["closedAt", "closedBy", "note", "hardware", "printJob"],
+            "properties": {
+              "closedAt": { "type": "string", "format": "date-time" },
+              "closedBy": { "type": "string", "description": "Staff id who closed the shift." },
+              "note": { "type": "string", "nullable": true },
+              "hardware": { "$ref": "#/components/schemas/ShiftCloseHardwareStub" },
+              "printJob": { "$ref": "#/components/schemas/PrintJob" }
+            }
+          }
+        ]
       },
       "OrderStatusCounts": {
         "type": "object",
@@ -1035,7 +1223,7 @@
       },
       "StatisticsResponse": {
         "type": "object",
-        "description": "Dashboard statistics (amounts in major currency units, e.g. 2.5 TND). Period boundaries use Europe/Paris.",
+        "description": "Dashboard statistics (amounts in major currency units, e.g. 2.5 TND). Period boundaries use Africa/Tunis.",
         "properties": {
           "totalRevenue": { "type": "number" },
           "completedOrders": { "type": "integer", "description": "Revenue-eligible order count (non-canceled) in period" },
@@ -1186,6 +1374,35 @@
           "type": "string"
         },
         "description": "Tenant slug (e.g. demo) or registry tenant UUID. Optional when the request includes a valid staff Bearer JWT—the server resolves tenant from the token."
+      },
+      "LangHeader": {
+        "name": "lang",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "enum": ["fr", "en", "ar"],
+          "default": "fr"
+        },
+        "description": "Preferred language for error messages and localized API strings. Also accepted as query `lang`. Unsupported values fall back to `fr`. Response header `Content-Language` echoes the resolved language."
+      },
+      "CashShiftFilterQuery": {
+        "name": "filter",
+        "in": "query",
+        "schema": { "$ref": "#/components/schemas/CashShiftFilter" },
+        "description": "Shift window. **`custom`** + dates closes a specific day (e.g. forgotten yesterday shift)."
+      },
+      "CashShiftStartDateQuery": {
+        "name": "startDate",
+        "in": "query",
+        "schema": { "type": "string", "format": "date" },
+        "description": "With **`filter=custom`**: inclusive start (`YYYY-MM-DD`, Africa/Tunis). For a single shift day, set **`startDate`** and **`endDate`** to the same value."
+      },
+      "CashShiftEndDateQuery": {
+        "name": "endDate",
+        "in": "query",
+        "schema": { "type": "string", "format": "date" },
+        "description": "With **`filter=custom`**: inclusive end (`YYYY-MM-DD`, Africa/Tunis). Same as **`startDate`** for one-day shift."
       }
     }
   },
@@ -1725,6 +1942,52 @@
             "$ref": "#/components/parameters/TenantHeaderOptional"
           }
         ]
+      }
+    },
+    "/api/v1/auth/me/password": {
+      "patch": {
+        "tags": ["Auth"],
+        "summary": "Change own password",
+        "description": "Any authenticated staff member (owner, manager, cashier) may change **their own** password. Requires current password, new password, and confirmation. Min 8 characters for the new password.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/LangHeader" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ChangePasswordRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ChangePasswordResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "`validation_error` (mismatch) or `password_unchanged`",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "401": {
+            "description": "`invalid_current_password`",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/auth/me/pin-mobile-enabled": {
@@ -3295,41 +3558,75 @@
     "/api/v1/mobile/orders": {
       "get": {
         "tags": ["Orders"],
-        "summary": "List orders (mobile slim)",
-        "description": "Slim shell: no **`staff`** / nested **`table`**; dine-in includes **`tableId`** + **`tableNumber`**. Lines include **`name`**, **`extras[].name`**, optional **`extras[].typeId`**. Prefer over **`GET /orders`** on handset/tablet.",
+        "summary": "List orders (mobile slim, paginated)",
+        "description": "Paginated order history for mobile (like legacy getHistory). Default **10** per page. Filter by **`filter`** (`all`, `today`, `week`, `month`, `custom` with **`startDate`** / **`endDate`**), **`status`**, **`orderType`**, **`tableId`**, or **`search`** (ticket number, reference, customer name). Period boundaries use **Africa/Tunis**.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           { "$ref": "#/components/parameters/TenantHeaderOptional" },
           {
-            "name": "status",
+            "name": "page",
             "in": "query",
-            "schema": { "$ref": "#/components/schemas/OrderStatus" }
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
           },
           {
             "name": "limit",
             "in": "query",
             "schema": {
               "type": "integer",
-              "default": 50,
+              "default": 10,
               "minimum": 1,
               "maximum": 100
             }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["all", "today", "week", "month", "custom"],
+              "default": "all"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "With `filter=custom` (YYYY-MM-DD, Africa/Tunis)."
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "With `filter=custom` (YYYY-MM-DD, Africa/Tunis)."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/OrderStatus" }
+          },
+          {
+            "name": "orderType",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["dine_in", "takeaway"] }
+          },
+          {
+            "name": "tableId",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Ticket number, reference, or customer name."
           }
         ],
         "responses": {
           "200": {
-            "description": "`{ orders: OrderSerialized[] }`",
+            "description": "`{ orders, pagination }`",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "orders": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/OrderSerialized" }
-                    }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/MobileOrderListResponse" }
               }
             }
           },
@@ -4112,11 +4409,114 @@
         }
       }
     },
+    "/api/v1/cash/shift/summary": {
+      "get": {
+        "tags": ["Cash"],
+        "summary": "Shift summary (manager)",
+        "description": "Ticket **#**, **reference**, and **total** per order, plus shift totals. **Manager/owner only.** Use **`filter=custom`** with **`startDate`** / **`endDate`** (same day) to close a previous shift (e.g. yesterday). Grand total = **completed** orders only. Period boundaries: **Africa/Tunis**.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/LangHeader" },
+          { "$ref": "#/components/parameters/CashShiftFilterQuery" },
+          { "$ref": "#/components/parameters/CashShiftStartDateQuery" },
+          { "$ref": "#/components/parameters/CashShiftEndDateQuery" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shift summary report",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CashShiftSummaryReport" }
+              }
+            }
+          },
+          "403": {
+            "description": "Manager/owner only",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash/shift/detailed": {
+      "get": {
+        "tags": ["Cash"],
+        "summary": "Shift detailed (manager)",
+        "description": "Full enriched orders (products, extras, prices) for the shift period + totals. **Manager/owner only.** Supports **`filter=custom`** + date pick for past shifts.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/LangHeader" },
+          { "$ref": "#/components/parameters/CashShiftFilterQuery" },
+          { "$ref": "#/components/parameters/CashShiftStartDateQuery" },
+          { "$ref": "#/components/parameters/CashShiftEndDateQuery" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shift detailed report",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CashShiftDetailedReport" }
+              }
+            }
+          },
+          "403": {
+            "description": "Manager/owner only",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash/shift/close": {
+      "post": {
+        "tags": ["Cash"],
+        "summary": "Close shift (manager)",
+        "description": "Closes the shift for the selected period and returns summary + **`printJob`** (ESC/POS). **`hardware.print`** is null and **`hardware.openDrawer`** is false until printer/drawer are configured. Example body for yesterday: `{ \"filter\": \"custom\", \"startDate\": \"2026-05-22\", \"endDate\": \"2026-05-22\" }`.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "$ref": "#/components/parameters/LangHeader" }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CloseShiftRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Shift closed + print stub",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CloseShiftResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "Manager/owner only",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stats/statistics": {
       "get": {
         "tags": ["Stats"],
         "summary": "Dashboard statistics",
-        "description": "Legacy-style POS statistics adapted to maklaGo orders. **`filter`**: `today` (default), `week`, `month`, `year`, or `custom`. Optional **`startDate`** / **`endDate`** (`YYYY-MM-DD`, Europe/Paris day boundaries) override the filter range. Revenue includes non-canceled orders (`waiting`, `confirmed`, `preparing`, `completed`). Amounts in major currency units.",
+        "description": "Legacy-style POS statistics adapted to maklaGo orders. **`filter`**: `today` (default), `week`, `month`, `year`, or `custom`. Optional **`startDate`** / **`endDate`** (`YYYY-MM-DD`, Africa/Tunis day boundaries) override the filter range. Revenue includes non-canceled orders (`waiting`, `confirmed`, `preparing`, `completed`). Amounts in major currency units.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           { "$ref": "#/components/parameters/TenantHeaderOptional" },
@@ -4129,13 +4529,13 @@
             "name": "startDate",
             "in": "query",
             "schema": { "type": "string", "format": "date" },
-            "description": "Inclusive start (Paris timezone)"
+            "description": "Inclusive start (Africa/Tunis timezone)"
           },
           {
             "name": "endDate",
             "in": "query",
             "schema": { "type": "string", "format": "date" },
-            "description": "Inclusive end (Paris timezone)"
+            "description": "Inclusive end (Africa/Tunis timezone)"
           }
         ],
         "responses": {

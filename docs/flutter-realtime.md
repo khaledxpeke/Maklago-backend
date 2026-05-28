@@ -6,9 +6,9 @@ The staff realtime channel is **receive-only**. Creating orders, changing status
 
 1. **Login** — `POST /api/v1/auth/login` with JSON `{ "email", "password" }`.
    - Optional header **`x-tenant-id`**: tenant slug or registry UUID (omit if the staff email exists in registry **`staff_login_directory`**).
-2. From the response, keep **`accessToken`** (staff JWT).
+   - Optional header **`lang`**: `fr` (default), `en`, or `ar` — error messages follow this on **every** API call. Response includes **`Content-Language`**.
 
-Use **`Authorization: Bearer <accessToken>`** on all protected routes. After login, **`x-tenant-id`** is optional (tenant is taken from the JWT); you may still send it for explicit routing.
+Use **`Authorization: Bearer <accessToken>`** on all protected routes. After login, **`x-tenant-id`** is optional (tenant is taken from the JWT); you may still send it for explicit routing. Send **`lang`** on every request from the app language setting.
 
 Base URL examples: `http://localhost:3000`, `https://api.example.com` (no trailing slash).
 
@@ -109,6 +109,41 @@ GET /api/v1/mobile/orders/by-table/{tableId}
 ```
 
 Returns `{ "order": null }` or `{ "order": { ... } }` for the active dine-in ticket (**confirmed** / **preparing**).
+
+**Order history (paginated list):**
+
+```http
+GET /api/v1/mobile/orders?page=1&limit=10&filter=today
+GET /api/v1/mobile/orders?page=2&limit=20&filter=custom&startDate=2026-05-01&endDate=2026-05-23
+GET /api/v1/mobile/orders?status=completed&search=42
+```
+
+Query params:
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| **`page`** | `1` | Page number (1-based). |
+| **`limit`** | `10` | Page size (max 100). |
+| **`filter`** | `all` | `all`, `today`, `week`, `month`, or `custom` (Africa/Tunis). |
+| **`startDate`** / **`endDate`** | — | With `filter=custom` (`YYYY-MM-DD`). |
+| **`status`** | — | `confirmed`, `preparing`, `completed`, `canceled`, etc. |
+| **`orderType`** | — | `dine_in` or `takeaway`. |
+| **`tableId`** | — | Dine-in orders for one table. |
+| **`search`** | — | Ticket number, reference, or customer name. |
+
+Response:
+
+```json
+{
+  "orders": [ /* slim mobile orders */ ],
+  "pagination": {
+    "currentPage": 1,
+    "pageSize": 10,
+    "totalPages": 5,
+    "totalRecords": 42
+  }
+}
+```
 
 Backoffice / generic: **`PATCH /api/v1/orders/{id}`** (same body, enriched **`order`** in response).
 

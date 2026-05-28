@@ -1,4 +1,5 @@
 import type { OrderStatus, PrismaClient } from '../db/tenant-client';
+import { APP_TIMEZONE } from '../config/timezone';
 import { centsToMajor } from '../http/money';
 
 export type StatsFilter = 'today' | 'week' | 'month' | 'year' | 'custom';
@@ -13,7 +14,7 @@ export const REVENUE_ORDER_STATUSES: OrderStatus[] = [
   'completed',
 ];
 
-const STATS_TIMEZONE = 'Europe/Paris';
+const STATS_TIMEZONE = APP_TIMEZONE;
 
 export type StatsPeriod = {
   current: { start: Date; end: Date };
@@ -205,6 +206,17 @@ async function resolvePeriodWithSql(
 
   // custom without dates — fall back to today
   return resolvePeriodWithSql(prisma, 'today');
+}
+
+/** Inclusive createdAt bounds for list filters (Tunisia / Africa/Tunis day boundaries). */
+export async function resolveStatsPeriodBounds(
+  prisma: PrismaClient,
+  filter: StatsFilter,
+  startDate?: string,
+  endDate?: string,
+): Promise<{ start: Date; end: Date }> {
+  const row = await resolvePeriodWithSql(prisma, filter, startDate, endDate);
+  return { start: row.current_start, end: row.current_end };
 }
 
 export async function getStatistics(

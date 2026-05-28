@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import type { OrderStatus } from '../../../db/tenant-client';
 import { asyncHandler } from '../../../http/asyncHandler';
 import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
@@ -17,19 +16,15 @@ import {
   replaceOrderCart,
 } from '../../../services/orderCart';
 import { TABLE_OCCUPYING_ORDER_STATUSES } from '../../../services/tableOccupancy';
-import { tenantEntityIdSchema } from '../../../services/publicId';
 import { emitOrderUpdatedRealtime } from '../../../realtime/emitOrderRealtime';
 import { editOrderSchema, sendOrderCartErrors } from './orders';
+import {
+  buildMobileOrderListWhere,
+  paginationMeta,
+  parseMobileOrderListQuery,
+} from '../../../services/orderListQuery';
 
-/** Same lifecycle filters as `GET /api/v1/orders`. */
-const orderStatuses = [
-  'waiting',
-  'confirmed',
-  'preparing',
-  'completed',
-  'canceled',
-] as const;
-
+/** Mobile lists omit **`staff`** and nested **`table`**; dine-in adds root **`tableId`** + **`tableNumber`**. Lines add **`name`**, **`extras[].name`**, **`extras[].typeId`**. */
 function sendEditOrderErrors(res: Parameters<typeof sendError>[0], e: unknown): boolean {
   if (sendOrderCartErrors(res, e)) return true;
   if (e instanceof OrderNotFoundError) {
@@ -45,7 +40,6 @@ function sendEditOrderErrors(res: Parameters<typeof sendError>[0], e: unknown): 
   return false;
 }
 
-/** Mobile lists omit **`staff`** and nested **`table`**; dine-in adds root **`tableId`** + **`tableNumber`**. Lines add **`name`**, **`extras[].name`**, **`extras[].typeId`**. */
 export const mobileOrdersRouter = Router();
 mobileOrdersRouter.use(requireStaff);
 
@@ -53,40 +47,32 @@ mobileOrdersRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     if (!req.tenant) return;
-    const statusRaw = typeof req.query.status === 'string' ? req.query.status : undefined;
-    const status =
-      statusRaw && orderStatuses.includes(statusRaw as (typeof orderStatuses)[number])
-        ? (statusRaw as OrderStatus)
-        : undefined;
-    const tableIdRaw = typeof req.query.tableId === 'string' ? req.query.tableId : undefined;
-    const tableIdParsed = tableIdRaw
-      ? tenantEntityIdSchema.safeParse(tableIdRaw)
-      : null;
-    if (tableIdRaw && !tableIdParsed?.success) {
-      sendError(res, 400, 'validation_error', 'Invalid tableId');
+
+    const parsed = parseMobileOrderListQuery(req.query as Record<string, unknown>);
+    if (!parsed.ok) {
+      sendError(res, 400, 'validation_error', parsed.message);
       return;
     }
-    const take = Math.min(100, Math.max(1, Number(req.query.limit ?? 50)));
+    const q = parsed.value;
 
-    const where: {
-      status?: OrderStatus;
-      tableId?: string;
-      orderType?: 'dine_in';
-    } = {};
-    if (status) where.status = status;
-    if (tableIdParsed?.success) {
-      where.tableId = tableIdParsed.data;
-      where.orderType = 'dine_in';
-    }
+    const where = await buildMobileOrderListWhere(req.tenant.prisma, q);
 
-    const rows = await req.tenant.prisma.order.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take,
-      include: orderDetailInclude,
-    });
+    const [totalRecords, rows] = await Promise.all([
+      req.tenant.prisma.order.count({ where }),
+      req.tenant.prisma.order.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: q.skip,
+        take: q.limit,
+        include: orderDetailInclude,
+      }),
+    ]);
+
     const orders = await serializeOrdersMobile(req.tenant.prisma, rows);
-    res.json({ orders });
+    res.json({
+      orders,
+      pagination: paginationMeta(q.page, q.limit, totalRecords),
+    });
   }),
 );
 

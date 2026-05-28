@@ -6,7 +6,7 @@ import { env } from '../../../config/env';
 import { getRegistryClient } from '../../../db/registry';
 import { getTenantPrisma } from '../../../db/tenantPool';
 import { asyncHandler } from '../../../http/asyncHandler';
-import { sendError } from '../../../http/errorResponse';
+import { sendError, sendErrorFromReq } from '../../../http/errorResponse';
 import { requireStaff } from '../../../middleware/requireStaff';
 import { normalizeStaffLoginEmail } from '../../../services/staffLoginDirectory';
 
@@ -18,6 +18,17 @@ const patchPinMobileSchema = z.object({
   pinMobileEnabled: z.boolean(),
   currentPin: z.string().regex(/^\d{4}$/).optional(),
 });
+
+const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1),
+    newPassword: z.string().min(8).max(200),
+    confirmPassword: z.string().min(8).max(200),
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, {
+    message: 'New password and confirmation do not match',
+    path: ['confirmPassword'],
+  });
 
 /** PIN flags: `hasPin` = stored; `requiresMobilePin` = mobile should verify (respects per-user gate toggle). */
 function staffAuthPinFields(staff: {
@@ -69,7 +80,7 @@ authRouter.post(
         where: { emailNormalized: emailNorm },
       });
       if (!dir) {
-        sendError(res, 401, 'invalid_credentials', 'Invalid email or password');
+        sendErrorFromReq(req, res, 401, 'invalid_credentials', 'errors.invalid_credentials');
         return;
       }
       dirRow = { staffId: dir.staffId, tenantId: dir.tenantId };
@@ -77,7 +88,7 @@ authRouter.post(
         where: { id: dir.tenantId },
       });
       if (!tenantRow) {
-        sendError(res, 401, 'invalid_credentials', 'Invalid email or password');
+        sendErrorFromReq(req, res, 401, 'invalid_credentials', 'errors.invalid_credentials');
         return;
       }
       if (!tenantRow.isActive) {
@@ -99,18 +110,18 @@ authRouter.post(
     });
 
     if (!staff || !staff.isActive) {
-      sendError(res, 401, 'invalid_credentials', 'Invalid email or password');
+      sendErrorFromReq(req, res, 401, 'invalid_credentials', 'errors.invalid_credentials');
       return;
     }
 
     if (dirRow && (staff.id !== dirRow.staffId || tenantId !== dirRow.tenantId)) {
-      sendError(res, 401, 'invalid_credentials', 'Invalid email or password');
+      sendErrorFromReq(req, res, 401, 'invalid_credentials', 'errors.invalid_credentials');
       return;
     }
 
     const ok = await bcrypt.compare(password, staff.passwordHash);
     if (!ok) {
-      sendError(res, 401, 'invalid_credentials', 'Invalid email or password');
+      sendErrorFromReq(req, res, 401, 'invalid_credentials', 'errors.invalid_credentials');
       return;
     }
 
@@ -162,6 +173,48 @@ authRouter.get(
         ...staffAuthPinFields(staff),
       },
     });
+  }),
+);
+
+authRouter.patch(
+  '/me/password',
+  requireStaff,
+  asyncHandler(async (req, res) => {
+    const parsed = changePasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendError(res, 400, 'validation_error', 'Invalid body', parsed.error.flatten());
+      return;
+    }
+    if (!req.tenant || !req.staff) {
+      sendError(res, 500, 'internal_error', 'Context missing');
+      return;
+    }
+
+    const staff = await req.tenant.prisma.staff.findUnique({ where: { id: req.staff.id } });
+    if (!staff || !staff.isActive) {
+      sendError(res, 404, 'not_found', 'Staff not found');
+      return;
+    }
+
+    const currentOk = await bcrypt.compare(parsed.data.currentPassword, staff.passwordHash);
+    if (!currentOk) {
+      sendErrorFromReq(req, res, 401, 'invalid_current_password', 'errors.invalid_current_password');
+      return;
+    }
+
+    const sameAsCurrent = await bcrypt.compare(parsed.data.newPassword, staff.passwordHash);
+    if (sameAsCurrent) {
+      sendErrorFromReq(req, res, 400, 'password_unchanged', 'errors.password_unchanged');
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(parsed.data.newPassword, env.bcryptRounds);
+    await req.tenant.prisma.staff.update({
+      where: { id: staff.id },
+      data: { passwordHash },
+    });
+
+    res.json({ ok: true });
   }),
 );
 

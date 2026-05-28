@@ -117,6 +117,29 @@ paths:
         - $ref: '#/components/parameters/TenantHeaderOptional'
       responses:
         '200': { description: Staff profile }
+  /api/v1/auth/me/password:
+    patch:
+      summary: Change own password
+      description: Any staff role. Body currentPassword, newPassword, confirmPassword (min 8 chars, must match).
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+        - $ref: '#/components/parameters/LangHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword, confirmPassword]
+              properties:
+                currentPassword: { type: string }
+                newPassword: { type: string, minLength: 8, maxLength: 200 }
+                confirmPassword: { type: string, minLength: 8, maxLength: 200 }
+      responses:
+        '200': { description: '{ ok: true }' }
+        '400': { description: validation_error | password_unchanged }
+        '401': { description: invalid_current_password }
   /api/v1/auth/me/pin-mobile-enabled:
     patch:
       summary: Toggle mobile PIN gate
@@ -410,6 +433,69 @@ paths:
         - $ref: '#/components/parameters/TenantHeaderOptional'
       responses:
         '200': { description: closed session + summary }
+  /api/v1/cash/shift/summary:
+    get:
+      summary: Shift summary (manager/owner)
+      description: |
+        Ticket #, reference, total per order + shift totals. Grand total = completed orders only.
+        Use filter=custom with startDate and endDate (same YYYY-MM-DD) to close a previous day (Africa/Tunis).
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+        - $ref: '#/components/parameters/LangHeader'
+        - name: filter
+          in: query
+          schema: { type: string, enum: [today, week, month, custom], default: today }
+        - name: startDate
+          in: query
+          schema: { type: string, format: date }
+          description: With filter=custom — same as endDate for single shift day
+        - name: endDate
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200': { description: CashShiftSummaryReport }
+        '403': { description: Manager/owner only }
+  /api/v1/cash/shift/detailed:
+    get:
+      summary: Shift detailed (manager/owner)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+        - $ref: '#/components/parameters/LangHeader'
+        - name: filter
+          in: query
+          schema: { type: string, enum: [today, week, month, custom], default: today }
+        - name: startDate
+          in: query
+          schema: { type: string, format: date }
+        - name: endDate
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200': { description: CashShiftDetailedReport (ordersDetailed enriched) }
+        '403': { description: Manager/owner only }
+  /api/v1/cash/shift/close:
+    post:
+      summary: Close shift (manager/owner)
+      description: Returns summary, printJob (ESC/POS), hardware stub (print/drawer disabled until configured).
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+        - $ref: '#/components/parameters/LangHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filter: { type: string, enum: [today, week, month, custom] }
+                startDate: { type: string, format: date, description: 'Same as endDate for one day, e.g. yesterday' }
+                endDate: { type: string, format: date }
+                note: { type: string, maxLength: 2000 }
+      responses:
+        '200': { description: CloseShiftResponse }
+        '403': { description: Manager/owner only }
   /api/v1/stats/summary:
     get:
       security: [{ BearerAuth: [] }]
@@ -439,6 +525,12 @@ components:
       required: false
       schema: { type: string }
       description: Tenant slug or registry UUID; optional when Bearer staff JWT is sent (tenant from token).
+    LangHeader:
+      name: lang
+      in: header
+      required: false
+      schema: { type: string, enum: [fr, en, ar], default: fr }
+      description: Response language (fr default). Also query lang.
   securitySchemes:
     BearerAuth:
       type: http

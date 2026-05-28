@@ -1,0 +1,15 @@
+{
+  "errors.unauthorized": "غير مصرح",
+  "errors.unauthorized_missing_header": "رأس Authorization مفقود أو غير صالح",
+  "errors.unauthorized_missing_token": "رمز bearer مفقود",
+  "errors.unauthorized_tenant_context": "سياق المطعم مفقود — أرسل x-tenant-id أو استخدم رمز staff صالح",
+  "errors.unauthorized_invalid_token": "رمز غير صالح أو منتهي الصلاحية",
+  "errors.forbidden": "ممنوع",
+  "errors.forbidden_tenant_mismatch": "الرمز يخص مطعماً آخر",
+  "errors.not_found": "غير موجود",
+  "errors.validation_error": "طلب غير صالح",
+  "errors.internal_error": "خطأ داخلي في الخادم",
+  "errors.invalid_credentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+  "errors.invalid_current_password": "كلمة المرور الحالية غير صحيحة",
+  "errors.password_unchanged": "يجب أن تكون كلمة المرور الجديدة مختلفة عن الحالية"
+}

@@ -1,0 +1,15 @@
+{
+  "errors.unauthorized": "Unauthorized",
+  "errors.unauthorized_missing_header": "Missing or invalid Authorization header",
+  "errors.unauthorized_missing_token": "Missing bearer token",
+  "errors.unauthorized_tenant_context": "Tenant context missing — send x-tenant-id or use a staff token issued for this API",
+  "errors.unauthorized_invalid_token": "Invalid or expired token",
+  "errors.forbidden": "Forbidden",
+  "errors.forbidden_tenant_mismatch": "Token is for a different tenant",
+  "errors.not_found": "Not found",
+  "errors.validation_error": "Invalid request",
+  "errors.internal_error": "Internal server error",
+  "errors.invalid_credentials": "Invalid email or password",
+  "errors.invalid_current_password": "Current password is incorrect",
+  "errors.password_unchanged": "New password must be different from the current password"
+}
