@@ -209,3 +209,27 @@ export async function logOrderTableChanged(
     },
   });
 }
+
+export async function logOrderTypeChanged(
+  db: Db,
+  staffId: string,
+  orderId: string,
+  fromType: string,
+  toType: string,
+  fromTableId: string | null,
+  toTableId: string | null,
+): Promise<void> {
+  await recordActivityLog(db, {
+    staffId,
+    action: 'order_type_changed',
+    entityType: 'order',
+    entityId: orderId,
+    summary: `Type ${fromType} → ${toType}`,
+    metadata: {
+      fromType,
+      toType,
+      fromTableId,
+      toTableId,
+    },
+  });
+}

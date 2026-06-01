@@ -61,6 +61,7 @@ enum ActivityAction {
   order_status_changed
   order_payment_recorded
   order_table_changed
+  order_type_changed
 }
 
 model Staff {

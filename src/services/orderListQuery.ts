@@ -1,4 +1,4 @@
-import type { OrderStatus, OrderType, Prisma, PrismaClient } from '../db/tenant-client';
+import type { OrderStatus, OrderType, PaymentMethod, Prisma, PrismaClient } from '../db/tenant-client';
 import { resolveStatsPeriodBounds, type StatsFilter } from './statistics';
 import { tenantEntityIdSchema } from './publicId';
 
@@ -21,6 +21,7 @@ export type ParsedMobileOrderListQuery = {
   status?: OrderStatus;
   tableId?: string;
   orderType?: OrderType;
+  paymentMethod?: PaymentMethod;
   search?: string;
 };
 
@@ -33,6 +34,8 @@ const orderStatuses = [
 ] as const satisfies readonly OrderStatus[];
 
 const orderTypes = ['dine_in', 'takeaway'] as const satisfies readonly OrderType[];
+
+const paymentMethods = ['cash', 'card', 'unpaid'] as const satisfies readonly PaymentMethod[];
 
 const listFilters = ['all', 'today', 'week', 'month', 'custom'] as const;
 
@@ -83,6 +86,12 @@ export function parseMobileOrderListQuery(
       ? (orderTypeRaw as OrderType)
       : undefined;
 
+  const paymentMethodRaw = typeof query.paymentMethod === 'string' ? query.paymentMethod : undefined;
+  const paymentMethod =
+    paymentMethodRaw && paymentMethods.includes(paymentMethodRaw as PaymentMethod)
+      ? (paymentMethodRaw as PaymentMethod)
+      : undefined;
+
   const tableIdRaw = typeof query.tableId === 'string' ? query.tableId : undefined;
   const tableIdParsed = tableIdRaw ? tenantEntityIdSchema.safeParse(tableIdRaw) : null;
   if (tableIdRaw && !tableIdParsed?.success) {
@@ -104,6 +113,7 @@ export function parseMobileOrderListQuery(
       status,
       tableId: tableIdParsed?.success ? tableIdParsed.data : undefined,
       orderType,
+      paymentMethod,
       search,
     },
   };
@@ -117,6 +127,7 @@ export async function buildMobileOrderListWhere(
 
   if (q.status) where.status = q.status;
   if (q.orderType) where.orderType = q.orderType;
+  if (q.paymentMethod) where.paymentMethod = q.paymentMethod;
   if (q.tableId) {
     where.tableId = q.tableId;
     where.orderType = 'dine_in';

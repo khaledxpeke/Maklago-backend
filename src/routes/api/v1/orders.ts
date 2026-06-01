@@ -13,6 +13,7 @@ import {
   logOrderPaymentRecorded,
   logOrderStatusChanged,
   logOrderTableChanged,
+  logOrderTypeChanged,
 } from '../../../services/activityLog';
 import {
   buildOrderCartFromProducts,
@@ -575,6 +576,106 @@ ordersRouter.patch(
     } catch {
       sendError(res, 404, 'not_found', 'Order not found');
     }
+  }),
+);
+
+const MUTABLE_ORDER_STATUSES: OrderStatus[] = ['waiting', 'confirmed', 'preparing'];
+
+ordersRouter.patch(
+  '/:id/type',
+  asyncHandler(async (req, res) => {
+    if (!req.tenant) return;
+
+    const schema = z.discriminatedUnion('orderType', [
+      z.object({ orderType: z.literal('takeaway') }),
+      z.object({ orderType: z.literal('dine_in'), tableId: tenantEntityIdSchema }),
+    ]);
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      sendError(res, 400, 'validation_error', 'Invalid body');
+      return;
+    }
+
+    const orderId = paramId(req);
+    if (!orderId) {
+      sendError(res, 400, 'validation_error', 'Missing order id');
+      return;
+    }
+
+    const prisma = req.tenant.prisma;
+    const existing = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!existing) {
+      sendError(res, 404, 'not_found', 'Order not found');
+      return;
+    }
+    if (!MUTABLE_ORDER_STATUSES.includes(existing.status)) {
+      sendError(res, 400, 'order_closed', 'Cannot change type on a completed or canceled order');
+      return;
+    }
+
+    const { orderType } = parsed.data;
+    const previousTableId = existing.tableId;
+    const previousType = existing.orderType;
+
+    // No-op: same type and same table (or both takeaway)
+    if (
+      orderType === previousType &&
+      (orderType === 'takeaway' ||
+        ('tableId' in parsed.data && parsed.data.tableId === previousTableId))
+    ) {
+      const row = await prisma.order.findUnique({ where: { id: orderId }, include: orderEnrichedInclude });
+      res.json({ order: await serializeOrderEnriched(req, prisma, row!) });
+      return;
+    }
+
+    if (orderType === 'takeaway') {
+      const order = await prisma.order.update({
+        where: { id: orderId },
+        data: { orderType: 'takeaway', tableId: null },
+        include: orderDetailInclude,
+      });
+      const tableBroadcasts = await refreshTableBroadcasts(prisma, [previousTableId]);
+      await emitOrderUpdatedRealtime(req.tenant.id, prisma, order, tableBroadcasts);
+      if (req.staff) {
+        await logOrderTypeChanged(prisma, req.staff.id, orderId, previousType, 'takeaway', previousTableId, null);
+      }
+      const enriched = await prisma.order.findUnique({ where: { id: orderId }, include: orderEnrichedInclude });
+      res.json({ order: await serializeOrderEnriched(req, prisma, enriched!) });
+      return;
+    }
+
+    // dine_in: validate and assign table
+    const { tableId: nextTableId } = parsed.data as { orderType: 'dine_in'; tableId: string };
+    const tableRow = await prisma.restaurantTable.findFirst({ where: { id: nextTableId, isActive: true } });
+    if (!tableRow) {
+      sendError(res, 400, 'table_not_found', 'Table not found or inactive');
+      return;
+    }
+    const occupyingOnTarget = await prisma.order.count({
+      where: {
+        id: { not: orderId },
+        tableId: nextTableId,
+        orderType: 'dine_in',
+        status: { in: TABLE_OCCUPYING_ORDER_STATUSES },
+      },
+    });
+    if (occupyingOnTarget > 0) {
+      sendError(res, 409, 'table_occupied', 'Target table already has an active dine-in order');
+      return;
+    }
+
+    const order = await prisma.order.update({
+      where: { id: orderId },
+      data: { orderType: 'dine_in', tableId: nextTableId },
+      include: orderDetailInclude,
+    });
+    const tableBroadcasts = await refreshTableBroadcasts(prisma, [previousTableId, nextTableId]);
+    await emitOrderUpdatedRealtime(req.tenant.id, prisma, order, tableBroadcasts);
+    if (req.staff) {
+      await logOrderTypeChanged(prisma, req.staff.id, orderId, previousType, 'dine_in', previousTableId, nextTableId);
+    }
+    const enriched = await prisma.order.findUnique({ where: { id: orderId }, include: orderEnrichedInclude });
+    res.json({ order: await serializeOrderEnriched(req, prisma, enriched!) });
   }),
 );
 
