@@ -51,4 +51,11 @@ export type StaffRealtimeMessageV1 =
       tableId: string;
       status: 'free' | 'occupied';
       ts: string;
+    }
+  | {
+      v: 1;
+      type: 'chef.init';
+      /** All orders from session open_time → now, kitchen format (no prices). */
+      orders: SerializedOrderJson[];
+      ts: string;
     };

@@ -4,6 +4,9 @@ import { WebSocketServer } from 'ws';
 import { verifyStaffToken } from '../auth/jwt';
 import { env } from '../config/env';
 import { getRegistryClient } from '../db/registry';
+import { getTenantPrisma } from '../db/tenantPool';
+import { kitchenOrderInclude, serializeOrdersKitchen } from '../services/orderJsonKitchen';
+import { getRestaurantSettings, resolveSessionStart } from '../services/restaurantSettings';
 import { staffRealtimeHub } from './staffRealtimeHub';
 
 /**
@@ -55,6 +58,25 @@ export function attachStaffRealtimeServer(httpServer: Server): WebSocketServer {
         wss.handleUpgrade(request, socket, head, (ws) => {
           staffRealtimeHub.join(row.id, ws);
           ws.send(JSON.stringify({ v: 1, type: 'connected', tenantId: row.id }));
+
+          if (payload.role === 'chef') {
+            void (async () => {
+              try {
+                const tenantPrisma = getTenantPrisma(row.id, row.databaseUrl);
+                const settings = await getRestaurantSettings(tenantPrisma);
+                const sessionStart = resolveSessionStart(settings.openTime);
+                const orders = await tenantPrisma.order.findMany({
+                  where: { createdAt: { gte: sessionStart } },
+                  include: kitchenOrderInclude,
+                  orderBy: { createdAt: 'asc' },
+                });
+                const serialized = await serializeOrdersKitchen(tenantPrisma, orders);
+                ws.send(JSON.stringify({ v: 1, type: 'chef.init', orders: serialized, ts: new Date().toISOString() }));
+              } catch {
+                // non-fatal: chef continues connected and will receive live updates
+              }
+            })();
+          }
 
           ws.on('close', () => staffRealtimeHub.leave(row.id, ws));
           ws.on('error', () => staffRealtimeHub.leave(row.id, ws));

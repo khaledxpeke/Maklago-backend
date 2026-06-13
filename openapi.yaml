@@ -12,6 +12,8 @@ info:
     - **`GET /api/v1/orders`**: backoffice — enriched lines (names, images). **`GET /api/v1/mobile/orders`**: slim payload matching realtime.
     - `POST /api/v1/orders`: body **`products`** `{ categoryId, id, count, price, extras?[] }`, plus required **`subtotal`**, **`tva`**, **`total`** (major currency units, e.g. 2.5 — must match server); cashier orders are created as **`confirmed`** (dine-in table occupied immediately).
     - **Mobile bootstrap:** `GET /api/v1/catalog/categories/menu` returns slim `{ categories[] }` with **`id`** on nested entities, `kind`, and `type[].extras`.
+    - **Chef WebSocket:** Connect to `ws(s)://host/api/v1/realtime?token=<chef-jwt>`. On connect the server immediately sends `{ v:1, type:"chef.init", orders:[], ts }` with all kitchen-format orders since today's `openTime` (no prices). Live updates arrive as `kitchen.order.created` / `kitchen.order.updated` while the socket stays open.
+    - **Restaurant settings:** `GET /api/v1/settings/restaurant` returns `openTime`, `closeTime` (HH:mm, 24h, may cross midnight), and `currency` `{ id, code, name, symbol }`. Defaults: `12:00` / `01:00` / TND. Update with `PATCH /api/v1/settings/restaurant` (owner/manager). List currencies at `GET /api/v1/settings/currencies`.
 servers:
   - url: http://localhost:3000
 paths:
@@ -104,7 +106,7 @@ paths:
                       email: { type: string }
                       firstName: { type: string }
                       lastName: { type: string }
-                      role: { type: string, enum: [owner, manager, cashier] }
+                      role: { type: string, enum: [owner, manager, cashier, chef] }
                       hasPin: { type: boolean }
                       requiresMobilePin: { type: boolean, description: Owner — PIN exists and mobile gate is on }
         '401': { description: Invalid credentials }
@@ -517,6 +519,74 @@ paths:
         - $ref: '#/components/parameters/TenantHeaderOptional'
       responses:
         '200': { description: defaultTaxBps }
+  /api/v1/settings/restaurant:
+    get:
+      summary: Get restaurant settings (open/close time, currency)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+      responses:
+        '200':
+          description: Restaurant operating hours and display currency
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  openTime: { type: string, example: '12:00', description: 'Session start time HH:mm' }
+                  closeTime: { type: string, example: '01:00', description: 'Session end time HH:mm (may be past midnight)' }
+                  currency:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      code: { type: string, example: TND }
+                      name: { type: string, example: 'Dinar Tunisien' }
+                      symbol: { type: string, example: DT }
+    patch:
+      summary: Update restaurant settings (owner/manager)
+      description: |
+        Updates operating hours and/or display currency. All fields optional.
+        Times must be HH:mm (24h). Use GET /api/v1/settings/currencies to list valid currencyId values.
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                openTime: { type: string, pattern: '^\d{2}:\d{2}$', example: '12:00' }
+                closeTime: { type: string, pattern: '^\d{2}:\d{2}$', example: '01:00' }
+                currencyId: { type: string }
+      responses:
+        '200': { description: Updated restaurant settings (same shape as GET) }
+        '400': { description: validation_error — invalid time format }
+        '403': { description: Owner or manager only }
+  /api/v1/settings/currencies:
+    get:
+      summary: List available currencies
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeaderOptional'
+      responses:
+        '200':
+          description: '{ currencies: [{ id, code, name, symbol }] } — seeded with USD ($), EUR (€), TND (DT)'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  currencies:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        code: { type: string }
+                        name: { type: string }
+                        symbol: { type: string }
 components:
   parameters:
     TenantHeaderOptional:

@@ -68,6 +68,15 @@
       }
     },
     "schemas": {
+      "Currency": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "curr_tnd" },
+          "code": { "type": "string", "example": "TND" },
+          "name": { "type": "string", "example": "Dinar Tunisien" },
+          "symbol": { "type": "string", "example": "DT" }
+        }
+      },
       "ApiError": {
         "type": "object",
         "required": [
@@ -140,7 +149,8 @@
                 "enum": [
                   "owner",
                   "manager",
-                  "cashier"
+                  "cashier",
+                  "chef"
                 ]
               },
               "hasPin": {
@@ -811,10 +821,10 @@
       "PatchTaxRequest": {
         "type": "object",
         "required": [
-          "defaultTaxBps"
+          "tax"
         ],
         "properties": {
-          "defaultTaxBps": {
+          "tax": {
             "type": "integer",
             "minimum": 0,
             "maximum": 100000
@@ -967,7 +977,8 @@
             "enum": [
               "owner",
               "manager",
-              "cashier"
+              "cashier",
+              "chef"
             ]
           }
         }
@@ -994,7 +1005,8 @@
             "enum": [
               "owner",
               "manager",
-              "cashier"
+              "cashier",
+              "chef"
             ]
           },
           "isActive": {
@@ -1024,7 +1036,7 @@
           "firstName": { "type": "string" },
           "lastName": { "type": "string" },
           "email": { "type": "string", "format": "email" },
-          "role": { "type": "string", "enum": ["owner", "manager", "cashier"] }
+          "role": { "type": "string", "enum": ["owner", "manager", "cashier", "chef"] }
         }
       },
       "ActivityLog": {
@@ -4620,25 +4632,40 @@
     },
     "/api/v1/settings": {
       "get": {
-        "tags": [
-          "Settings"
-        ],
-        "summary": "Tenant settings + default tax",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "tags": ["Settings"],
+        "summary": "All tenant settings (KV map)",
+        "description": "Returns the full settings key-value map plus a parsed `tax`. Known keys: `default_tax_bps` (integer), `open_time` (string HH:mm), `close_time` (string HH:mm), `currency_id` (string). Use the typed endpoints (`/settings/restaurant`, `/settings/tax`) to read or write individual settings.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/TenantHeaderOptional" }],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "settings": {
+                      "type": "object",
+                      "description": "Raw KV map — keys vary by what has been written.",
+                      "example": {
+                        "default_tax_bps": 1000,
+                        "open_time": "12:00",
+                        "close_time": "01:00",
+                        "currency_id": "curr_tnd"
+                      }
+                    },
+                    "tax": {
+                      "type": "integer",
+                      "description": "Parsed default TVA rate in basis points (100 bps = 1%).",
+                      "example": 1000
+                    }
+                  }
+                }
+              }
+            }
           }
-        },
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/TenantHeaderOptional"
-          }
-        ]
+        }
       }
     },
     "/api/v1/settings/tax": {
@@ -4683,6 +4710,255 @@
             "$ref": "#/components/parameters/TenantHeaderOptional"
           }
         ]
+      }
+    },
+    "/api/v1/settings/restaurant": {
+      "get": {
+        "tags": ["Settings"],
+        "summary": "Get restaurant settings",
+        "description": "Returns operating hours and display currency. Defaults to 12:00–01:00 / TND on first call.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/TenantHeaderOptional" }],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "openTime": { "type": "string", "example": "12:00", "description": "Session start time (HH:mm, 24h)." },
+                    "closeTime": { "type": "string", "example": "01:00", "description": "Session end time (HH:mm, 24h, may be past midnight)." },
+                    "currency": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" },
+                        "code": { "type": "string", "example": "TND" },
+                        "name": { "type": "string", "example": "Dinar Tunisien" },
+                        "symbol": { "type": "string", "example": "DT" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Settings"],
+        "summary": "Update restaurant settings (owner/manager)",
+        "description": "All fields optional. `openTime` / `closeTime` must be `HH:mm` format. Use `GET /api/v1/settings/currencies` to list valid `currencyId` values.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/TenantHeaderOptional" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "openTime": { "type": "string", "pattern": "^\\d{2}:\\d{2}$", "example": "12:00" },
+                  "closeTime": { "type": "string", "pattern": "^\\d{2}:\\d{2}$", "example": "01:00" },
+                  "currencyId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Updated settings (same shape as GET)" },
+          "400": {
+            "description": "validation_error — invalid HH:mm format",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "403": {
+            "description": "Owner or manager only",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/currencies": {
+      "get": {
+        "tags": ["Settings"],
+        "summary": "List available currencies",
+        "description": "Seeded with USD ($), EUR (€), TND (DT). Use the `id` as `currencyId` in PATCH /api/v1/settings/restaurant.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/TenantHeaderOptional" }],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "currencies": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Currency" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Settings"],
+        "summary": "Create a currency (owner/manager)",
+        "description": "Creates a new currency. `code` must be unique (stored uppercase).",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/TenantHeaderOptional" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code", "name", "symbol"],
+                "properties": {
+                  "code": { "type": "string", "maxLength": 10, "example": "GBP" },
+                  "name": { "type": "string", "maxLength": 100, "example": "Pound Sterling" },
+                  "symbol": { "type": "string", "maxLength": 10, "example": "£" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Currency created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "currency": { "$ref": "#/components/schemas/Currency" } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_error — missing or invalid fields",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "403": {
+            "description": "Owner or manager only",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "409": {
+            "description": "currency_code_taken — code already exists",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/currencies/{id}": {
+      "get": {
+        "tags": ["Settings"],
+        "summary": "Get a currency by ID",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "currency": { "$ref": "#/components/schemas/Currency" } }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Settings"],
+        "summary": "Update a currency (owner/manager)",
+        "description": "All fields optional. `code` must remain unique.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": { "type": "string", "maxLength": 10 },
+                  "name": { "type": "string", "maxLength": 100 },
+                  "symbol": { "type": "string", "maxLength": 10 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "currency": { "$ref": "#/components/schemas/Currency" } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "403": {
+            "description": "Owner or manager only",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "409": {
+            "description": "currency_code_taken — code already exists",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Settings"],
+        "summary": "Delete a currency (owner/manager)",
+        "description": "Fails with 409 if this currency is the active restaurant currency. Change the restaurant currency first, then retry.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantHeaderOptional" },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "204": { "description": "Deleted" },
+          "403": {
+            "description": "Owner or manager only",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "404": {
+            "description": "not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "409": {
+            "description": "currency_in_use — cannot delete the active currency",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          }
+        }
       }
     }
   }

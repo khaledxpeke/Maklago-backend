@@ -12,6 +12,7 @@ enum StaffRole {
   owner
   manager
   cashier
+  chef
 }
 
 enum OrderStatus {
@@ -292,6 +293,15 @@ model Setting {
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("settings")
+}
+
+model Currency {
+  id     String @id
+  code   String @unique
+  name   String
+  symbol String
+
+  @@map("currencies")
 }
 
 /// Staff audit trail for POS actions (order lifecycle, payments, table moves, etc.).
