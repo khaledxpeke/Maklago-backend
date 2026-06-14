@@ -11,6 +11,7 @@ import { sendError } from '../../../http/errorResponse';
 import { resolveImageForClient, normalizeImageForStorage } from '../../../http/imageUrl';
 import { requireRole } from '../../../middleware/requireRole';
 import { requireStaff } from '../../../middleware/requireStaff';
+import { denyChef } from '../../../middleware/requireRole';
 import { expandProductCompositionForClient, extraAddonCents, loadComposedProductSteps, type LoadedExtra } from '../../../services/composition';
 import { majorToCents, resolvePriceCents } from '../../../http/money';
 import { attachCompositionCatalogRoutes } from './catalogComposition';
@@ -19,6 +20,7 @@ import { generatePublicId, tenantEntityIdSchema } from '../../../services/public
 export const catalogRouter = Router();
 
 catalogRouter.use(requireStaff);
+catalogRouter.use(denyChef);
 
 const ALLOWED_IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 

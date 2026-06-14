@@ -440,6 +440,7 @@ When printer is wired: send `printJob.escPosBase64` to ESC/POS and pulse drawer 
 | Action | Method | Path |
 |--------|--------|------|
 | Login | POST | `/api/v1/auth/login` |
+| **Global config (TVA, currency, hours)** | **GET** | **`/api/v1/mobile/config`** |
 | Me + PIN flags | GET | `/api/v1/auth/me` |
 | Toggle PIN gate | PATCH | `/api/v1/auth/me/pin-mobile-enabled` |
 | Change password | PATCH | `/api/v1/auth/me/password` |
@@ -466,11 +467,12 @@ When printer is wired: send `printJob.escPosBase64` to ESC/POS and pulse drawer 
 
 1. **Tables tab + WebSocket** ⚠️ **— connect `/api/v1/realtime` after login; handle `table.updated` + `order.updated`; no polling. See §2.**
 2. **HTTP client** — add `lang` header from app locale on every request.
-3. **PIN settings screen** — switch bound to `pin-mobile-enabled`; verify with `currentPin` when disabling.
-4. **Orders / history tab** — infinite scroll or page buttons using `pagination` from `GET /mobile/orders`.
-5. **Kitchen KDS** — `GET /kitchen/orders` page 1 on open; WebSocket `kitchen.order.*` for live queue; infinite scroll via `pagination`.
-6. **Manager cash screen** — summary + detailed modals; close shift POST; stash `printJob` for future printer plugin.
-7. **Role gating** — hide cash + PIN management UI for `cashier`; show for `manager` and `owner`.
+3. **Global config** — call `GET /api/v1/mobile/config` right after login; cache `tva`, `currency`, `openTime`, `closeTime` in app state. Use `tva` as the global TVA rate for computing order subtotal/total.
+4. **PIN settings screen** — switch bound to `pin-mobile-enabled`; verify with `currentPin` when disabling.
+5. **Orders / history tab** — infinite scroll or page buttons using `pagination` from `GET /mobile/orders`.
+6. **Kitchen KDS** — `GET /kitchen/orders` page 1 on open; WebSocket `kitchen.order.*` for live queue; infinite scroll via `pagination`.
+7. **Manager cash screen** — summary + detailed modals; close shift POST; stash `printJob` for future printer plugin.
+8. **Role gating** — hide cash + PIN management UI for `cashier`; show for `manager` and `owner`.
 
 ---
 

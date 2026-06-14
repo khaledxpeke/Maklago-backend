@@ -6,6 +6,7 @@ import { asyncHandler } from '../../../http/asyncHandler';
 import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
 import { requireStaff } from '../../../middleware/requireStaff';
+import { denyChef } from '../../../middleware/requireRole';
 import { generatePublicId, tenantEntityIdSchema } from '../../../services/publicId';
 import { broadcastStaffRealtime } from '../../../realtime/broadcastStaffRealtime';
 
@@ -17,6 +18,7 @@ type RestaurantTablePayload = RestaurantTable & {
 
 export const tablesRouter = Router();
 tablesRouter.use(requireStaff);
+tablesRouter.use(denyChef);
 
 /** Interprets P2002 from partial unique `(zone_id, table_number)` or legacy global `table_number` index. */
 function sendTableUniqueConflict(res: Parameters<typeof sendError>[0], e: Prisma.PrismaClientKnownRequestError) {

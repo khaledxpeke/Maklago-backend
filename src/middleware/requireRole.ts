@@ -15,3 +15,16 @@ export function requireRole(...allowed: StaffRole[]) {
     next();
   };
 }
+
+/**
+ * Allow only staff who can use the kitchen app: chef, manager, owner.
+ * Apply to kitchen routes.
+ */
+export const requireKitchenStaff = requireRole('chef', 'manager', 'owner');
+
+/**
+ * Block the chef role from cashier / backoffice routes.
+ * Chef can only access kitchen routes and their own auth endpoints.
+ * Apply after requireStaff on every non-kitchen protected router.
+ */
+export const denyChef = requireRole('cashier', 'manager', 'owner');

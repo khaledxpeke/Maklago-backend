@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { asyncHandler } from '../../../http/asyncHandler';
 import { sendError } from '../../../http/errorResponse';
 import { requireStaff } from '../../../middleware/requireStaff';
-import { requireRole } from '../../../middleware/requireRole';
+import { requireRole, denyChef } from '../../../middleware/requireRole';
 import { getDefaultTaxBps, setDefaultTaxBps } from '../../../services/settings';
 import { getRestaurantSettings, upsertRestaurantSettings } from '../../../services/restaurantSettings';
 
@@ -12,6 +12,7 @@ const timePattern = /^\d{2}:\d{2}$/;
 
 export const settingsRouter = Router();
 settingsRouter.use(requireStaff);
+settingsRouter.use(denyChef);
 
 // ─── KV map ──────────────────────────────────────────────────────────────────
 
@@ -47,18 +48,23 @@ settingsRouter.patch(
   }),
 );
 
-// ─── Restaurant settings (open/close time + currency) ────────────────────────
+// ─── Restaurant settings (TVA + open/close time + currency) ──────────────────
+
+function serializeRestaurantSettings(s: Awaited<ReturnType<typeof getRestaurantSettings>>) {
+  return {
+    openTime: s.openTime,
+    closeTime: s.closeTime,
+    tva: s.tva,
+    currency: { id: s.currency.id, code: s.currency.code, name: s.currency.name, symbol: s.currency.symbol },
+  };
+}
 
 settingsRouter.get(
   '/restaurant',
   asyncHandler(async (req, res) => {
     if (!req.tenant) return;
     const s = await getRestaurantSettings(req.tenant.prisma);
-    res.json({
-      openTime: s.openTime,
-      closeTime: s.closeTime,
-      currency: { id: s.currency.id, code: s.currency.code, name: s.currency.name, symbol: s.currency.symbol },
-    });
+    res.json(serializeRestaurantSettings(s));
   }),
 );
 
@@ -70,6 +76,8 @@ settingsRouter.patch(
       openTime: z.string().regex(timePattern, 'Must be HH:mm').optional(),
       closeTime: z.string().regex(timePattern, 'Must be HH:mm').optional(),
       currencyId: z.string().optional(),
+      /** TVA rate as a percentage (e.g. 19 means 19%). Range: 0–100. */
+      tva: z.number().min(0).max(100).optional(),
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) {
@@ -78,11 +86,7 @@ settingsRouter.patch(
     }
     if (!req.tenant) return;
     const s = await upsertRestaurantSettings(req.tenant.prisma, parsed.data);
-    res.json({
-      openTime: s.openTime,
-      closeTime: s.closeTime,
-      currency: { id: s.currency.id, code: s.currency.code, name: s.currency.name, symbol: s.currency.symbol },
-    });
+    res.json(serializeRestaurantSettings(s));
   }),
 );
 

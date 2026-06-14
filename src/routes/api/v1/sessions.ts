@@ -5,10 +5,12 @@ import { asyncHandler } from '../../../http/asyncHandler';
 import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
 import { requireStaff } from '../../../middleware/requireStaff';
+import { denyChef } from '../../../middleware/requireRole';
 import { generatePublicId } from '../../../services/publicId';
 
 export const sessionsRouter = Router();
 sessionsRouter.use(requireStaff);
+sessionsRouter.use(denyChef);
 
 type SessionWithStaff = CashierSession & {
   staff?: Pick<Staff, 'id' | 'firstName' | 'lastName' | 'email'> | null;

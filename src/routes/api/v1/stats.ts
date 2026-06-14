@@ -4,6 +4,7 @@ import { asyncHandler } from '../../../http/asyncHandler';
 import { centsToMajor } from '../../../http/money';
 import { sendError } from '../../../http/errorResponse';
 import { requireStaff } from '../../../middleware/requireStaff';
+import { denyChef } from '../../../middleware/requireRole';
 import { getStatistics } from '../../../services/statistics';
 
 const dateOnlySchema = z
@@ -18,6 +19,7 @@ const statisticsQuerySchema = z.object({
 
 export const statsRouter = Router();
 statsRouter.use(requireStaff);
+statsRouter.use(denyChef);
 
 statsRouter.get(
   '/statistics',

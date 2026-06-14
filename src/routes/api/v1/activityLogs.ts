@@ -5,6 +5,7 @@ import { asyncHandler } from '../../../http/asyncHandler';
 import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
 import { requireStaff } from '../../../middleware/requireStaff';
+import { denyChef } from '../../../middleware/requireRole';
 import { activityLogToJson, listActivityLogs } from '../../../services/activityLog';
 import { tenantEntityIdSchema } from '../../../services/publicId';
 
@@ -19,6 +20,7 @@ const actions = [
 
 export const activityLogsRouter = Router();
 activityLogsRouter.use(requireStaff);
+activityLogsRouter.use(denyChef);
 
 activityLogsRouter.get(
   '/',

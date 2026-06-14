@@ -4,38 +4,36 @@ import { asyncHandler } from '../../../http/asyncHandler';
 import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
 import { requireStaff } from '../../../middleware/requireStaff';
+import { requireKitchenStaff } from '../../../middleware/requireRole';
 import {
   kitchenOrderInclude,
   serializeOrderKitchen,
   serializeOrdersKitchen,
 } from '../../../services/orderJsonKitchen';
 import { paginationMeta, parseListPagination } from '../../../services/orderListQuery';
+import { getRestaurantSettings, resolveSessionStart } from '../../../services/restaurantSettings';
 import { TABLE_OCCUPYING_ORDER_STATUSES } from '../../../services/tableOccupancy';
 
 /** Active tickets for kitchen display (same as table-occupying lifecycle). */
 const KITCHEN_ORDER_STATUSES: OrderStatus[] = [...TABLE_OCCUPYING_ORDER_STATUSES];
 
-/** Kitchen list: rolling 24h window (orders older than this are excluded). */
-const KITCHEN_LIST_MAX_AGE_MS = 24 * 60 * 60 * 1000;
-
-function kitchenListCreatedSince(): Date {
-  return new Date(Date.now() - KITCHEN_LIST_MAX_AGE_MS);
-}
-
 /** Kitchen display API — no prices; includes **`isChanged`** when cart was edited after kitchen last acknowledged. */
 export const kitchenOrdersRouter = Router();
 kitchenOrdersRouter.use(requireStaff);
+kitchenOrdersRouter.use(requireKitchenStaff);
 
 kitchenOrdersRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     if (!req.tenant) return;
     const { page, limit, skip } = parseListPagination(req.query as Record<string, unknown>);
-    const createdSince = kitchenListCreatedSince();
+
+    const settings = await getRestaurantSettings(req.tenant.prisma);
+    const sessionStart = resolveSessionStart(settings.openTime);
 
     const where = {
       status: { in: KITCHEN_ORDER_STATUSES },
-      createdAt: { gte: createdSince },
+      createdAt: { gte: sessionStart },
     };
 
     const [totalRecords, rows] = await Promise.all([

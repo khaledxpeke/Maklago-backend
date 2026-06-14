@@ -6,6 +6,7 @@ import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
 import { discountPercentSchema, moneyMajorSchema } from '../../../http/money';
 import { requireStaff } from '../../../middleware/requireStaff';
+import { denyChef } from '../../../middleware/requireRole';
 import { getDefaultTaxBps } from '../../../services/settings';
 import {
   logOrderCartUpdated,
@@ -223,6 +224,7 @@ export function sendOrderCartErrors(res: Response, e: unknown): boolean {
 
 export const ordersRouter = Router();
 ordersRouter.use(requireStaff);
+ordersRouter.use(denyChef);
 
 ordersRouter.post(
   '/',

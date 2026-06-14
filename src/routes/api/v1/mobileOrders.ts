@@ -3,6 +3,7 @@ import { asyncHandler } from '../../../http/asyncHandler';
 import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
 import { requireStaff } from '../../../middleware/requireStaff';
+import { denyChef } from '../../../middleware/requireRole';
 import { logOrderCartUpdated } from '../../../services/activityLog';
 import {
   orderDetailInclude,
@@ -42,6 +43,7 @@ function sendEditOrderErrors(res: Parameters<typeof sendError>[0], e: unknown): 
 
 export const mobileOrdersRouter = Router();
 mobileOrdersRouter.use(requireStaff);
+mobileOrdersRouter.use(denyChef);
 
 mobileOrdersRouter.get(
   '/',

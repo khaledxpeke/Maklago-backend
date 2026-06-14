@@ -19,11 +19,11 @@ import { generatePublicId } from '../../../services/publicId';
 
 const admin = requireRole('owner', 'manager');
 
-const roleEnum = z.enum(['owner', 'manager', 'cashier']);
+const roleEnum = z.enum(['owner', 'manager', 'cashier', 'chef']);
 
 function canSetRole(actor: StaffRole, targetRole: StaffRole): boolean {
   if (actor === 'owner') return true;
-  if (actor === 'manager') return targetRole === 'manager' || targetRole === 'cashier';
+  if (actor === 'manager') return targetRole === 'manager' || targetRole === 'cashier' || targetRole === 'chef';
   return false;
 }
 

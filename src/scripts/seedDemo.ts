@@ -49,6 +49,7 @@ const S = {
   ORDER_3: '060000000503',
   STAFF_MGR: '070000000601',
   STAFF_OWNER: '070000000602',
+  STAFF_CHEF: '070000000603',
   LINE_O1: '080000050101',
   LINE_O2A: '080000050201',
   LINE_O2B: '080000050202',
@@ -179,6 +180,23 @@ async function main(): Promise<void> {
     update: { passwordHash: ownerHash, firstName: 'Demo', lastName: 'Owner' },
   });
   console.log('Staff (owner):', ownerEmailAddr, '/', password);
+
+  const chefEmailAddr = 'chef@demo.local';
+  const chefHash = await bcrypt.hash(password, env.bcryptRounds);
+  const demoChef = await prisma.staff.upsert({
+    where: { email: chefEmailAddr },
+    create: {
+      id: S.STAFF_CHEF,
+      email: chefEmailAddr,
+      passwordHash: chefHash,
+      firstName: 'Demo',
+      lastName: 'Chef',
+      role: 'chef',
+    },
+    update: { passwordHash: chefHash, firstName: 'Demo', lastName: 'Chef', role: 'chef' },
+  });
+  await upsertStaffLoginDirectory(registry, tenant.id, demoChef.id, demoChef.email);
+  console.log('Staff (chef):  ', chefEmailAddr, '/', password);
 
   const catDrinks = await prisma.category.upsert({
     where: { id: S.CAT_DRINKS },

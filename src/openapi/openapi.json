@@ -77,6 +77,15 @@
           "symbol": { "type": "string", "example": "DT" }
         }
       },
+      "RestaurantSettings": {
+        "type": "object",
+        "properties": {
+          "tva": { "type": "number", "example": 19, "description": "Global TVA rate as percentage (e.g. 19 = 19%). Use this when computing order totals." },
+          "openTime": { "type": "string", "example": "12:00", "description": "Business day start (HH:mm, 24h)." },
+          "closeTime": { "type": "string", "example": "01:00", "description": "Business day end (HH:mm, 24h, may be past midnight)." },
+          "currency": { "$ref": "#/components/schemas/Currency" }
+        }
+      },
       "ApiError": {
         "type": "object",
         "required": [
@@ -3775,7 +3784,7 @@
       "get": {
         "tags": ["Orders"],
         "summary": "Kitchen ticket queue",
-        "description": "Active **`confirmed`** and **`preparing`** orders for KDS created within the **last 24 hours** (rolling window). Paginated like **`GET /api/v1/mobile/orders`** (default **10** per page). No prices. Includes **`isChanged`** when the cashier edited the cart. Use WebSocket **`kitchen.order.*`** for live updates; REST is initial load and pagination.",
+        "description": "Active **`confirmed`** and **`preparing`** orders for KDS created within the **last 24 hours** (rolling window). Paginated like **`GET /api/v1/mobile/orders`** (default **10** per page). No prices. Includes **`isChanged`** when the cashier edited the cart. Use WebSocket **`kitchen.order.*`** for live updates; REST is initial load and pagination. **Requires role: `chef`, `manager`, or `owner`.**",
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           { "$ref": "#/components/parameters/TenantHeaderOptional" },
@@ -4716,7 +4725,7 @@
       "get": {
         "tags": ["Settings"],
         "summary": "Get restaurant settings",
-        "description": "Returns operating hours and display currency. Defaults to 12:00–01:00 / TND on first call.",
+        "description": "Returns TVA rate (%), operating hours, and display currency. Defaults: 19% TVA, 12:00–01:00, TND. **Mobile apps should call `GET /api/v1/mobile/config` instead.**",
         "security": [{ "BearerAuth": [] }],
         "parameters": [{ "$ref": "#/components/parameters/TenantHeaderOptional" }],
         "responses": {
@@ -4724,22 +4733,7 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "openTime": { "type": "string", "example": "12:00", "description": "Session start time (HH:mm, 24h)." },
-                    "closeTime": { "type": "string", "example": "01:00", "description": "Session end time (HH:mm, 24h, may be past midnight)." },
-                    "currency": {
-                      "type": "object",
-                      "properties": {
-                        "id": { "type": "string" },
-                        "code": { "type": "string", "example": "TND" },
-                        "name": { "type": "string", "example": "Dinar Tunisien" },
-                        "symbol": { "type": "string", "example": "DT" }
-                      }
-                    }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/RestaurantSettings" }
               }
             }
           }
@@ -4748,7 +4742,7 @@
       "patch": {
         "tags": ["Settings"],
         "summary": "Update restaurant settings (owner/manager)",
-        "description": "All fields optional. `openTime` / `closeTime` must be `HH:mm` format. Use `GET /api/v1/settings/currencies` to list valid `currencyId` values.",
+        "description": "All fields optional. `openTime` / `closeTime` must be `HH:mm` format. `tva` is a percentage (e.g. `19` for 19%). Use `GET /api/v1/settings/currencies` to list valid `currencyId` values.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [{ "$ref": "#/components/parameters/TenantHeaderOptional" }],
         "requestBody": {
@@ -4760,20 +4754,47 @@
                 "properties": {
                   "openTime": { "type": "string", "pattern": "^\\d{2}:\\d{2}$", "example": "12:00" },
                   "closeTime": { "type": "string", "pattern": "^\\d{2}:\\d{2}$", "example": "01:00" },
-                  "currencyId": { "type": "string" }
+                  "currencyId": { "type": "string" },
+                  "tva": { "type": "number", "minimum": 0, "maximum": 100, "example": 19, "description": "TVA rate as percentage (e.g. 19 = 19%). Stored internally as basis points." }
                 }
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "Updated settings (same shape as GET)" },
+          "200": {
+            "description": "Updated settings",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RestaurantSettings" } } }
+          },
           "400": {
-            "description": "validation_error — invalid HH:mm format",
+            "description": "validation_error — invalid format",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "403": {
             "description": "Owner or manager only",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/mobile/config": {
+      "get": {
+        "tags": ["Mobile"],
+        "summary": "Global restaurant config for mobile app",
+        "description": "Returns the TVA rate (%), active currency, and open/close times. Call once after login and cache locally; re-fetch on pull-to-refresh. Use `tva` as the global tax rate when computing order totals (subtotal + tva + total).",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/TenantHeaderOptional" }],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RestaurantSettings" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { RestaurantTable, TableZone } from '../../../db/tenant-client';
 import { asyncHandler } from '../../../http/asyncHandler';
 import { requireStaff } from '../../../middleware/requireStaff';
+import { denyChef } from '../../../middleware/requireRole';
 
 /** Table row nested under a zone (no **`zone`** / **`zoneId`** — implied by parent). */
 function tableInZoneJson(t: RestaurantTable): Record<string, unknown> {
@@ -27,6 +28,7 @@ function zoneWithTablesJson(zn: TableZone & { tables: RestaurantTable[] }): Reco
 
 export const mobileZonesRouter = Router();
 mobileZonesRouter.use(requireStaff);
+mobileZonesRouter.use(denyChef);
 
 /** Zones with active tables nested (same ordering as **`GET /tables`**). */
 mobileZonesRouter.get(

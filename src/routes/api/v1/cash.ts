@@ -4,6 +4,7 @@ import { asyncHandler } from '../../../http/asyncHandler';
 import { sendError } from '../../../http/errorResponse';
 import { requireRole } from '../../../middleware/requireRole';
 import { requireStaff } from '../../../middleware/requireStaff';
+import { denyChef } from '../../../middleware/requireRole';
 import { getCashShiftDetailed, getCashShiftSummary } from '../../../services/cashShift';
 import { buildShiftCloseReceipt } from '../../../services/printJob';
 
@@ -21,6 +22,7 @@ function parseShiftQuery(req: { query: Record<string, unknown> }) {
 
 export const cashRouter = Router();
 cashRouter.use(requireStaff);
+cashRouter.use(denyChef);
 cashRouter.use(managerOnly);
 
 /** Summary lines: ticket #, reference, total — for close-shift preview. */

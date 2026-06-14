@@ -6,10 +6,12 @@ import { asyncHandler } from '../../../http/asyncHandler';
 import { paramId } from '../../../http/paramId';
 import { sendError } from '../../../http/errorResponse';
 import { requireStaff } from '../../../middleware/requireStaff';
+import { denyChef } from '../../../middleware/requireRole';
 import { generatePublicId } from '../../../services/publicId';
 
 export const tableZonesRouter = Router();
 tableZonesRouter.use(requireStaff);
+tableZonesRouter.use(denyChef);
 
 function zoneJson(zn: TableZone): Record<string, unknown> {
   const { id, ...rest } = zn;
